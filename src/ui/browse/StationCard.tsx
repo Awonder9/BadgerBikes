@@ -31,7 +31,7 @@ function statusBanner(st: Station): string | null {
   return null
 }
 
-export function AppHandoff({ details, compact }: { details: SystemDetails | undefined; compact?: boolean }) {
+export function AppHandoff({ details }: { details: SystemDetails | undefined }) {
   const setupConfirmed = useAppStore((s) => s.settings.setupConfirmed)
   const p = platform()
   if (p === 'desktop') return <p className="text-sm text-slate-500">Unlock bikes with the BCycle app on your phone.</p>
@@ -41,7 +41,7 @@ export function AppHandoff({ details, compact }: { details: SystemDetails | unde
   if (!discovery && !store) return null
   const launch = appLaunchUrl(p, link?.discoveryUri ?? null, store)
   return (
-    <div className={`grid grid-cols-2 gap-2 ${compact ? '' : 'pt-1'}`}>
+    <div className="grid grid-cols-2 gap-2">
       {/* A real link (not a script redirect): the most reliable way to hand off to an installed app. */}
       {launch && (
         <a className={`flex min-h-11 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl px-2 font-medium ${setupConfirmed ? 'bg-brand-700 text-white' : 'ring-1 ring-slate-300 dark:ring-slate-600'}`} href={launch}>
@@ -133,6 +133,8 @@ export function StationCard() {
         )}
         {walk && <span className="ml-2">· ~{formatDuration(walk.duration)} walk</span>}
       </p>
+      {/* All action rows share one 8 px rhythm. */}
+      <div className="space-y-2">
       <div className="grid grid-cols-2 gap-2">
         <Button icon="bike" className="whitespace-nowrap px-2" onClick={() => startRideAt(st.id)} disabled={a.bikeState === 'unavailable' || a.bikeState === 'none'}>
           Start ride here
@@ -152,6 +154,7 @@ export function StationCard() {
         </Button>
       </div>
       <AppHandoff details={details} />
+      </div>
     </section>
   )
 }

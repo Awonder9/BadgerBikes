@@ -223,7 +223,7 @@ validated on load, applied to the ride store, then removed from the address bar.
 - Untrusted strings rendered only as React text / maplibre text-field; no `innerHTML`. External links through
   `safeExternalUrl` with host allow-lists. App hand-off (`appLaunchUrl`): iOS opens BCycle's App Store page
   in the App Store app (`itms-apps://`, shows Open/Get) because the BCycle app no longer answers
-  `bcycle://`; Android uses an `intent://` link with the Play Store as fallback.
+  `bcycle://`; Android launches the app by package (`intent://` launcher intent) with the Play Store as fallback.
 
 ---
 

@@ -64,10 +64,10 @@ describe('appLaunchUrl', () => {
   it('opens the App Store page on iOS and an intent link with a store fallback on Android', () => {
     expect(appLaunchUrl('ios', 'bcycle://', 'https://apps.apple.com/us/app/bcycle/id371185597')).toBe('itms-apps://apps.apple.com/app/id371185597')
     expect(appLaunchUrl('ios', 'bcycle://', 'https://evil.example/app/id371185597')).toBeNull()
-    expect(appLaunchUrl('android', 'bcycle://', play)).toBe(`intent://#Intent;scheme=bcycle;package=com.bcycle;S.browser_fallback_url=${encodeURIComponent(play)};end`)
+    expect(appLaunchUrl('android', 'bcycle://', play)).toBe(`intent://#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=com.bcycle;S.browser_fallback_url=${encodeURIComponent(play)};end`)
   })
   it('refuses unknown schemes and odd package ids', () => {
-    expect(appLaunchUrl('android', 'javascript:alert(1)', play)).toBeNull()
+    expect(appLaunchUrl('android', 'javascript:alert(1)', null)).toBeNull()
     expect(appLaunchUrl('android', 'bcycle://', 'https://play.google.com/store/apps/details?id=evil;end')).toBe('bcycle://')
     expect(appLaunchUrl('android', 'bcycle://', null)).toBe('bcycle://')
   })

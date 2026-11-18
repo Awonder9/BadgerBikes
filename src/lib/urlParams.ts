@@ -135,19 +135,18 @@ export function safeAppDiscoveryUri(raw: string | null | undefined): string | nu
  * iOS: the BCycle app no longer answers its `bcycle://` scheme (Safari: "address is invalid") and its web
  * links don't open the app, so this opens the app's App Store page in the App Store app (`itms-apps://`),
  * which shows "Open" when it is installed and "Get" when it isn't. Never an error page.
- * Android: Chrome ignores bare custom schemes from a page, so this builds an intent:// link with the app's
- * package (from the Play Store URL) and the store page as fallback when the app isn't installed.
+ * Android: an intent:// link that launches the app by its package (from the Play Store URL), with the
+ * store page as fallback when it isn't installed.
  */
 export function appLaunchUrl(platform: 'ios' | 'android', discoveryUri: string | null, storeUri: string | null): string | null {
   if (platform === 'ios') {
     const id = storeUri ? /^https:\/\/apps\.apple\.com\/.*\/id(\d{3,15})(?:[/?#]|$)/.exec(storeUri)?.[1] : undefined
     return id ? `itms-apps://apps.apple.com/app/id${id}` : null
   }
-  const discovery = safeAppDiscoveryUri(discoveryUri)
-  if (!discovery) return null
+  // Android: launch the installed app by package (its home screen), like tapping its icon — this needs
+  // no link support from the app. Falls back to the Play Store page when it isn't installed.
   const pkg = storeUri ? new URL(storeUri).searchParams.get('id') : null
-  if (!pkg || !/^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z0-9_]+)+$/.test(pkg)) return discovery
-  const rest = discovery.slice('bcycle://'.length)
+  if (!pkg || !/^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z0-9_]+)+$/.test(pkg)) return safeAppDiscoveryUri(discoveryUri)
   const fallback = storeUri ? `S.browser_fallback_url=${encodeURIComponent(storeUri)};` : ''
-  return `intent://${rest}#Intent;scheme=bcycle;package=${pkg};${fallback}end`
+  return `intent://#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=${pkg};${fallback}end`
 }
