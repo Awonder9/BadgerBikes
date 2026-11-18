@@ -1,0 +1,62 @@
+{
+ "origin": [
+  43.07467,
+  -89.3842
+ ],
+ "destination": [
+  43.07652,
+  -89.4003
+ ],
+ "pickup_candidates": [
+  [
+   "bcycle_madison_1880",
+   "MLK & Main St.",
+   43.0738,
+   -89.38295
+  ],
+  [
+   "bcycle_madison_1874",
+   "Wisconsin & E. Mifflin",
+   43.07571,
+   -89.38527
+  ],
+  [
+   "bcycle_madison_3759",
+   "S. Hamilton & S. Carroll St.",
+   43.07295,
+   -89.3841
+  ],
+  [
+   "bcycle_madison_3780",
+   "E. Washington & N. Webster",
+   43.07605,
+   -89.38251
+  ]
+ ],
+ "dropoff_candidates": [
+  [
+   "bcycle_madison_1888",
+   "Memorial Union",
+   43.07702,
+   -89.40053
+  ],
+  [
+   "bcycle_madison_3696",
+   "Library Mall",
+   43.07487,
+   -89.39955
+  ],
+  [
+   "bcycle_madison_7200",
+   "Observatory Dr. @ Bascom Hall",
+   43.07582,
+   -89.40365
+  ],
+  [
+   "bcycle_madison_2072",
+   "Langdon St. & N. Lake St.",
+   43.07576,
+   -89.39686
+  ]
+ ]
+}

@@ -1,0 +1,522 @@
+[
+  {
+    "id": "bcycle_aventura",
+    "name": "Aventura BCycle",
+    "city": "Aventura, FL",
+    "url": "https://aventura.bcycle.com/",
+    "timezone": "America/New_York",
+    "bbox": [
+      -80.13356,
+      25.95644,
+      -80.13061,
+      25.96605
+    ],
+    "center": [
+      -80.13356,
+      25.96605
+    ],
+    "stationCount": 2,
+    "active": true,
+    "gbfsUrl": "https://gbfs.bcycle.com/bcycle_aventura/gbfs.json"
+  },
+  {
+    "id": "bcycle_bentonville",
+    "name": "Bentonville BCycle",
+    "city": "Bentonville, AR",
+    "url": "https://bentonville.bcycle.com/",
+    "timezone": "America/Chicago",
+    "bbox": [
+      -94.20084,
+      36.34559,
+      -94.18056,
+      36.3695
+    ],
+    "center": [
+      -94.19128,
+      36.36276
+    ],
+    "stationCount": 29,
+    "active": true,
+    "gbfsUrl": "https://gbfs.bcycle.com/bcycle_bentonville/gbfs.json"
+  },
+  {
+    "id": "bcycle_bikelnk",
+    "name": "BikeLNK",
+    "city": "Lincoln, NE",
+    "url": "https://bikelnk.com/",
+    "timezone": "America/Chicago",
+    "bbox": [
+      -96.71211,
+      40.7842,
+      -96.6307,
+      40.83225
+    ],
+    "center": [
+      -96.7028,
+      40.81415
+    ],
+    "stationCount": 21,
+    "active": true,
+    "gbfsUrl": "https://gbfs.bcycle.com/bcycle_bikelnk/gbfs.json"
+  },
+  {
+    "id": "bcycle_boulder",
+    "name": "Boulder BCycle",
+    "city": "Boulder, CO",
+    "url": "https://boulder.bcycle.com/",
+    "timezone": "America/Denver",
+    "bbox": [
+      -105.29497,
+      39.92967,
+      -105.09769,
+      40.17225
+    ],
+    "center": [
+      -105.26061,
+      40.01491
+    ],
+    "stationCount": 76,
+    "active": true,
+    "gbfsUrl": "https://gbfs.bcycle.com/bcycle_boulder/gbfs.json"
+  },
+  {
+    "id": "bcycle_bublr",
+    "name": "Bublr Bikes",
+    "city": "Milwaukee, WI",
+    "url": "https://bublrbikes.org/",
+    "timezone": "America/Chicago",
+    "bbox": [
+      -88.04341,
+      42.9882,
+      -87.87214,
+      43.10015
+    ],
+    "center": [
+      -87.91435,
+      43.04287
+    ],
+    "stationCount": 173,
+    "active": true,
+    "gbfsUrl": "https://gbfs.bcycle.com/bcycle_bublr/gbfs.json"
+  },
+  {
+    "id": "bcycle_clemson",
+    "name": "Clemson BikeShare",
+    "city": "Clemson, SC",
+    "url": "https://clemson.bcycle.com/",
+    "timezone": "America/New_York",
+    "bbox": [
+      -82.84494,
+      34.67297,
+      -82.81758,
+      34.68145
+    ],
+    "center": [
+      -82.83481,
+      34.67914
+    ],
+    "stationCount": 12,
+    "active": true,
+    "gbfsUrl": "https://gbfs.bcycle.com/bcycle_clemson/gbfs.json"
+  },
+  {
+    "id": "bcycle_desmoines",
+    "name": "Des Moines Street Collective",
+    "city": "Des Moines, IA",
+    "url": "https://desmoines.bcycle.com/",
+    "timezone": "America/Chicago",
+    "bbox": [
+      -93.78813,
+      41.54677,
+      -93.56143,
+      41.60965
+    ],
+    "center": [
+      -93.63365,
+      41.58558
+    ],
+    "stationCount": 31,
+    "active": true,
+    "gbfsUrl": "https://gbfs.bcycle.com/bcycle_desmoines/gbfs.json"
+  },
+  {
+    "id": "bcycle_elpaso",
+    "name": "El Paso B-cycle",
+    "city": "El Paso, TX",
+    "url": "https://elpaso.bcycle.com/",
+    "timezone": "America/Denver",
+    "bbox": [
+      -106.50758,
+      31.75327,
+      -106.40162,
+      31.79205
+    ],
+    "center": [
+      -106.49454,
+      31.76525
+    ],
+    "stationCount": 20,
+    "active": true,
+    "gbfsUrl": "https://gbfs.bcycle.com/bcycle_elpaso/gbfs.json"
+  },
+  {
+    "id": "bcycle_memphis",
+    "name": "Explore Bike Share",
+    "city": "Memphis, TN",
+    "url": "https://www.explorebikeshare.com/",
+    "timezone": "America/Chicago",
+    "bbox": [
+      -90.08546,
+      35.12601,
+      -89.83259,
+      35.18082
+    ],
+    "center": [
+      -90.04842,
+      35.14378
+    ],
+    "stationCount": 32,
+    "active": true,
+    "gbfsUrl": "https://gbfs.bcycle.com/bcycle_memphis/gbfs.json"
+  },
+  {
+    "id": "bcycle_greenbikeslc",
+    "name": "GREENbike",
+    "city": "Salt Lake City, UT",
+    "url": "https://www.greenbikeutah.org/",
+    "timezone": "America/Denver",
+    "bbox": [
+      -111.98023,
+      40.72339,
+      -111.85668,
+      41.23656
+    ],
+    "center": [
+      -111.89432,
+      40.76511
+    ],
+    "stationCount": 71,
+    "active": true,
+    "gbfsUrl": "https://gbfs.bcycle.com/bcycle_greenbikeslc/gbfs.json"
+  },
+  {
+    "id": "bcycle_greenville",
+    "name": "Greenville BCycle",
+    "city": "Greenville, SC",
+    "url": "https://greenville.bcycle.com/",
+    "timezone": "America/New_York",
+    "bbox": [
+      -82.42157,
+      34.83585,
+      -82.38581,
+      34.86926
+    ],
+    "center": [
+      -82.40256,
+      34.84722
+    ],
+    "stationCount": 12,
+    "active": true,
+    "gbfsUrl": "https://gbfs.bcycle.com/bcycle_greenville/gbfs.json"
+  },
+  {
+    "id": "bcycle_heartland",
+    "name": "Heartland Bike Share",
+    "city": "Omaha, NE",
+    "url": "https://heartland.bcycle.com/",
+    "timezone": "America/Chicago",
+    "bbox": [
+      -96.31184,
+      41.03038,
+      -95.81737,
+      41.31615
+    ],
+    "center": [
+      -95.94782,
+      41.25695
+    ],
+    "stationCount": 83,
+    "active": true,
+    "gbfsUrl": "https://gbfs.bcycle.com/bcycle_heartland/gbfs.json"
+  },
+  {
+    "id": "bcycle_indego",
+    "name": "Indego",
+    "city": "Philadelphia, PA",
+    "url": "https://www.rideindego.com/",
+    "timezone": "America/New_York",
+    "bbox": [
+      -75.24945,
+      39.88994,
+      -75.10121,
+      40.03807
+    ],
+    "center": [
+      -75.17232,
+      39.95725
+    ],
+    "stationCount": 325,
+    "active": true,
+    "gbfsUrl": "https://gbfs.bcycle.com/bcycle_indego/gbfs.json"
+  },
+  {
+    "id": "bcycle_jacksoncounty",
+    "name": "Jackson County",
+    "city": "Jackson, MI",
+    "url": "https://jacksoncounty.bcycle.com/",
+    "timezone": "America/New_York",
+    "bbox": [
+      -84.43922,
+      42.20805,
+      -84.43922,
+      42.20805
+    ],
+    "center": [
+      -84.43922,
+      42.20805
+    ],
+    "stationCount": 1,
+    "active": true,
+    "gbfsUrl": "https://gbfs.bcycle.com/bcycle_jacksoncounty/gbfs.json"
+  },
+  {
+    "id": "bcycle_madison",
+    "name": "Madison BCycle",
+    "city": "Madison, WI",
+    "url": "https://madison.bcycle.com/",
+    "timezone": "America/Chicago",
+    "bbox": [
+      -89.48337,
+      42.99692,
+      -89.30785,
+      43.12989
+    ],
+    "center": [
+      -89.39761,
+      43.07097
+    ],
+    "stationCount": 111,
+    "active": true,
+    "gbfsUrl": "https://gbfs.bcycle.com/bcycle_madison/gbfs.json"
+  },
+  {
+    "id": "bcycle_lametro",
+    "name": "Metro Bike Share",
+    "city": "Los Angeles, CA",
+    "url": "https://bikeshare.metro.net/",
+    "timezone": "America/Los_Angeles",
+    "bbox": [
+      -118.49136,
+      33.92846,
+      -118.22541,
+      34.17765
+    ],
+    "center": [
+      -118.29368,
+      34.0519
+    ],
+    "stationCount": 224,
+    "active": true,
+    "gbfsUrl": "https://gbfs.bcycle.com/bcycle_lametro/gbfs.json"
+  },
+  {
+    "id": "bcycle_nashville",
+    "name": "Nashville BCycle",
+    "city": "Nashville, TN",
+    "url": "https://nashville.bcycle.com/",
+    "timezone": "America/Chicago",
+    "bbox": [
+      -86.84192,
+      36.12072,
+      -86.70524,
+      36.18919
+    ],
+    "center": [
+      -86.77962,
+      36.15954
+    ],
+    "stationCount": 36,
+    "active": true,
+    "gbfsUrl": "https://gbfs.bcycle.com/bcycle_nashville/gbfs.json"
+  },
+  {
+    "id": "bcycle_pacersbikeshare",
+    "name": "Pacers Bikeshare",
+    "city": "Indianapolis, IN",
+    "url": "https://pacersbikeshare.org/",
+    "timezone": "America/New_York",
+    "bbox": [
+      -86.20685,
+      39.7304,
+      -86.11378,
+      39.87118
+    ],
+    "center": [
+      -86.1526,
+      39.77224
+    ],
+    "stationCount": 56,
+    "active": true,
+    "gbfsUrl": "https://gbfs.bcycle.com/bcycle_pacersbikeshare/gbfs.json"
+  },
+  {
+    "id": "bcycle_cincyredbike",
+    "name": "Red Bike - Cincinnati",
+    "city": "Cincinnati, OH",
+    "url": "https://redbike.bcycle.com/",
+    "timezone": "America/New_York",
+    "bbox": [
+      -84.55338,
+      39.08306,
+      -84.41667,
+      39.16577
+    ],
+    "center": [
+      -84.51144,
+      39.10777
+    ],
+    "stationCount": 80,
+    "active": true,
+    "gbfsUrl": "https://gbfs.bcycle.com/bcycle_cincyredbike/gbfs.json"
+  },
+  {
+    "id": "bcycle_redding",
+    "name": "Redding Bikeshare",
+    "city": "Redding, CA",
+    "url": "https://shastalivingstreets.org/redding-bikeshare/",
+    "timezone": "America/Los_Angeles",
+    "bbox": [
+      -122.4015,
+      40.57337,
+      -122.37755,
+      40.59502
+    ],
+    "center": [
+      -122.39135,
+      40.58319
+    ],
+    "stationCount": 22,
+    "active": true,
+    "gbfsUrl": "https://gbfs.bcycle.com/bcycle_redding/gbfs.json"
+  },
+  {
+    "id": "bcycle_rtcbikeshare",
+    "name": "RTC Bike Share",
+    "city": "Las Vegas, NV",
+    "url": "https://rtcbikeshare.bcycle.com/",
+    "timezone": "America/Los_Angeles",
+    "bbox": [
+      -115.17086,
+      36.14383,
+      -115.1147,
+      36.17266
+    ],
+    "center": [
+      -115.14679,
+      36.16418
+    ],
+    "stationCount": 38,
+    "active": true,
+    "gbfsUrl": "https://gbfs.bcycle.com/bcycle_rtcbikeshare/gbfs.json"
+  },
+  {
+    "id": "bcycle_sanantonio",
+    "name": "San Antonio BCycle",
+    "city": "San Antonio, TX",
+    "url": "https://sanantonio.bcycle.com/",
+    "timezone": "America/Chicago",
+    "bbox": [
+      -98.49746,
+      29.31931,
+      -98.4511,
+      29.4265
+    ],
+    "center": [
+      -98.49175,
+      29.38992
+    ],
+    "stationCount": 18,
+    "active": true,
+    "gbfsUrl": "https://gbfs.bcycle.com/bcycle_sanantonio/gbfs.json"
+  },
+  {
+    "id": "bcycle_santabarbara",
+    "name": "Santa Barbara BCycle",
+    "city": "Santa Barbara, CA",
+    "url": "https://santabarbara.bcycle.com/",
+    "timezone": "America/Los_Angeles",
+    "bbox": [
+      -119.75233,
+      34.39992,
+      -119.64788,
+      34.44136
+    ],
+    "center": [
+      -119.7014,
+      34.4212
+    ],
+    "stationCount": 104,
+    "active": true,
+    "gbfsUrl": "https://gbfs.bcycle.com/bcycle_santabarbara/gbfs.json"
+  },
+  {
+    "id": "bcycle_santacruz",
+    "name": "Santa Cruz BCycle",
+    "city": "Santa Cruz, CA",
+    "url": "https://santacruz.bcycle.com/",
+    "timezone": "America/Los_Angeles",
+    "bbox": [
+      -122.06681,
+      36.94983,
+      -121.95027,
+      37.00181
+    ],
+    "center": [
+      -122.02885,
+      36.97422
+    ],
+    "stationCount": 71,
+    "active": true,
+    "gbfsUrl": "https://gbfs.bcycle.com/bcycle_santacruz/gbfs.json"
+  },
+  {
+    "id": "bcycle_truckee",
+    "name": "Truckee BCycle",
+    "city": "Truckee, CA",
+    "url": "https://truckee.bcycle.com/",
+    "timezone": "America/Los_Angeles",
+    "bbox": [
+      -120.24171,
+      39.28298,
+      -120.12545,
+      39.37291
+    ],
+    "center": [
+      -120.18358,
+      39.32795
+    ],
+    "stationCount": 0,
+    "active": false,
+    "gbfsUrl": "https://gbfs.bcycle.com/bcycle_truckee/gbfs.json"
+  },
+  {
+    "id": "bcycle_valentine",
+    "name": "Valentine Bike Share",
+    "city": "Valentine, NE",
+    "url": "https://heartlandbikeshare.org/",
+    "timezone": "America/Chicago",
+    "bbox": [
+      -100.5507,
+      42.8715,
+      -100.5507,
+      42.8715
+    ],
+    "center": [
+      -100.5507,
+      42.8715
+    ],
+    "stationCount": 1,
+    "active": true,
+    "gbfsUrl": "https://gbfs.bcycle.com/bcycle_valentine/gbfs.json"
+  }
+]

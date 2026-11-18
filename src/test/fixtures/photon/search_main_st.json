@@ -1,0 +1,250 @@
+{
+ "_httpStatus": 200,
+ "type": "FeatureCollection",
+ "features": [
+  {
+   "type": "Feature",
+   "properties": {
+    "osm_type": "W",
+    "osm_id": 1548732783,
+    "osm_key": "building",
+    "osm_value": "apartments",
+    "type": "house",
+    "housenumber": "517",
+    "name": "517 W Main St",
+    "street": "West Main Street",
+    "locality": "Bassett",
+    "city": "Madison",
+    "county": "Dane",
+    "state": "Wisconsin",
+    "country": "United States",
+    "postcode": "53703",
+    "countrycode": "US",
+    "extent": [
+     -89.3902431,
+     43.068723,
+     -89.3896953,
+     43.0683477
+    ]
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -89.3899692,
+     43.0685486
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "osm_type": "N",
+    "osm_id": 13908000321,
+    "osm_key": "amenity",
+    "osm_value": "bicycle_rental",
+    "type": "house",
+    "name": "517 W. Main St.",
+    "street": "West Main Street",
+    "locality": "Bassett",
+    "city": "Madison",
+    "county": "Dane",
+    "state": "Wisconsin",
+    "country": "United States",
+    "postcode": "53715",
+    "countrycode": "US"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -89.3902183,
+     43.0686314
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "osm_type": "W",
+    "osm_id": 385660958,
+    "osm_key": "building",
+    "osm_value": "retail",
+    "type": "house",
+    "housenumber": "931",
+    "name": "Main Street Industries",
+    "street": "East Main Street",
+    "locality": "Marquette",
+    "city": "Madison",
+    "county": "Dane",
+    "state": "Wisconsin",
+    "country": "United States",
+    "postcode": "53703",
+    "countrycode": "US",
+    "extent": [
+     -89.3711393,
+     43.0825658,
+     -89.3700257,
+     43.0817255
+    ]
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -89.3706039,
+     43.0821263
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "osm_type": "N",
+    "osm_id": 4835482395,
+    "osm_key": "amenity",
+    "osm_value": "bicycle_rental",
+    "type": "house",
+    "housenumber": "104",
+    "name": "MLK & Main St.",
+    "street": "Martin Luther King Jr Boulevard",
+    "locality": "Bassett",
+    "city": "Madison",
+    "county": "Dane",
+    "state": "Wisconsin",
+    "country": "United States",
+    "postcode": "53788",
+    "countrycode": "US"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -89.3827779,
+     43.0737656
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "osm_type": "W",
+    "osm_id": 1369564810,
+    "osm_key": "highway",
+    "osm_value": "residential",
+    "type": "street",
+    "name": "West Main Street",
+    "locality": "Monona Bay",
+    "district": "Bowens Addition",
+    "city": "Madison",
+    "county": "Dane",
+    "state": "Wisconsin",
+    "country": "United States",
+    "postcode": "53715",
+    "countrycode": "US",
+    "extent": [
+     -89.3952441,
+     43.0662239,
+     -89.3938357,
+     43.0652319
+    ]
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -89.3945399,
+     43.0657279
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "osm_type": "W",
+    "osm_id": 33798271,
+    "osm_key": "highway",
+    "osm_value": "residential",
+    "type": "street",
+    "name": "West Main Street",
+    "locality": "Bassett",
+    "city": "Madison",
+    "county": "Dane",
+    "state": "Wisconsin",
+    "country": "United States",
+    "postcode": "53788",
+    "countrycode": "US",
+    "extent": [
+     -89.3854448,
+     43.0723993,
+     -89.3851215,
+     43.0721492
+    ]
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -89.3852779,
+     43.0722682
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "osm_type": "W",
+    "osm_id": 453867866,
+    "osm_key": "highway",
+    "osm_value": "residential",
+    "type": "street",
+    "name": "East Main Street",
+    "locality": "First Settlement",
+    "city": "Madison",
+    "county": "Dane",
+    "state": "Wisconsin",
+    "country": "United States",
+    "postcode": "53703",
+    "countrycode": "US",
+    "extent": [
+     -89.3831268,
+     43.0745854,
+     -89.3821468,
+     43.0739039
+    ]
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -89.3826368,
+     43.0742447
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "osm_type": "W",
+    "osm_id": 157654332,
+    "osm_key": "highway",
+    "osm_value": "residential",
+    "type": "street",
+    "name": "East Main Street",
+    "locality": "First Settlement",
+    "city": "Madison",
+    "county": "Dane",
+    "state": "Wisconsin",
+    "country": "United States",
+    "postcode": "53788",
+    "countrycode": "US",
+    "extent": [
+     -89.3816982,
+     43.0753062,
+     -89.3810168,
+     43.0746636
+    ]
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -89.3814321,
+     43.0750309
+    ]
+   }
+  }
+ ]
+}

@@ -1,0 +1,54 @@
+{
+ "last_updated": 1794944727,
+ "ttl": 3600,
+ "version": "1.1",
+ "data": {
+  "plans": [
+   {
+    "plan_id": "bcycle_madison_84",
+    "name": "Annual Pass",
+    "currency": "USD",
+    "description": "Price includes 60 minutes per ride, after each unlock. \n\nFor each trip >60 minutes: add $8 for each additional 30-minute period.\n\nPass valid for 365 days\n\n\n",
+    "url": "madison.bcycle.com",
+    "price": 180.0,
+    "is_taxable": 0
+   },
+   {
+    "plan_id": "bcycle_madison_938",
+    "name": "Guest Pass ",
+    "currency": "USD",
+    "description": "60 min per ride, after each unlock. \nPass valid for 24 hours.\nFor each trip >60 minutes: add $8 for each additional 30-minutes of ride time.\n\nPass is valid for 24 hours from time of purchase.",
+    "url": "madison.bcycle.com",
+    "price": 20.0,
+    "is_taxable": 0
+   },
+   {
+    "plan_id": "bcycle_madison_306",
+    "name": "Monthly Pass",
+    "currency": "USD",
+    "description": "Price includes 60 minutes per trip, after each unlock of a bike.\n\nFor each trip >60 minutes: add $8 for each additional 30-minute period.\n\nRecurring monthly subscription (30 days)",
+    "url": "madison.bcycle.com",
+    "price": 35.0,
+    "is_taxable": 0
+   },
+   {
+    "plan_id": "bcycle_madison_583",
+    "name": "Single Ride Pass (30 min)",
+    "currency": "USD",
+    "description": "Price includes 30 minutes per ride, after each unlock.\n\nIf trip >30 minutes: add $8 for each additional 30-minute period.\n\nSingle Ride ",
+    "url": "madison.bcycle.com",
+    "price": 8.0,
+    "is_taxable": 0
+   },
+   {
+    "plan_id": "bcycle_madison_954",
+    "name": "UW-Madison Monthly Member",
+    "currency": "USD",
+    "description": "Includes rides of 30 minutes or less. Rides over 30 minutes incur $8 usage fee per additional 30 minutes. For active UW-Madison Students, Faculty, Staff.  Email verification required.",
+    "url": "madison.bcycle.com",
+    "price": 10.0,
+    "is_taxable": 0
+   }
+  ]
+ }
+}

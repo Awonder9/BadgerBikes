@@ -1,0 +1,163 @@
+{
+ "type": "FeatureCollection",
+ "features": [
+  {
+   "type": "Feature",
+   "properties": {
+    "osm_type": "W",
+    "osm_id": 62705596,
+    "osm_key": "highway",
+    "osm_value": "residential",
+    "type": "street",
+    "name": "State Street",
+    "locality": "Mansion Hill",
+    "city": "Madison",
+    "county": "Dane",
+    "state": "Wisconsin",
+    "country": "United States",
+    "postcode": "53788",
+    "countrycode": "US",
+    "extent": [
+     -89.3864406,
+     43.0748046,
+     -89.386213,
+     43.0747367
+    ]
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -89.3863299,
+     43.0747803
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "osm_type": "W",
+    "osm_id": 320451319,
+    "osm_key": "highway",
+    "osm_value": "pedestrian",
+    "type": "street",
+    "name": "State Street",
+    "locality": "Mifflin West",
+    "city": "Madison",
+    "county": "Dane",
+    "state": "Wisconsin",
+    "country": "United States",
+    "postcode": "53703",
+    "countrycode": "US",
+    "extent": [
+     -89.3899275,
+     43.0747924,
+     -89.3864406,
+     43.0747367
+    ]
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -89.388184,
+     43.0747707
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "osm_type": "W",
+    "osm_id": 700376933,
+    "osm_key": "highway",
+    "osm_value": "pedestrian",
+    "type": "street",
+    "name": "State Street",
+    "locality": "Mifflin West",
+    "city": "Madison",
+    "county": "Dane",
+    "state": "Wisconsin",
+    "country": "United States",
+    "postcode": "53788",
+    "countrycode": "US",
+    "extent": [
+     -89.3916822,
+     43.0748217,
+     -89.3899275,
+     43.0747826
+    ]
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -89.3908048,
+     43.0748045
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "osm_type": "W",
+    "osm_id": 26720999,
+    "osm_key": "office",
+    "osm_value": "government",
+    "type": "house",
+    "housenumber": "2",
+    "name": "Wisconsin State Capitol",
+    "street": "East Main Street",
+    "locality": "First Settlement",
+    "city": "Madison",
+    "county": "Dane",
+    "state": "Wisconsin",
+    "country": "United States",
+    "postcode": "53703",
+    "countrycode": "US",
+    "extent": [
+     -89.3849903,
+     43.0752945,
+     -89.3833408,
+     43.0740887
+    ]
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -89.3841658,
+     43.0746917
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "osm_type": "R",
+    "osm_id": 6246312,
+    "osm_key": "leisure",
+    "osm_value": "park",
+    "type": "other",
+    "housenumber": "5140",
+    "name": "Governor Nelson State Park",
+    "street": "County Highway M",
+    "city": "Waunakee",
+    "county": "Dane",
+    "state": "Wisconsin",
+    "country": "United States",
+    "postcode": "53597",
+    "countrycode": "US",
+    "extent": [
+     -89.4421358,
+     43.1471213,
+     -89.4256373,
+     43.1215893
+    ]
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -89.43681,
+     43.1341355
+    ]
+   }
+  }
+ ]
+}

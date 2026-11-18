@@ -1,0 +1,263 @@
+{
+ "_httpStatus": 200,
+ "trip": {
+  "locations": [
+   {
+    "type": "break",
+    "lat": 43.0739,
+    "lon": -89.3831,
+    "heading": 316,
+    "original_index": 0
+   },
+   {
+    "type": "break",
+    "lat": 43.07702,
+    "lon": -89.40053,
+    "side_of_street": "right",
+    "original_index": 1
+   }
+  ],
+  "legs": [
+   {
+    "maneuvers": [
+     {
+      "type": 1,
+      "instruction": "Bike northwest.",
+      "verbal_succinct_transition_instruction": "Bike northwest. Then Bear right.",
+      "verbal_pre_transition_instruction": "Bike northwest. Then Bear right.",
+      "verbal_post_transition_instruction": "Continue for 200 feet.",
+      "bearing_after": 316,
+      "time": 14.696,
+      "length": 0.0335,
+      "cost": 24.675,
+      "begin_shape_index": 0,
+      "end_shape_index": 2,
+      "verbal_multi_cue": true,
+      "travel_mode": "bicycle",
+      "travel_type": "hybrid"
+     },
+     {
+      "type": 9,
+      "instruction": "Bear right.",
+      "verbal_transition_alert_instruction": "Bear right.",
+      "verbal_succinct_transition_instruction": "Bear right. Then Turn left.",
+      "verbal_pre_transition_instruction": "Bear right. Then Turn left.",
+      "verbal_post_transition_instruction": "Continue for 100 feet.",
+      "bearing_before": 316,
+      "bearing_after": 357,
+      "time": 10.992,
+      "length": 0.0211,
+      "cost": 21.246,
+      "begin_shape_index": 2,
+      "end_shape_index": 13,
+      "verbal_multi_cue": true,
+      "travel_mode": "bicycle",
+      "travel_type": "hybrid"
+     },
+     {
+      "type": 15,
+      "instruction": "Turn left.",
+      "verbal_transition_alert_instruction": "Turn left.",
+      "verbal_succinct_transition_instruction": "Turn left.",
+      "verbal_pre_transition_instruction": "Turn left.",
+      "verbal_post_transition_instruction": "Continue for 300 feet.",
+      "bearing_before": 287,
+      "bearing_after": 165,
+      "time": 25.846,
+      "length": 0.0615,
+      "cost": 45.429,
+      "begin_shape_index": 13,
+      "end_shape_index": 27,
+      "travel_mode": "bicycle",
+      "travel_type": "hybrid"
+     },
+     {
+      "type": 15,
+      "instruction": "Turn left onto East Main Street.",
+      "verbal_transition_alert_instruction": "Turn left onto East Main Street.",
+      "verbal_succinct_transition_instruction": "Turn left.",
+      "verbal_pre_transition_instruction": "Turn left onto East Main Street.",
+      "verbal_post_transition_instruction": "Continue for 400 feet.",
+      "street_names": [
+       "East Main Street"
+      ],
+      "bearing_before": 136,
+      "bearing_after": 47,
+      "time": 33.285,
+      "length": 0.0683,
+      "cost": 83.111,
+      "begin_shape_index": 27,
+      "end_shape_index": 30,
+      "travel_mode": "bicycle",
+      "travel_type": "hybrid"
+     },
+     {
+      "type": 15,
+      "instruction": "Turn left onto South Pinckney Street.",
+      "verbal_transition_alert_instruction": "Turn left onto South Pinckney Street.",
+      "verbal_succinct_transition_instruction": "Turn left.",
+      "verbal_pre_transition_instruction": "Turn left onto South Pinckney Street.",
+      "verbal_post_transition_instruction": "Continue for 800 feet.",
+      "street_names": [
+       "South Pinckney Street"
+      ],
+      "bearing_before": 47,
+      "bearing_after": 344,
+      "time": 63.167,
+      "length": 0.1547,
+      "cost": 113.784,
+      "begin_shape_index": 30,
+      "end_shape_index": 55,
+      "travel_mode": "bicycle",
+      "travel_type": "hybrid"
+     },
+     {
+      "type": 16,
+      "instruction": "Bear left onto East Mifflin Street.",
+      "verbal_transition_alert_instruction": "Bear left onto East Mifflin Street.",
+      "verbal_succinct_transition_instruction": "Bear left.",
+      "verbal_pre_transition_instruction": "Bear left onto East Mifflin Street.",
+      "verbal_post_transition_instruction": "Continue for 400 feet.",
+      "street_names": [
+       "East Mifflin Street"
+      ],
+      "bearing_before": 286,
+      "bearing_after": 255,
+      "time": 27.247,
+      "length": 0.0745,
+      "cost": 51.884,
+      "begin_shape_index": 55,
+      "end_shape_index": 63,
+      "travel_mode": "bicycle",
+      "travel_type": "hybrid"
+     },
+     {
+      "type": 10,
+      "instruction": "Turn right onto Wisconsin Avenue.",
+      "verbal_transition_alert_instruction": "Turn right onto Wisconsin Avenue.",
+      "verbal_succinct_transition_instruction": "Turn right.",
+      "verbal_pre_transition_instruction": "Turn right onto Wisconsin Avenue.",
+      "verbal_post_transition_instruction": "Continue for 700 feet.",
+      "street_names": [
+       "Wisconsin Avenue"
+      ],
+      "bearing_before": 230,
+      "bearing_after": 314,
+      "time": 54.304,
+      "length": 0.1292,
+      "cost": 134.708,
+      "begin_shape_index": 63,
+      "end_shape_index": 83,
+      "travel_mode": "bicycle",
+      "travel_type": "hybrid"
+     },
+     {
+      "type": 16,
+      "instruction": "Bear left to stay on Wisconsin Avenue.",
+      "verbal_transition_alert_instruction": "Bear left to stay on Wisconsin Avenue.",
+      "verbal_succinct_transition_instruction": "Bear left.",
+      "verbal_pre_transition_instruction": "Bear left to stay on Wisconsin Avenue.",
+      "verbal_post_transition_instruction": "Continue for a quarter mile.",
+      "street_names": [
+       "Wisconsin Avenue"
+      ],
+      "bearing_before": 332,
+      "bearing_after": 274,
+      "time": 97.211,
+      "length": 0.1957,
+      "cost": 188.71,
+      "begin_shape_index": 83,
+      "end_shape_index": 113,
+      "travel_mode": "bicycle",
+      "travel_type": "hybrid"
+     },
+     {
+      "type": 15,
+      "instruction": "Turn left onto Langdon Street.",
+      "verbal_transition_alert_instruction": "Turn left onto Langdon Street.",
+      "verbal_succinct_transition_instruction": "Turn left.",
+      "verbal_pre_transition_instruction": "Turn left onto Langdon Street.",
+      "verbal_post_transition_instruction": "Continue for a half mile.",
+      "street_names": [
+       "Langdon Street"
+      ],
+      "bearing_before": 316,
+      "bearing_after": 227,
+      "time": 272.351,
+      "length": 0.6412,
+      "cost": 546.279,
+      "begin_shape_index": 113,
+      "end_shape_index": 162,
+      "travel_mode": "bicycle",
+      "travel_type": "hybrid"
+     },
+     {
+      "type": 10,
+      "instruction": "Turn right onto North Park Street.",
+      "verbal_transition_alert_instruction": "Turn right onto North Park Street.",
+      "verbal_succinct_transition_instruction": "Turn right.",
+      "verbal_pre_transition_instruction": "Turn right onto North Park Street.",
+      "verbal_post_transition_instruction": "Continue for 400 feet.",
+      "street_names": [
+       "North Park Street"
+      ],
+      "bearing_before": 271,
+      "bearing_after": 1,
+      "time": 32.946,
+      "length": 0.0766,
+      "cost": 87.438,
+      "begin_shape_index": 162,
+      "end_shape_index": 172,
+      "travel_mode": "bicycle",
+      "travel_type": "hybrid"
+     },
+     {
+      "type": 5,
+      "instruction": "Your destination is on the right.",
+      "verbal_transition_alert_instruction": "Your destination will be on the right.",
+      "verbal_pre_transition_instruction": "Your destination is on the right.",
+      "bearing_before": 327,
+      "time": 0,
+      "length": 0,
+      "cost": 0,
+      "begin_shape_index": 172,
+      "end_shape_index": 172,
+      "travel_mode": "bicycle",
+      "travel_type": "hybrid"
+     }
+    ],
+    "summary": {
+     "has_time_restrictions": false,
+     "has_toll": false,
+     "has_highway": false,
+     "has_ferry": false,
+     "min_lat": 43.073903,
+     "min_lon": -89.400657,
+     "max_lat": 43.078818,
+     "max_lon": -89.382115,
+     "time": 632.05,
+     "length": 1.4567,
+     "cost": 1297.268
+    },
+    "shape": "_v_dqAlloniDcDxEmOzTmDFeABw@Hg@P[Xa@v@Ur@Iv@An@Fh@Nf@~B~DTN`@Nb@@\\C`@MZ_@Xa@Xi@Pm@HiARsIlO{TbDyEoCoEkd@wt@U_@YY]Ug@Ic@Cg@A]B]Bc@HYN_@Z]f@}e@rq@eDxEaDrE}DtFiD~EoOlTwI|LQ`@Md@Kd@Gd@Gf@Ej@Al@?r@Dn@Fn@Jp@V`ARd@ld@nr@fCxEsEhHaAxAiC\\wAj@iA|@qKxOu@dAuIjMmBrC{BbDm@~Aa@nBGrCmRxX}@EaAN_A\\aAx@w@fAk@x@M~FaCdDe@p@eNrRaHzJoGrIqBpCuDv@cAdBu@xAY|@Sx@It@@n@iCrD}DvFwApBsBvC}@pAmFvHuBvCqBtC{FdIy@jAaMlQcAtAaE|FMRu@bAiBlCjBzCxA`CT\\j@t@fN`TbCrDrIbNrHvLxBhDnBhCdJ~NbGpJxHxLpBhDxExH|GvKdV``@lB|CnB~ClLpRjQ|XbFbIvEtHx@pAlChEXp@f@hAr@fC^|BBLPpCAbZ?VIzJG~LY`T@`E@~EGjSKlZOv]AnDUnYA`FEtEs@xtAMba@_@veAC|EoECcQMgF?wKGqAAw@?_EG{A@}F|@oAfA"
+   }
+  ],
+  "summary": {
+   "has_time_restrictions": false,
+   "has_toll": false,
+   "has_highway": false,
+   "has_ferry": false,
+   "min_lat": 43.073903,
+   "min_lon": -89.400657,
+   "max_lat": 43.078818,
+   "max_lon": -89.382115,
+   "time": 632.05,
+   "length": 1.4567,
+   "cost": 1297.268
+  },
+  "status_message": "Found route between points",
+  "status": 0,
+  "units": "miles",
+  "language": "en-US"
+ }
+}

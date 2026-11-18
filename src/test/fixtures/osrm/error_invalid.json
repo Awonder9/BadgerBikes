@@ -1,0 +1,5 @@
+{
+ "_httpStatus": 400,
+ "message": "Invalid coordinate value.",
+ "code": "InvalidValue"
+}

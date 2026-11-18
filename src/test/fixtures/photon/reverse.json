@@ -1,0 +1,36 @@
+{
+ "type": "FeatureCollection",
+ "features": [
+  {
+   "type": "Feature",
+   "properties": {
+    "osm_type": "R",
+    "osm_id": 3352040,
+    "osm_key": "place",
+    "osm_value": "city",
+    "type": "city",
+    "name": "Madison",
+    "county": "Dane",
+    "state": "Wisconsin",
+    "country": "United States",
+    "countrycode": "US",
+    "extra": {
+     "admin_level": "8"
+    },
+    "extent": [
+     -89.571661,
+     43.171916,
+     -89.2320848,
+     42.9981494
+    ]
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -89.3841663,
+     43.07469
+    ]
+   }
+  }
+ ]
+}

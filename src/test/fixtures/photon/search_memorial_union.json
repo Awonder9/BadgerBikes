@@ -1,0 +1,166 @@
+{
+ "type": "FeatureCollection",
+ "features": [
+  {
+   "type": "Feature",
+   "properties": {
+    "osm_type": "W",
+    "osm_id": 1369792207,
+    "osm_key": "amenity",
+    "osm_value": "bicycle_rental",
+    "type": "house",
+    "housenumber": "699",
+    "name": "Memorial Union",
+    "street": "North  Park Street",
+    "locality": "State-Langdon",
+    "city": "Madison",
+    "county": "Dane",
+    "state": "Wisconsin",
+    "country": "United States",
+    "postcode": "53706",
+    "countrycode": "US",
+    "extent": [
+     -89.4006858,
+     43.0770714,
+     -89.4005139,
+     43.0770125
+    ]
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -89.4005999,
+     43.077042
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "osm_type": "R",
+    "osm_id": 19355831,
+    "osm_key": "building",
+    "osm_value": "university",
+    "type": "house",
+    "housenumber": "800",
+    "name": "Memorial Union",
+    "street": "Langdon Street",
+    "locality": "State-Langdon",
+    "city": "Madison",
+    "county": "Dane",
+    "state": "Wisconsin",
+    "country": "United States",
+    "postcode": "53706",
+    "countrycode": "US",
+    "extent": [
+     -89.4005413,
+     43.0769304,
+     -89.399164,
+     43.0761015
+    ]
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -89.4003002,
+     43.0765204
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "osm_type": "W",
+    "osm_id": 487773401,
+    "osm_key": "highway",
+    "osm_value": "footway",
+    "type": "street",
+    "name": "Memorial Union Swim Pier",
+    "locality": "Downtown",
+    "city": "Madison",
+    "county": "Dane",
+    "state": "Wisconsin",
+    "country": "United States",
+    "postcode": "53706",
+    "countrycode": "US",
+    "extent": [
+     -89.3994016,
+     43.0773207,
+     -89.3991389,
+     43.0769647
+    ]
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -89.3993529,
+     43.0771081
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "osm_type": "R",
+    "osm_id": 18940001,
+    "osm_key": "shop",
+    "osm_value": "food",
+    "type": "house",
+    "name": "Memorial Union Terrace",
+    "street": "Memorial Union Swim Pier",
+    "locality": "Downtown",
+    "city": "Madison",
+    "county": "Dane",
+    "state": "Wisconsin",
+    "country": "United States",
+    "postcode": "53706",
+    "countrycode": "US",
+    "extent": [
+     -89.4004775,
+     43.077127,
+     -89.3991504,
+     43.0763946
+    ]
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -89.3996524,
+     43.0767342
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "osm_type": "W",
+    "osm_id": 487773401,
+    "osm_key": "man_made",
+    "osm_value": "pier",
+    "type": "house",
+    "name": "Memorial Union Swim Pier",
+    "street": "Memorial Union Swim Pier",
+    "locality": "Downtown",
+    "city": "Madison",
+    "county": "Dane",
+    "state": "Wisconsin",
+    "country": "United States",
+    "postcode": "53706",
+    "countrycode": "US",
+    "extent": [
+     -89.3994016,
+     43.0773207,
+     -89.3991389,
+     43.0769647
+    ]
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -89.3993529,
+     43.0771081
+    ]
+   }
+  }
+ ]
+}

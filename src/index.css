@@ -1,0 +1,90 @@
+@import 'tailwindcss';
+/* Layered so Tailwind utilities can override maplibre's defaults (unlayered CSS would always win). */
+@import 'maplibre-gl/dist/maplibre-gl.css' layer(base);
+
+/* Class-based dark mode: <html class="dark"> is set from settings.mapStyle ('auto' follows the OS). */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+  /* Brand (teal) */
+  --color-brand-50: #f0fdfa;
+  --color-brand-100: #ccfbf1;
+  --color-brand-200: #99f6e4;
+  --color-brand-300: #5eead4;
+  --color-brand-400: #2dd4bf;
+  --color-brand-500: #14b8a6;
+  --color-brand-600: #0d9488;
+  --color-brand-700: #0f766e;
+  --color-brand-800: #115e59;
+  --color-brand-900: #134e4a;
+
+  /* Availability states (also used by map layer expressions — keep in sync with src/map/colors.ts).
+     Never rely on hue alone: pair with shape (ring/✕) and the count label. */
+  --color-avail-ok: #15803d;
+  --color-avail-low: #b45309;
+  --color-avail-none: #b91c1c;
+  --color-avail-unavailable: #6b7280;
+
+  /* Route legs */
+  --color-route-walk: #475569;
+  --color-route-bike: #0f766e;
+
+  /* Ride clock */
+  --color-clock-warn: #b45309;
+  --color-clock-over: #b91c1c;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  body {
+    @apply bg-white text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100;
+    /* No pull-to-refresh / rubber-banding mid-ride. */
+    overscroll-behavior: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-brand-600;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+/* MapLibre attribution: keep it (license requirement) but compact and theme-aware. */
+.maplibregl-ctrl-attrib {
+  @apply text-[11px];
+}
+.dark .maplibregl-ctrl-attrib {
+  @apply bg-slate-900/80 text-slate-300;
+}
+.dark .maplibregl-ctrl-attrib a {
+  @apply text-slate-200;
+}
+
+/* Indeterminate progress bar on the launch screen. */
+@keyframes loading-bar {
+  0% {
+    transform: translateX(-110%);
+  }
+  100% {
+    transform: translateX(320%);
+  }
+}
+
+/* The page itself never scrolls sideways (only inner panels scroll, vertically). */
+html,
+body {
+  overflow-x: hidden;
+  overscroll-behavior-x: none;
+}

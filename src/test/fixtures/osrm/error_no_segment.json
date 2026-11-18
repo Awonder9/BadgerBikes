@@ -1,0 +1,5 @@
+{
+ "_httpStatus": 400,
+ "message": "Could not find a matching segment for coordinate 0",
+ "code": "NoSegment"
+}

@@ -1,0 +1,39 @@
+{
+ "last_updated": 1794945013,
+ "ttl": 0,
+ "version": "1.1",
+ "data": {
+  "en": {
+   "feeds": [
+    {
+     "name": "gbfs",
+     "url": "https://gbfs.bcycle.com/1/bcycle_madison/gbfs.json"
+    },
+    {
+     "name": "gbfs_versions",
+     "url": "https://gbfs.bcycle.com/1/bcycle_madison/gbfs_versions.json"
+    },
+    {
+     "name": "system_information",
+     "url": "https://gbfs.bcycle.com/1/bcycle_madison/system_information.json"
+    },
+    {
+     "name": "station_information",
+     "url": "https://gbfs.bcycle.com/1/bcycle_madison/station_information.json"
+    },
+    {
+     "name": "station_status",
+     "url": "https://gbfs.bcycle.com/1/bcycle_madison/station_status.json"
+    },
+    {
+     "name": "system_pricing_plans",
+     "url": "https://gbfs.bcycle.com/1/bcycle_madison/system_pricing_plans.json"
+    },
+    {
+     "name": "system_regions",
+     "url": "https://gbfs.bcycle.com/1/bcycle_madison/system_regions.json"
+    }
+   ]
+  }
+ }
+}

@@ -1,0 +1,1452 @@
+{
+ "last_updated": 1794944045,
+ "ttl": 3600,
+ "version": "1.1",
+ "data": {
+  "stations": [
+   {
+    "station_id": "bcycle_madison_1874",
+    "name": "Wisconsin & E. Mifflin",
+    "address": "117 Wisconsin Avenue",
+    "lat": 43.07571,
+    "lon": -89.38527,
+    "region_id": "bcycle_madison_region_42",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_1874&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_1874&platform=iOS"
+    },
+    "_bcycle_station_type": "Kiosk and Station"
+   },
+   {
+    "station_id": "bcycle_madison_1878",
+    "name": "N. Webster & E. Mifflin",
+    "address": "N. Webster & E. Mifflin",
+    "lat": 43.07734,
+    "lon": -89.38355,
+    "region_id": "bcycle_madison_region_42",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_1878&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_1878&platform=iOS"
+    },
+    "_bcycle_station_type": "Kiosk and Station"
+   },
+   {
+    "station_id": "bcycle_madison_1880",
+    "name": "MLK & Main St.",
+    "address": "104 Martin Luther King Jr. Blvd",
+    "lat": 43.0738,
+    "lon": -89.38295,
+    "region_id": "bcycle_madison_region_42",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_1880&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_1880&platform=iOS"
+    },
+    "_bcycle_station_type": "Kiosk and Station"
+   },
+   {
+    "station_id": "bcycle_madison_1881",
+    "name": "E. Gorham & N. Brearly",
+    "address": "988 E. Gorham St.",
+    "lat": 43.08634,
+    "lon": -89.37546,
+    "region_id": "bcycle_madison_region_43",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_1881&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_1881&platform=iOS"
+    },
+    "_bcycle_station_type": "Kiosk and Station"
+   },
+   {
+    "station_id": "bcycle_madison_1882",
+    "name": "W. Wilson & MLK",
+    "address": "22 West Wilson Street",
+    "lat": 43.07244,
+    "lon": -89.38165,
+    "region_id": "bcycle_madison_region_42",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_1882&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_1882&platform=iOS"
+    },
+    "_bcycle_station_type": "Kiosk and Station"
+   },
+   {
+    "station_id": "bcycle_madison_1885",
+    "name": "N. Park & Spring St.",
+    "address": "N. Park & Spring St.",
+    "lat": 43.06962,
+    "lon": -89.40127,
+    "region_id": "bcycle_madison_region_41",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_1885&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_1885&platform=iOS"
+    },
+    "_bcycle_station_type": "Kiosk and Station"
+   },
+   {
+    "station_id": "bcycle_madison_1886",
+    "name": "S. Breese @ Camp Randall",
+    "address": "92 S. Breese Terrace",
+    "lat": 43.06765,
+    "lon": -89.41408,
+    "region_id": "bcycle_madison_region_75",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_1886&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_1886&platform=iOS"
+    },
+    "_bcycle_station_type": "Kiosk and Station"
+   },
+   {
+    "station_id": "bcycle_madison_1887",
+    "name": "John Nolen & Law Park",
+    "address": "John Nolen Drive",
+    "lat": 43.07549,
+    "lon": -89.37549,
+    "region_id": "bcycle_madison_region_43",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_1887&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_1887&platform=iOS"
+    },
+    "_bcycle_station_type": "Kiosk and Station"
+   },
+   {
+    "station_id": "bcycle_madison_1888",
+    "name": "Memorial Union",
+    "address": "699 N. Park St.",
+    "lat": 43.07702,
+    "lon": -89.40053,
+    "region_id": "bcycle_madison_region_41",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_1888&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_1888&platform=iOS"
+    },
+    "_bcycle_station_type": "Kiosk and Station"
+   },
+   {
+    "station_id": "bcycle_madison_1889",
+    "name": "W. Washington & Regent St.  ",
+    "address": "677 W. Washington St.",
+    "lat": 43.06732,
+    "lon": -89.39433,
+    "region_id": "bcycle_madison_region_75",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_1889&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_1889&platform=iOS"
+    },
+    "_bcycle_station_type": "Kiosk and Station"
+   },
+   {
+    "station_id": "bcycle_madison_1890",
+    "name": "Hawthorne Ct & State Street",
+    "address": "619 State Street",
+    "lat": 43.07476,
+    "lon": -89.3966,
+    "region_id": "bcycle_madison_region_79",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_1890&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_1890&platform=iOS"
+    },
+    "_bcycle_station_type": "Kiosk and Station"
+   },
+   {
+    "station_id": "bcycle_madison_1891",
+    "name": "E. Gorham @ James Madison Park",
+    "address": "472 E. Gorham St",
+    "lat": 43.08056,
+    "lon": -89.38357,
+    "region_id": "bcycle_madison_region_43",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_1891&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_1891&platform=iOS"
+    },
+    "_bcycle_station_type": "Kiosk and Station"
+   },
+   {
+    "station_id": "bcycle_madison_1892",
+    "name": "W. Gilman @ Peace Park",
+    "address": "229 W. Gilman St.",
+    "lat": 43.07531,
+    "lon": -89.39258,
+    "region_id": "bcycle_madison_region_79",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_1892&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_1892&platform=iOS"
+    },
+    "_bcycle_station_type": "Kiosk and Station"
+   },
+   {
+    "station_id": "bcycle_madison_1893",
+    "name": "N. Shore @ Brittingham Park",
+    "address": "150 North Shore Drive",
+    "lat": 43.06511,
+    "lon": -89.38885,
+    "region_id": "bcycle_madison_region_75",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_1893&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_1893&platform=iOS"
+    },
+    "_bcycle_station_type": "Kiosk and Station"
+   },
+   {
+    "station_id": "bcycle_madison_1897",
+    "name": "Eastwood & Division",
+    "address": "2048 Eastwood Dr. ",
+    "lat": 43.09245,
+    "lon": -89.35138,
+    "region_id": "bcycle_madison_region_78",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_1897&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_1897&platform=iOS"
+    },
+    "_bcycle_station_type": "Kiosk and Station"
+   },
+   {
+    "station_id": "bcycle_madison_1898",
+    "name": "Vilas Park @ Arboretum",
+    "address": "850 S. Mills St.",
+    "lat": 43.05713,
+    "lon": -89.40417,
+    "region_id": "bcycle_madison_region_75",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_1898&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_1898&platform=iOS"
+    },
+    "_bcycle_station_type": "Kiosk and Station"
+   },
+   {
+    "station_id": "bcycle_madison_1903",
+    "name": "Olbrich Gardens",
+    "address": "3330 Atwood Avenue",
+    "lat": 43.09299,
+    "lon": -89.33673,
+    "region_id": "bcycle_madison_region_78",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_1903&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_1903&platform=iOS"
+    },
+    "_bcycle_station_type": "Kiosk and Station"
+   },
+   {
+    "station_id": "bcycle_madison_1904",
+    "name": "N. Thornton @ Tenney Park",
+    "address": "N. Thornton @ Tenney Park",
+    "lat": 43.09226,
+    "lon": -89.36612,
+    "region_id": "bcycle_madison_region_43",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_1904&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_1904&platform=iOS"
+    },
+    "_bcycle_station_type": "Kiosk and Station"
+   },
+   {
+    "station_id": "bcycle_madison_1906",
+    "name": "Lakeshore @ Dejope",
+    "address": "640 Elm Drive",
+    "lat": 43.07754,
+    "lon": -89.41631,
+    "region_id": "bcycle_madison_region_76",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_1906&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_1906&platform=iOS"
+    },
+    "_bcycle_station_type": "Kiosk and Station"
+   },
+   {
+    "station_id": "bcycle_madison_1907",
+    "name": "Observatory Dr. @ School of Nursing - Cooper Hall",
+    "address": "Observatory Dr. @ UW Hospital",
+    "lat": 43.0773,
+    "lon": -89.42725,
+    "region_id": "bcycle_madison_region_76",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_1907&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_1907&platform=iOS"
+    },
+    "_bcycle_station_type": "Kiosk and Station"
+   },
+   {
+    "station_id": "bcycle_madison_1908",
+    "name": "Union South",
+    "address": "Union South",
+    "lat": 43.07214,
+    "lon": -89.40804,
+    "region_id": "bcycle_madison_region_41",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_1908&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_1908&platform=iOS"
+    },
+    "_bcycle_station_type": "Kiosk and Station"
+   },
+   {
+    "station_id": "bcycle_madison_1912",
+    "name": "S. Few & Williamson",
+    "address": "387 S. Few ",
+    "lat": 43.08336,
+    "lon": -89.36456,
+    "region_id": "bcycle_madison_region_43",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_1912&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_1912&platform=iOS"
+    },
+    "_bcycle_station_type": "Kiosk and Station"
+   },
+   {
+    "station_id": "bcycle_madison_1913",
+    "name": "University St. & Charter St. ",
+    "address": "University St. & Charter St.",
+    "lat": 43.07355,
+    "lon": -89.40635,
+    "region_id": "bcycle_madison_region_41",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_1913&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_1913&platform=iOS"
+    },
+    "_bcycle_station_type": "Kiosk and Station"
+   },
+   {
+    "station_id": "bcycle_madison_2072",
+    "name": "Langdon St. & N. Lake St.",
+    "address": "633 Langdon Street",
+    "lat": 43.07576,
+    "lon": -89.39686,
+    "region_id": "bcycle_madison_region_79",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_2072&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_2072&platform=iOS"
+    },
+    "_bcycle_station_type": "Kiosk and Station"
+   },
+   {
+    "station_id": "bcycle_madison_2124",
+    "name": "Williamson St & Jenifer St",
+    "address": "706 Willamson St",
+    "lat": 43.07706,
+    "lon": -89.37287,
+    "region_id": "bcycle_madison_region_43",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_2124&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_2124&platform=iOS"
+    },
+    "_bcycle_station_type": "Kiosk and Station"
+   },
+   {
+    "station_id": "bcycle_madison_2133",
+    "name": "Marriott Hotel at John Nolen Dr.",
+    "address": "1702 Rimrock Road",
+    "lat": 43.04764,
+    "lon": -89.3744,
+    "region_id": "bcycle_madison_region_45",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_2133&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_2133&platform=iOS"
+    },
+    "_bcycle_station_type": "Kiosk and Station"
+   },
+   {
+    "station_id": "bcycle_madison_2146",
+    "name": "University & Bassett",
+    "address": "504 University Ave.",
+    "lat": 43.07329,
+    "lon": -89.39418,
+    "region_id": "bcycle_madison_region_79",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_2146&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_2146&platform=iOS"
+    },
+    "_bcycle_station_type": "Kiosk and Station"
+   },
+   {
+    "station_id": "bcycle_madison_2147",
+    "name": "Monroe & Harrison",
+    "address": "797 Harrison St.",
+    "lat": 43.06479,
+    "lon": -89.41757,
+    "region_id": "bcycle_madison_region_75",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_2147&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_2147&platform=iOS"
+    },
+    "_bcycle_station_type": "Kiosk and Station"
+   },
+   {
+    "station_id": "bcycle_madison_2148",
+    "name": "Monroe & Knickerbocker",
+    "address": "701 Knickerbocker St.",
+    "lat": 43.05711,
+    "lon": -89.42874,
+    "region_id": "bcycle_madison_region_75",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_2148&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_2148&platform=iOS"
+    },
+    "_bcycle_station_type": "Kiosk and Station"
+   },
+   {
+    "station_id": "bcycle_madison_2394",
+    "name": "W. Mifflin @ Central Library",
+    "address": "126 W. Mifflin Street",
+    "lat": 43.07369,
+    "lon": -89.38778,
+    "region_id": "bcycle_madison_region_42",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_2394&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_2394&platform=iOS"
+    },
+    "_bcycle_station_type": "Kiosk and Station"
+   },
+   {
+    "station_id": "bcycle_madison_2554",
+    "name": "UW Credit Union",
+    "address": "3750 University Ave.",
+    "lat": 43.07665,
+    "lon": -89.45083,
+    "region_id": "bcycle_madison_region_44",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_2554&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_2554&platform=iOS"
+    },
+    "_bcycle_station_type": "Kiosk and Station"
+   },
+   {
+    "station_id": "bcycle_madison_2556",
+    "name": "UW Children's Hospital ",
+    "address": "900 University Bay Dr",
+    "lat": 43.07637,
+    "lon": -89.43382,
+    "region_id": "bcycle_madison_region_44",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_2556&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_2556&platform=iOS"
+    },
+    "_bcycle_station_type": "Kiosk and Station"
+   },
+   {
+    "station_id": "bcycle_madison_2557",
+    "name": "UW Digestive Health Center",
+    "address": "750 University Row",
+    "lat": 43.0759,
+    "lon": -89.46951,
+    "region_id": "bcycle_madison_region_44",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_2557&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_2557&platform=iOS"
+    },
+    "_bcycle_station_type": "Kiosk and Station"
+   },
+   {
+    "station_id": "bcycle_madison_2672",
+    "name": "University Station Clinic",
+    "address": "2880 University Ave.",
+    "lat": 43.07636,
+    "lon": -89.43853,
+    "region_id": "bcycle_madison_region_44",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_2672&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_2672&platform=iOS"
+    },
+    "_bcycle_station_type": "Kiosk and Station"
+   },
+   {
+    "station_id": "bcycle_madison_3313",
+    "name": "Madison College - Truax Campus",
+    "address": "1750 Wright St.",
+    "lat": 43.12127,
+    "lon": -89.33071,
+    "region_id": "bcycle_madison_region_78",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_3313&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_3313&platform=iOS"
+    },
+    "_bcycle_station_type": "Kiosk and Station"
+   },
+   {
+    "station_id": "bcycle_madison_3694",
+    "name": "Ian's Pizza on State",
+    "address": "100 North Carroll St.",
+    "lat": 43.07499,
+    "lon": -89.38681,
+    "region_id": "bcycle_madison_region_42",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_3694&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_3694&platform=iOS"
+    },
+    "_bcycle_station_type": "Kiosk and Station"
+   },
+   {
+    "station_id": "bcycle_madison_3696",
+    "name": "Library Mall",
+    "address": "511 N. Park St.",
+    "lat": 43.07487,
+    "lon": -89.39955,
+    "region_id": "bcycle_madison_region_79",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_3696&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_3696&platform=iOS"
+    },
+    "_bcycle_station_type": "Kiosk and Station"
+   },
+   {
+    "station_id": "bcycle_madison_3725",
+    "name": "Olbrich Biergarten",
+    "address": "3527 Atwood Ave",
+    "lat": 43.08809,
+    "lon": -89.33017,
+    "region_id": "bcycle_madison_region_78",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_3725&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_3725&platform=iOS"
+    },
+    "_bcycle_station_type": "Kiosk and Station"
+   },
+   {
+    "station_id": "bcycle_madison_3759",
+    "name": "S. Hamilton & S. Carroll St.",
+    "address": "101 S. Carroll St.",
+    "lat": 43.07295,
+    "lon": -89.3841,
+    "region_id": "bcycle_madison_region_42",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_3759&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_3759&platform=iOS"
+    },
+    "_bcycle_station_type": "Kiosk and Station"
+   },
+   {
+    "station_id": "bcycle_madison_3780",
+    "name": "E. Washington & N. Webster",
+    "address": "136 E. Washington",
+    "lat": 43.07605,
+    "lon": -89.38251,
+    "region_id": "bcycle_madison_region_42",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_3780&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_3780&platform=iOS"
+    },
+    "_bcycle_station_type": "Kiosk and Station"
+   },
+   {
+    "station_id": "bcycle_madison_3889",
+    "name": "Goodman Community Center",
+    "address": "199 Waubesa St.",
+    "lat": 43.0963,
+    "lon": -89.34363,
+    "region_id": "bcycle_madison_region_78",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_3889&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_3889&platform=iOS"
+    },
+    "_bcycle_station_type": "Kiosk and Station"
+   },
+   {
+    "station_id": "bcycle_madison_4501",
+    "name": "South Livingston Garage ",
+    "address": "110 East Wilson Street",
+    "lat": 43.08005,
+    "lon": -89.37374,
+    "region_id": "bcycle_madison_region_43",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_4501&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_4501&platform=iOS"
+    },
+    "_bcycle_station_type": "Kiosk and Station"
+   },
+   {
+    "station_id": "bcycle_madison_4503",
+    "name": "N. Lake @ University Ave",
+    "address": "381 N. Lake St",
+    "lat": 43.073,
+    "lon": -89.39727,
+    "region_id": "bcycle_madison_region_79",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_4503&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_4503&platform=iOS"
+    },
+    "_bcycle_station_type": "Kiosk and Station"
+   },
+   {
+    "station_id": "bcycle_madison_4551",
+    "name": "The Marling on E Wash",
+    "address": "1825 E Washington Ave",
+    "lat": 43.09034,
+    "lon": -89.36153,
+    "region_id": "bcycle_madison_region_43",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_4551&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_4551&platform=iOS"
+    },
+    "_bcycle_station_type": "Kiosk and Station"
+   },
+   {
+    "station_id": "bcycle_madison_4588",
+    "name": "Eagle Heights & Lake Mendota Dr.",
+    "address": "300 Eagle Heights",
+    "lat": 43.08635,
+    "lon": -89.43392,
+    "region_id": "bcycle_madison_region_44",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_4588&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_4588&platform=iOS"
+    },
+    "_bcycle_station_type": "3.0 Dock Station"
+   },
+   {
+    "station_id": "bcycle_madison_4602",
+    "name": "Babcock Dr. & Observatory",
+    "address": "Babcock Drive",
+    "lat": 43.07631,
+    "lon": -89.4124,
+    "region_id": "bcycle_madison_region_76",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_4602&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_4602&platform=iOS"
+    },
+    "_bcycle_station_type": "3.0 Dock Station"
+   },
+   {
+    "station_id": "bcycle_madison_4609",
+    "name": "Madison College - Goodman South Campus",
+    "address": "2429 Perry Street",
+    "lat": 43.03804,
+    "lon": -89.39552,
+    "region_id": "bcycle_madison_region_45",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_4609&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_4609&platform=iOS"
+    },
+    "_bcycle_station_type": "Kiosk and Station"
+   },
+   {
+    "station_id": "bcycle_madison_4659",
+    "name": "N. Paterson and E. Mifflin",
+    "address": "North Paterson and East Mifflin",
+    "lat": 43.08315,
+    "lon": -89.37429,
+    "region_id": "bcycle_madison_region_43",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_4659&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_4659&platform=iOS"
+    },
+    "_bcycle_station_type": "3.0 Dock Station"
+   },
+   {
+    "station_id": "bcycle_madison_4664",
+    "name": "Capital City Trail at Garver Feed Mill",
+    "address": "Garver Green",
+    "lat": 43.09463,
+    "lon": -89.33508,
+    "region_id": "bcycle_madison_region_78",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_4664&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_4664&platform=iOS"
+    },
+    "_bcycle_station_type": "Kiosk and Station"
+   },
+   {
+    "station_id": "bcycle_madison_4929",
+    "name": "W. Johnson & E. Campus Mall",
+    "address": "300 E. Campus Mall",
+    "lat": 43.07221,
+    "lon": -89.39927,
+    "region_id": "bcycle_madison_region_41",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_4929&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_4929&platform=iOS"
+    },
+    "_bcycle_station_type": "3.0 Dock Station"
+   },
+   {
+    "station_id": "bcycle_madison_4944",
+    "name": "City of Monona @ Grand Crossing ",
+    "address": "6301 Inland Way",
+    "lat": 43.04836,
+    "lon": -89.33738,
+    "region_id": "bcycle_madison_region_46",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_4944&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_4944&platform=iOS"
+    },
+    "_bcycle_station_type": "3.0 Dock Station"
+   },
+   {
+    "station_id": "bcycle_madison_4946",
+    "name": "City of Monona @ Schluter Park",
+    "address": "4511 Winnequah Road",
+    "lat": 43.07203,
+    "lon": -89.33381,
+    "region_id": "bcycle_madison_region_46",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_4946&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_4946&platform=iOS"
+    },
+    "_bcycle_station_type": "3.0 Dock Station"
+   },
+   {
+    "station_id": "bcycle_madison_4975",
+    "name": "Cottage Grove Rd @ Pinney Library ",
+    "address": "516 Cottage Grove Road",
+    "lat": 43.08424,
+    "lon": -89.3175,
+    "region_id": "bcycle_madison_region_46",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_4975&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_4975&platform=iOS"
+    },
+    "_bcycle_station_type": "3.0 Dock Station"
+   },
+   {
+    "station_id": "bcycle_madison_6026",
+    "name": "N. Mills St. & Clymer Pl.",
+    "address": "1000 Clymer Place.",
+    "lat": 43.0716,
+    "lon": -89.40402,
+    "region_id": "bcycle_madison_region_41",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_6026&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_6026&platform=iOS"
+    },
+    "_bcycle_station_type": "3.0 Dock Station"
+   },
+   {
+    "station_id": "bcycle_madison_6031",
+    "name": "East Washington & North Paterson",
+    "address": "E. Washington and N Paterson",
+    "lat": 43.08256,
+    "lon": -89.37349,
+    "region_id": "bcycle_madison_region_43",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_6031&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_6031&platform=iOS"
+    },
+    "_bcycle_station_type": "3.0 Dock Station"
+   },
+   {
+    "station_id": "bcycle_madison_7047",
+    "name": "N. Fairchild & State. St.",
+    "address": "Fairchild",
+    "lat": 43.07459,
+    "lon": -89.38806,
+    "region_id": "bcycle_madison_region_42",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7047&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7047&platform=iOS"
+    },
+    "_bcycle_station_type": "3.0 Dock Station"
+   },
+   {
+    "station_id": "bcycle_madison_7048",
+    "name": "University Bay Dr. @ Picnic Point",
+    "address": "University Bay Dr.",
+    "lat": 43.08438,
+    "lon": -89.42875,
+    "region_id": "bcycle_madison_region_44",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7048&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7048&platform=iOS"
+    },
+    "_bcycle_station_type": "3.0 Dock Station"
+   },
+   {
+    "station_id": "bcycle_madison_7052",
+    "name": "Wisconsin Foundation & Alumni Association",
+    "address": "1848 University Ave",
+    "lat": 43.07359,
+    "lon": -89.41718,
+    "region_id": "bcycle_madison_region_76",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7052&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7052&platform=iOS"
+    },
+    "_bcycle_station_type": "Kiosk and Station"
+   },
+   {
+    "station_id": "bcycle_madison_7072",
+    "name": "Wisconsin Alumni Research Foundation",
+    "address": "610 Walnut Street",
+    "lat": 43.0765,
+    "lon": -89.42577,
+    "region_id": "bcycle_madison_region_76",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7072&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7072&platform=iOS"
+    },
+    "_bcycle_station_type": "3.0 Dock Station"
+   },
+   {
+    "station_id": "bcycle_madison_7196",
+    "name": "Village of McFarland @ McDaniel Park",
+    "address": "4806 McDaniel Ln",
+    "lat": 43.02708,
+    "lon": -89.30785,
+    "region_id": "bcycle_madison_region_46",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7196&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7196&platform=iOS"
+    },
+    "_bcycle_station_type": "Kiosk and Station"
+   },
+   {
+    "station_id": "bcycle_madison_7199",
+    "name": "W. Dayton & N. Lake",
+    "address": "700 W. Dayton St.",
+    "lat": 43.07097,
+    "lon": -89.39761,
+    "region_id": "bcycle_madison_region_41",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7199&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7199&platform=iOS"
+    },
+    "_bcycle_station_type": "3.0 Dock Station"
+   },
+   {
+    "station_id": "bcycle_madison_7200",
+    "name": "Observatory Dr. @ Bascom Hall",
+    "address": "500 Lincoln dr.",
+    "lat": 43.07582,
+    "lon": -89.40365,
+    "region_id": "bcycle_madison_region_76",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7200&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7200&platform=iOS"
+    },
+    "_bcycle_station_type": "3.0 Dock Station"
+   },
+   {
+    "station_id": "bcycle_madison_7201",
+    "name": "Observatory Dr. & N. Charter",
+    "address": "Observatory Dr.",
+    "lat": 43.0761,
+    "lon": -89.40616,
+    "region_id": "bcycle_madison_region_76",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7201&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7201&platform=iOS"
+    },
+    "_bcycle_station_type": "3.0 Dock Station"
+   },
+   {
+    "station_id": "bcycle_madison_7276",
+    "name": "Madison College - Commercial Avenue",
+    "address": "2125 Commercial Ave ",
+    "lat": 43.10646,
+    "lon": -89.35568,
+    "region_id": "bcycle_madison_region_78",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7276&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7276&platform=iOS"
+    },
+    "_bcycle_station_type": "Kiosk and Station"
+   },
+   {
+    "station_id": "bcycle_madison_7356",
+    "name": "East Washington & Ingersoll St",
+    "address": "1 South Ingersoll Street",
+    "lat": 43.08453,
+    "lon": -89.36927,
+    "region_id": "bcycle_madison_region_43",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7356&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7356&platform=iOS"
+    },
+    "_bcycle_station_type": "Kiosk and Station"
+   },
+   {
+    "station_id": "bcycle_madison_7362",
+    "name": "The Limerick",
+    "address": "5128 Lacy Road",
+    "lat": 43.00208,
+    "lon": -89.39409,
+    "region_id": "bcycle_madison_region_47",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7362&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7362&platform=iOS"
+    },
+    "_bcycle_station_type": "3.0 Dock Station"
+   },
+   {
+    "station_id": "bcycle_madison_7363",
+    "name": "Terravessa",
+    "address": "2900 Radicchio Dr",
+    "lat": 43.01173,
+    "lon": -89.37183,
+    "region_id": "bcycle_madison_region_47",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7363&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7363&platform=iOS"
+    },
+    "_bcycle_station_type": "3.0 Dock Station"
+   },
+   {
+    "station_id": "bcycle_madison_7364",
+    "name": "McKee Farms",
+    "address": "2930 Chapel Valley Road",
+    "lat": 43.0129,
+    "lon": -89.43168,
+    "region_id": "bcycle_madison_region_47",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7364&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7364&platform=iOS"
+    },
+    "_bcycle_station_type": "3.0 Dock Station"
+   },
+   {
+    "station_id": "bcycle_madison_7366",
+    "name": "Wyndham Hotel @ Hatchery Hill",
+    "address": "2969 Cahill Main",
+    "lat": 43.01609,
+    "lon": -89.4247,
+    "region_id": "bcycle_madison_region_47",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7366&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7366&platform=iOS"
+    },
+    "_bcycle_station_type": "3.0 Dock Station"
+   },
+   {
+    "station_id": "bcycle_madison_7367",
+    "name": "Oak Bank",
+    "address": "5957 McKee Road",
+    "lat": 43.015,
+    "lon": -89.45722,
+    "region_id": "bcycle_madison_region_47",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7367&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7367&platform=iOS"
+    },
+    "_bcycle_station_type": "3.0 Dock Station"
+   },
+   {
+    "station_id": "bcycle_madison_7368",
+    "name": "Fitchburg Chamber @ Agora",
+    "address": "5500 East Cheryl Parkway",
+    "lat": 43.00524,
+    "lon": -89.42296,
+    "region_id": "bcycle_madison_region_47",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7368&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7368&platform=iOS"
+    },
+    "_bcycle_station_type": "3.0 Dock Station"
+   },
+   {
+    "station_id": "bcycle_madison_7369",
+    "name": "Hatchery Hill Park",
+    "address": "3035 Cahill Main",
+    "lat": 43.02014,
+    "lon": -89.42075,
+    "region_id": "bcycle_madison_region_47",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7369&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7369&platform=iOS"
+    },
+    "_bcycle_station_type": "3.0 Dock Station"
+   },
+   {
+    "station_id": "bcycle_madison_7370",
+    "name": "Ohio Ave @ Capital City Bike Trail",
+    "address": "226 Ohio Ave",
+    "lat": 43.09423,
+    "lon": -89.34747,
+    "region_id": "bcycle_madison_region_78",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7370&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7370&platform=iOS"
+    },
+    "_bcycle_station_type": "3.0 Dock Station"
+   },
+   {
+    "station_id": "bcycle_madison_7371",
+    "name": "Sequoya Library",
+    "address": "4340 Tokay Blvd",
+    "lat": 43.05371,
+    "lon": -89.45091,
+    "region_id": "bcycle_madison_region_44",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7371&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7371&platform=iOS"
+    },
+    "_bcycle_station_type": "3.0 Dock Station"
+   },
+   {
+    "station_id": "bcycle_madison_7372",
+    "name": "Shorewood Hills",
+    "address": "1008 Shorewood Blvd",
+    "lat": 43.07775,
+    "lon": -89.44364,
+    "region_id": "bcycle_madison_region_44",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7372&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7372&platform=iOS"
+    },
+    "_bcycle_station_type": "3.0 Dock Station"
+   },
+   {
+    "station_id": "bcycle_madison_7373",
+    "name": "Lake Edge Center ",
+    "address": "4104 Monona Dr",
+    "lat": 43.0794,
+    "lon": -89.32357,
+    "region_id": "bcycle_madison_region_46",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7373&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7373&platform=iOS"
+    },
+    "_bcycle_station_type": "3.0 Dock Station"
+   },
+   {
+    "station_id": "bcycle_madison_7620",
+    "name": "The Bakke Center",
+    "address": "1930 Observatory Dr",
+    "lat": 43.0765,
+    "lon": -89.41867,
+    "region_id": "bcycle_madison_region_76",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7620&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7620&platform=iOS"
+    },
+    "_bcycle_station_type": "3.0 Dock Station"
+   },
+   {
+    "station_id": "bcycle_madison_7629",
+    "name": "The Village on Park",
+    "address": " 2300 S Park St",
+    "lat": 43.04097,
+    "lon": -89.3951,
+    "region_id": "bcycle_madison_region_45",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7629&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7629&platform=iOS"
+    },
+    "_bcycle_station_type": "3.0 Dock Station"
+   },
+   {
+    "station_id": "bcycle_madison_7630",
+    "name": "Beld Street @ Wingra Creek Path",
+    "address": "1697 Beld Street",
+    "lat": 43.04901,
+    "lon": -89.39256,
+    "region_id": "bcycle_madison_region_45",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7630&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7630&platform=iOS"
+    },
+    "_bcycle_station_type": "3.0 Dock Station"
+   },
+   {
+    "station_id": "bcycle_madison_7631",
+    "name": "Aberg Ave @ Shopko Drive",
+    "address": "2610 Shopko Drive",
+    "lat": 43.11156,
+    "lon": -89.34736,
+    "region_id": "bcycle_madison_region_78",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7631&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7631&platform=iOS"
+    },
+    "_bcycle_station_type": "3.0 Dock Station"
+   },
+   {
+    "station_id": "bcycle_madison_7635",
+    "name": "Boys and Girls Club @ Allied Drive",
+    "address": "4619 Jenewein Rd",
+    "lat": 43.02858,
+    "lon": -89.45805,
+    "region_id": "bcycle_madison_region_47",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7635&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7635&platform=iOS"
+    },
+    "_bcycle_station_type": "3.0 Dock Station"
+   },
+   {
+    "station_id": "bcycle_madison_7638",
+    "name": "The McKenzie Center",
+    "address": "5215 Verona Rd",
+    "lat": 43.02197,
+    "lon": -89.46919,
+    "region_id": "bcycle_madison_region_47",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7638&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7638&platform=iOS"
+    },
+    "_bcycle_station_type": "3.0 Dock Station"
+   },
+   {
+    "station_id": "bcycle_madison_7640",
+    "name": "Fitchburg Library",
+    "address": "5530 Lacy Rd,",
+    "lat": 43.0014,
+    "lon": -89.42527,
+    "region_id": "bcycle_madison_region_47",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7640&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7640&platform=iOS"
+    },
+    "_bcycle_station_type": "3.0 Dock Station"
+   },
+   {
+    "station_id": "bcycle_madison_7656",
+    "name": "Swan Creek Park",
+    "address": "5899 East Cheryl Parkway",
+    "lat": 43.00655,
+    "lon": -89.39946,
+    "region_id": "bcycle_madison_region_47",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7656&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7656&platform=iOS"
+    },
+    "_bcycle_station_type": "3.0 Dock Station"
+   },
+   {
+    "station_id": "bcycle_madison_7657",
+    "name": "Fitchburg Senior Center",
+    "address": "5510 Lacy Rd",
+    "lat": 43.00267,
+    "lon": -89.42337,
+    "region_id": "bcycle_madison_region_47",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7657&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7657&platform=iOS"
+    },
+    "_bcycle_station_type": "3.0 Dock Station"
+   },
+   {
+    "station_id": "bcycle_madison_7659",
+    "name": "McGaw Park",
+    "address": "5236 Lacy Rd",
+    "lat": 42.99692,
+    "lon": -89.40642,
+    "region_id": "bcycle_madison_region_47",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7659&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7659&platform=iOS"
+    },
+    "_bcycle_station_type": "3.0 Dock Station"
+   },
+   {
+    "station_id": "bcycle_madison_7662",
+    "name": "Dawley Bike Hub @ Cap City Trail",
+    "address": "3041 Seminole Hwy",
+    "lat": 43.02044,
+    "lon": -89.45321,
+    "region_id": "bcycle_madison_region_47",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7662&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7662&platform=iOS"
+    },
+    "_bcycle_station_type": "3.0 Dock Station"
+   },
+   {
+    "station_id": "bcycle_madison_7665",
+    "name": "Fitchburg Community Center",
+    "address": "5510 Lacy Rd",
+    "lat": 43.00202,
+    "lon": -89.42373,
+    "region_id": "bcycle_madison_region_47",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7665&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7665&platform=iOS"
+    },
+    "_bcycle_station_type": "3.0 Dock Station"
+   },
+   {
+    "station_id": "bcycle_madison_7666",
+    "name": "Goodman Pool",
+    "address": "325 W Olin Ave",
+    "lat": 43.05309,
+    "lon": -89.38725,
+    "region_id": "bcycle_madison_region_45",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7666&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7666&platform=iOS"
+    },
+    "_bcycle_station_type": "3.0 Dock Station"
+   },
+   {
+    "station_id": "bcycle_madison_7668",
+    "name": "Sherman & Trailsway ",
+    "address": "1602 Trailsway",
+    "lat": 43.1262,
+    "lon": -89.3641,
+    "region_id": "bcycle_madison_region_78",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7668&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7668&platform=iOS"
+    },
+    "_bcycle_station_type": "3.0 Dock Station"
+   },
+   {
+    "station_id": "bcycle_madison_7718",
+    "name": "S. Mills and Mound",
+    "address": "205 Mills Street",
+    "lat": 43.06526,
+    "lon": -89.404,
+    "region_id": "bcycle_madison_region_75",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7718&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7718&platform=iOS"
+    },
+    "_bcycle_station_type": "3.0 Dock Station"
+   },
+   {
+    "station_id": "bcycle_madison_7723",
+    "name": "Mallards Stadium @ Warner Park",
+    "address": "2920 N Sherman Ave",
+    "lat": 43.12989,
+    "lon": -89.36635,
+    "region_id": "bcycle_madison_region_78",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7723&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7723&platform=iOS"
+    },
+    "_bcycle_station_type": "3.0 Dock Station"
+   },
+   {
+    "station_id": "bcycle_madison_7776",
+    "name": "Madison Yards",
+    "address": "4800 Madison Yards Way",
+    "lat": 43.07406,
+    "lon": -89.45934,
+    "region_id": "bcycle_madison_region_44",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7776&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7776&platform=iOS"
+    },
+    "_bcycle_station_type": "3.0 Dock Station"
+   },
+   {
+    "station_id": "bcycle_madison_7780",
+    "name": "E. Johnson St. and Pennsylvania Ave ",
+    "address": "2041 E. Johnson St.",
+    "lat": 43.09645,
+    "lon": -89.35972,
+    "region_id": "bcycle_madison_region_78",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7780&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7780&platform=iOS"
+    },
+    "_bcycle_station_type": "3.0 Dock Station"
+   },
+   {
+    "station_id": "bcycle_madison_7788",
+    "name": "Traceway Drive",
+    "address": "2220 Traceway Drive",
+    "lat": 43.02539,
+    "lon": -89.41746,
+    "region_id": "bcycle_madison_region_45",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7788&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7788&platform=iOS"
+    },
+    "_bcycle_station_type": "3.0 Dock Station"
+   },
+   {
+    "station_id": "bcycle_madison_7789",
+    "name": "Anton Dr. and Williamsburg Way",
+    "address": "100 Williamsburg Way Ct.",
+    "lat": 43.02453,
+    "lon": -89.47017,
+    "region_id": "bcycle_madison_region_47",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7789&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7789&platform=iOS"
+    },
+    "_bcycle_station_type": "3.0 Dock Station"
+   },
+   {
+    "station_id": "bcycle_madison_7791",
+    "name": "Novation Pkwy at Rimrock Rd.",
+    "address": "2500 Rimrock Rd",
+    "lat": 43.03592,
+    "lon": -89.38147,
+    "region_id": "bcycle_madison_region_47",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7791&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7791&platform=iOS"
+    },
+    "_bcycle_station_type": "3.0 Dock Station"
+   },
+   {
+    "station_id": "bcycle_madison_7797",
+    "name": "Olin Park @ E. Lakeside St.",
+    "address": "1156 Olin Turville Dr",
+    "lat": 43.05595,
+    "lon": -89.38085,
+    "region_id": "bcycle_madison_region_45",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7797&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7797&platform=iOS"
+    },
+    "_bcycle_station_type": "3.0 Dock Station"
+   },
+   {
+    "station_id": "bcycle_madison_7798",
+    "name": "Sayle St. and Van Duesen St.",
+    "address": "Sayle St and Van Duesen St.",
+    "lat": 43.05439,
+    "lon": -89.38135,
+    "region_id": "bcycle_madison_region_45",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7798&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7798&platform=iOS"
+    },
+    "_bcycle_station_type": "3.0 Dock Station"
+   },
+   {
+    "station_id": "bcycle_madison_7801",
+    "name": "Broadway Lofts Monona ",
+    "address": "1214 E. Broadway",
+    "lat": 43.04785,
+    "lon": -89.31282,
+    "region_id": "bcycle_madison_region_46",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7801&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7801&platform=iOS"
+    },
+    "_bcycle_station_type": "3.0 Dock Station"
+   },
+   {
+    "station_id": "bcycle_madison_7819",
+    "name": "Kelly Station Apartments ",
+    "address": "2462 E Washington Ave",
+    "lat": 43.09976,
+    "lon": -89.35002,
+    "region_id": "bcycle_madison_region_43",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7819&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7819&platform=iOS"
+    },
+    "_bcycle_station_type": "3.0 Dock Station"
+   },
+   {
+    "station_id": "bcycle_madison_7820",
+    "name": "517 W. Main St.",
+    "address": "520 W. Main St.",
+    "lat": 43.06873,
+    "lon": -89.39029,
+    "region_id": "bcycle_madison_region_75",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7820&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7820&platform=iOS"
+    },
+    "_bcycle_station_type": "3.0 Dock Station"
+   },
+   {
+    "station_id": "bcycle_madison_7821",
+    "name": "Aberg Ave at Dane County Jobs Center",
+    "address": "1819 Aberg Ave",
+    "lat": 43.11413,
+    "lon": -89.36154,
+    "region_id": "bcycle_madison_region_78",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7821&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_7821&platform=iOS"
+    },
+    "_bcycle_station_type": "3.0 Dock Station"
+   },
+   {
+    "station_id": "bcycle_madison_8841",
+    "name": "UW Arboretum Visitor's Center",
+    "address": "2880 Longenecker Dr",
+    "lat": 43.04092,
+    "lon": -89.43101,
+    "region_id": "bcycle_madison_region_45",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_8841&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_8841&platform=iOS"
+    },
+    "_bcycle_station_type": "3.0 Dock Station"
+   },
+   {
+    "station_id": "bcycle_madison_8855",
+    "name": "McKee Farms Park, South",
+    "address": "2930 CHAPEL VALLEY RD",
+    "lat": 43.00801,
+    "lon": -89.43531,
+    "region_id": "bcycle_madison_region_47",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_8855&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_8855&platform=iOS"
+    },
+    "_bcycle_station_type": "3.0 Dock Station"
+   },
+   {
+    "station_id": "bcycle_madison_8859",
+    "name": "Staybridge Suites at Hardrock Road",
+    "address": "2916 Hardrock Rd",
+    "lat": 43.01189,
+    "lon": -89.47831,
+    "region_id": "bcycle_madison_region_47",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_8859&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_8859&platform=iOS"
+    },
+    "_bcycle_station_type": "3.0 Dock Station"
+   },
+   {
+    "station_id": "bcycle_madison_8861",
+    "name": "Huegel - Jamestown Park",
+    "address": "5810 Williamsburg Way",
+    "lat": 43.02366,
+    "lon": -89.48337,
+    "region_id": "bcycle_madison_region_47",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_8861&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_8861&platform=iOS"
+    },
+    "_bcycle_station_type": "3.0 Dock Station"
+   },
+   {
+    "station_id": "bcycle_madison_8866",
+    "name": "Rusty Bee Lounge at E. Cheryl Parkway",
+    "address": "5134 E. Cheryl Parkway",
+    "lat": 43.00743,
+    "lon": -89.39349,
+    "region_id": "bcycle_madison_region_47",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_8866&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_8866&platform=iOS"
+    },
+    "_bcycle_station_type": "3.0 Dock Station"
+   },
+   {
+    "station_id": "bcycle_madison_8976",
+    "name": "Madison Public Market @ First St.",
+    "address": "202 N First St",
+    "lat": 43.09378,
+    "lon": -89.36185,
+    "region_id": "bcycle_madison_region_43",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_8976&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_8976&platform=iOS"
+    },
+    "_bcycle_station_type": "3.0 Dock Station"
+   },
+   {
+    "station_id": "bcycle_madison_8977",
+    "name": "Bartillon Dr. Men's Shelter",
+    "address": "1906 Bartillon Dr.",
+    "lat": 43.12386,
+    "lon": -89.32425,
+    "region_id": "bcycle_madison_region_78",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_8977&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_8977&platform=iOS"
+    },
+    "_bcycle_station_type": "3.0 Dock Station"
+   },
+   {
+    "station_id": "bcycle_madison_9035",
+    "name": "Brittingham Tennis Courts",
+    "address": "388 S Bassett St",
+    "lat": 43.06738,
+    "lon": -89.38687,
+    "region_id": "bcycle_madison_region_45",
+    "rental_uris": {
+     "android": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_9035&platform=android",
+     "ios": "https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_9035&platform=iOS"
+    },
+    "_bcycle_station_type": "3.0 Dock Station"
+   }
+  ]
+ }
+}

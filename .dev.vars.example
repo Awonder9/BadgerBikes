@@ -1,0 +1,3 @@
+# Copy to .dev.vars for local development (never committed).
+# Operator contact sent to the public routing/search servers and shown in the app's About page.
+CONTACT_EMAIL=you@example.com

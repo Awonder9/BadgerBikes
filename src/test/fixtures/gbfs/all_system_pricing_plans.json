@@ -1,0 +1,1420 @@
+{
+ "bcycle_aventura": {
+  "last_updated": 1794945020,
+  "ttl": 3600,
+  "version": "1.1",
+  "data": {
+   "plans": [
+    {
+     "plan_id": "bcycle_aventura_325",
+     "name": "7 Day Membership",
+     "currency": "USD",
+     "description": "Unlimited 30-min rides for a week! For each ride, 31-60 min +$1, 61-90 min +$2, 90+ min +$4/30 min. $51 pre-auth is auto-refunded.\n\nFor passes for Hollywood/Ft. Lauderdale, switch to Broward BCycle.",
+     "url": "aventura.bcycle.com",
+     "price": 26.75,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_aventura_326",
+     "name": "Annual Membership",
+     "currency": "USD",
+     "description": "Unlimited 30-min rides for a year! For each ride, 31-60 min +$1, 61-90 min +$2, 90+ min +$4/30 min. $51 pre-auth is auto-refunded. \n\nFor passes for Hollywood/Ft. Lauderdale, switch to Broward BCycle.",
+     "url": "aventura.bcycle.com",
+     "price": 48.15,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_aventura_324",
+     "name": "Single Use Pass",
+     "currency": "USD",
+     "description": "Includes 30 minute ride. After 30 minutes, usage fees of $5/30 minutes apply. A $51 deposit will be auto refunded after the ride. \n\nFor passes for Hollywood/Ft. Lauderdale, switch to Broward BCycle. \n",
+     "url": "aventura.bcycle.com",
+     "price": 5.35,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_aventura_613",
+     "name": "Single Use Pass - up to 30 minutes",
+     "currency": "USD",
+     "description": "Includes 30 minute ride. After 30 minutes, usage fees of $5/30 minutes apply. A $51 deposit will be auto refunded after the ride. \n\nFor passes for Hollywood/Ft. Lauderdale, switch to Broward BCycle. ",
+     "url": "aventura.bcycle.com",
+     "price": 5.35,
+     "is_taxable": 0
+    }
+   ]
+  }
+ },
+ "bcycle_bentonville": {
+  "last_updated": 1794947170,
+  "ttl": 3600,
+  "version": "1.1",
+  "data": {}
+ },
+ "bcycle_bikelnk": {
+  "last_updated": 1794945640,
+  "ttl": 3600,
+  "version": "1.1",
+  "data": {
+   "plans": [
+    {
+     "plan_id": "bcycle_bikelnk_392",
+     "name": "Aluminum Access",
+     "currency": "USD",
+     "description": "An annual pass with unlimited 1 hour trips. Rides lasting longer than 1 hour incur overage fees of $6 each additional hour.",
+     "url": "https://bikelnk.com/",
+     "price": 100,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_bikelnk_397",
+     "name": "Capital Cruiser",
+     "currency": "USD",
+     "description": "Ride UNLIMITED 1 hour long trips in 24 hours for $8!",
+     "url": "https://bikelnk.com/",
+     "price": 8,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_bikelnk_472",
+     "name": "Capital Cruiser Pass",
+     "currency": "USD",
+     "description": "Unlimited 1 hour trips in 24 hours for $8. Rides lasting longer than 1 hour incur overage fees of $6 each additional hour.",
+     "url": "https://bikelnk.com/",
+     "price": 8,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_bikelnk_404",
+     "name": "Founding Member",
+     "currency": "USD",
+     "description": "Aluminum Access with perks! A limited edition B-Card, limited edition t-shirt, & $50 Downtown Lincoln Gift Card to celebrate being a hardcore BikeLNK supporter.",
+     "url": "https://bikelnk.com/",
+     "price": 150,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_bikelnk_393",
+     "name": "Monthly Member",
+     "currency": "USD",
+     "description": "A monthly pass with unlimited 1 hour trips. Rides lasting longer than 1 hour incur overage fees of $6 each additional hour.",
+     "url": "https://bikelnk.com/",
+     "price": 17,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_bikelnk_394",
+     "name": "Visiting Voyager",
+     "currency": "USD",
+     "description": "Ride UNLIMITED 1 hour long trips in 72 hours for $12!",
+     "url": "https://bikelnk.com/",
+     "price": 12,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_bikelnk_531",
+     "name": "Visiting Voyager Pass",
+     "currency": "USD",
+     "description": "Unlimited 1 hour trips in 72 hours for $12. Rides lasting longer than 1 hour incur overage fees of $6 every additional hour.",
+     "url": "https://bikelnk.com/",
+     "price": 12,
+     "is_taxable": 0
+    }
+   ]
+  }
+ },
+ "bcycle_boulder": {
+  "last_updated": 1794944592,
+  "ttl": 3600,
+  "version": "1.1",
+  "data": {
+   "plans": [
+    {
+     "plan_id": "bcycle_boulder_77",
+     "name": "Annual Pass",
+     "currency": "USD",
+     "description": "Annual pass for an unlimited number of 60-minute trips. Additional $7.63 / 30 minutes for rides over 60 minutes. Tax included. ",
+     "url": "boulder.bcycle.com",
+     "price": 163.57,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_boulder_592",
+     "name": "CU Student and Employee",
+     "currency": "USD",
+     "description": "Use CU-issued Identikey email. For CU Boulder students and employees.\n\nAdditional $7.63 / 30 minutes for rides over 60 minutes. Tax included. ",
+     "url": "boulder.bcycle.com",
+     "price": 0,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_boulder_364",
+     "name": "Guest Pass",
+     "currency": "USD",
+     "description": "Multiple trips during a 24-hour access period. All trips under 30 minutes are included. Additional $7.63 / 30 minutes for rides over 30 minutes. Tax included. ",
+     "url": "boulder.bcycle.com",
+     "price": 18.6,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_boulder_301",
+     "name": "Month Pass",
+     "currency": "USD",
+     "description": "Monthly pass for an unlimited number of 60-minute trips. Additional $7.63 / 30 minutes for rides over 60 minutes. Tax included.",
+     "url": "boulder.bcycle.com",
+     "price": 32.71,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_boulder_818",
+     "name": "Single Ride",
+     "currency": "USD",
+     "description": "$5 per 15 minutes.",
+     "url": "boulder.bcycle.com",
+     "price": 5,
+     "is_taxable": 0
+    }
+   ]
+  }
+ },
+ "bcycle_bublr": {
+  "last_updated": 1794947764,
+  "ttl": 3600,
+  "version": "1.1",
+  "data": {
+   "plans": [
+    {
+     "plan_id": "bcycle_bublr_571",
+     "name": "$0.25 per minute",
+     "currency": "USD",
+     "description": "$0.25/min + tax. $1 fee each time an electric bike is checked out. No unlock fee for classic bikes. All bikes must be returned to a station. $10 hold when account/card is updated.",
+     "url": "http://bublrbikes.org",
+     "price": 0,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_bublr_794",
+     "name": "24-Hour Pass",
+     "currency": "USD",
+     "description": "$24(plus tax) for 24 hours. Keep the bike or check in/out as needed. $1 unlock for each ebike trip. Select \"I have a pass\" on subsequent trips. Bikes out for more than 24 hours will accrue fees.",
+     "url": "http://bublrbikes.org",
+     "price": 25.9,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_bublr_795",
+     "name": "30-Day Pass",
+     "currency": "USD",
+     "description": "30-Day Pass: Unlimited 60-min rides for 30 days. $0.25/min + tax after 60 mins. $1 per ebike. No unlock fee for classic bikes. $10 temporary hold when updating account/card.",
+     "url": "http://bublrbikes.org",
+     "price": 32.37,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_bublr_606",
+     "name": "Access Pass",
+     "currency": "USD",
+     "description": "Milwaukee residents receiving government assistance (like SSI, WIC, or FoodShare) may qualify for a FREE Bublr pass. If you qualify, apply at bublrbikes.org/accesspass",
+     "url": "http://bublrbikes.org",
+     "price": 175,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_bublr_797",
+     "name": "Annual Pass",
+     "currency": "USD",
+     "description": "The Annual Pass gives you unlimited 60-minute trips for 365 days. Individual trips lasting more than 60-minutes are charged $0.25/minute plus tax. No unlock fee for ebikes.",
+     "url": "http://bublrbikes.org",
+     "price": 139.19,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_bublr_516",
+     "name": "Visit Milwaukee",
+     "currency": "USD",
+     "description": "Take as many 2-hour trips as you want for the next three days. Individual trips lasting longer than 2 hours will be charged $0.25 per minute plus tax. $1 unlock for each ebike trip.",
+     "url": "http://bublrbikes.org",
+     "price": 26.98,
+     "is_taxable": 0
+    }
+   ]
+  }
+ },
+ "bcycle_cincyredbike": {
+  "last_updated": 1794944445,
+  "ttl": 3600,
+  "version": "1.1",
+  "data": {
+   "plans": [
+    {
+     "plan_id": "bcycle_cincyredbike_200",
+     "name": "Annual",
+     "currency": "USD",
+     "description": "365 days of Red Bike riding, including e-bikes. Unlimited 2-hour rides.",
+     "url": "https://redbike.bcycle.com",
+     "price": 150,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_cincyredbike_609",
+     "name": "Go Pass - Annual",
+     "currency": "USD",
+     "description": "Discounted Annual Membership - Promo code required.",
+     "url": "https://redbike.bcycle.com",
+     "price": 180,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_cincyredbike_608",
+     "name": "Go Pass - Monthly",
+     "currency": "USD",
+     "description": "Discounted membership - promo code required, go to www.cincyredbike.org/GoPass if you do not already have an appropriate promo code. ",
+     "url": "https://redbike.bcycle.com",
+     "price": 60,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_cincyredbike_377",
+     "name": "Monthly",
+     "currency": "USD",
+     "description": "30 days of Red Bike riding, including e-bikes. Unlimited 2-hour rides.",
+     "url": "https://redbike.bcycle.com",
+     "price": 30,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_cincyredbike_199",
+     "name": "Two-Hour Pass",
+     "currency": "USD",
+     "description": "Unlimited 2-hour rides for 24 hours, $5 per additional for rides lasting longer than 2 hours.",
+     "url": "https://redbike.bcycle.com",
+     "price": 12,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_cincyredbike_945",
+     "name": "Xavier Ride Pass",
+     "currency": "USD",
+     "description": "Pass for all Musketeers - Students, Faculty, Staff - You must use your @xavier.edu email to sign up!",
+     "url": "https://redbike.bcycle.com",
+     "price": 0,
+     "is_taxable": 0
+    }
+   ]
+  }
+ },
+ "bcycle_clemson": {
+  "last_updated": 1794947337,
+  "ttl": 3600,
+  "version": "1.1",
+  "data": {
+   "plans": [
+    {
+     "plan_id": "bcycle_clemson_351",
+     "name": "Annual Membership",
+     "currency": "USD",
+     "description": "Annual Membership for Clemson Students, Faculty and Staff with @clemson.edu email",
+     "url": "clemson.bcycle.com",
+     "price": 20,
+     "is_taxable": 0
+    }
+   ]
+  }
+ },
+ "bcycle_desmoines": {
+  "last_updated": 1794944495,
+  "ttl": 3600,
+  "version": "1.1",
+  "data": {
+   "plans": [
+    {
+     "plan_id": "bcycle_desmoines_953",
+     "name": "15 Minute Trips - 7 Day Membership",
+     "currency": "USD",
+     "description": "Securely return to a BCycle dock to end trips\n\n15 min trips\n\n$0.30/min after 15min\n\n$1 Ebike unlock fee\n\nAuthorizations may temporarily appear on your bank statement\n",
+     "url": "desmoines.bcycle.com",
+     "price": 7,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_desmoines_886",
+     "name": "30-30-30 Membership",
+     "currency": "USD",
+     "description": "-Includes 30 minute trips. \n-Trips accrue $0.30/min. after 30 min.\n-30 day membership. \n\n*One bike per account limit \n*ALL BIKES MUST BE RETURNED TO A STATION\n*Verify bikes are secured upon return",
+     "url": "desmoines.bcycle.com",
+     "price": 30,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_desmoines_910",
+     "name": "Pay Per Minute",
+     "currency": "USD",
+     "description": "Electric Bikes: $1.50 Unlock + $0.30 per minute\nClassic Bikes: $1.50 Unlock + $0.05 per minute \n\n*BIKES MUST BE RETURNED TO A STATION\n*Verify bikes are secured upon return\n*One bike per account limit",
+     "url": "desmoines.bcycle.com",
+     "price": 1,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_desmoines_851",
+     "name": "Per-Hour",
+     "currency": "USD",
+     "description": "Securely return to a BCycle dock to end trips\n\n$15.00 per hour\n\nAuthorizations may temporarily appear on your bank statement",
+     "url": "desmoines.bcycle.com",
+     "price": 15,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_desmoines_854",
+     "name": "Per-Minute ($0.05-$0.30/Min)",
+     "currency": "USD",
+     "description": "Securely return to a BCycle dock to end trips\n\nElectric Bikes: $1.00 Unlock + $0.30 per minute\nClassic Bikes: $1.00 Unlock + $0.05 per minute \n\nAuthorizations may temporarily appear on your statement",
+     "url": "desmoines.bcycle.com",
+     "price": 0.5,
+     "is_taxable": 0
+    }
+   ]
+  }
+ },
+ "bcycle_elpaso": {
+  "last_updated": 1794945295,
+  "ttl": 3600,
+  "version": "1.1",
+  "data": {
+   "plans": [
+    {
+     "plan_id": "bcycle_elpaso_272",
+     "name": "1 Day Pass (Kiosk only)",
+     "currency": "USD",
+     "url": "elpaso.bcycle.com",
+     "price": 6,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_elpaso_274",
+     "name": "30 Day Pass",
+     "currency": "USD",
+     "description": "Unlimited rides for 30 days. Trips under 30 mins are included. After that, it's $2 per 30 mins. Dock securely & listen for 3 beeps to end your trip. Don't leave bikes unsecured.",
+     "url": "elpaso.bcycle.com",
+     "price": 30,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_elpaso_275",
+     "name": "Annual Membership",
+     "currency": "USD",
+     "description": "Unlimited rides all year. Trips under 60 mins are included. After that, it's $2 per 30 mins. Dock securely & listen for 3 beeps to end your trip. Don't leave bikes unsecured. ",
+     "url": "elpaso.bcycle.com",
+     "price": 75,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_elpaso_403",
+     "name": "Bike Share Pass (+$2/30 min)",
+     "currency": "USD",
+     "description": "Trip fees are $2 for each additional 30 minutes. Your pass includes unlimited rides for 24 hrs. Dock securely & listen for 3 beeps to end your trip. Don't leave bikes unsecured.",
+     "url": "elpaso.bcycle.com",
+     "price": 6,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_elpaso_276",
+     "name": "Semester Pass",
+     "currency": "USD",
+     "description": "120 days of unlimited rides. Trips under 30 mins are included. After that, it's $2 per 30 mins. Dock securely & listen for 3 beeps to end your trip. Don't leave bikes unsecured. ",
+     "url": "elpaso.bcycle.com",
+     "price": 50,
+     "is_taxable": 0
+    }
+   ]
+  }
+ },
+ "bcycle_memphis": {
+  "last_updated": 1794947967,
+  "ttl": 3600,
+  "version": "1.1",
+  "data": {
+   "plans": [
+    {
+     "plan_id": "bcycle_memphis_942",
+     "name": "Annual Membership 26",
+     "currency": "USD",
+     "description": "Limited Time Offer: Unlimited 60 min rides. + Extra Time: $0.30 per minute after 60 minutes",
+     "url": "www.explorebikeshare.com",
+     "price": 120,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_memphis_874",
+     "name": "eBike Pass ",
+     "currency": "USD",
+     "description": "$5.00 for first 20 minutes \n+30 cents per minute for each additional minute billed the next day\n+$1.00 unlock service fee\n\n\n\n",
+     "url": "www.explorebikeshare.com",
+     "price": 5,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_memphis_924",
+     "name": "MLGW Annual Members",
+     "currency": "USD",
+     "description": "This Membership is for MLGW Employees Only! Unlimited 60 min rides. + Extra Time: $0.30 per minute after 60 minutes",
+     "url": "www.explorebikeshare.com",
+     "price": 150,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_memphis_885",
+     "name": "Three Day ",
+     "currency": "USD",
+     "description": "Unlimited rides up to 60 minutes for 3 days\n+ Extra Time: $0.30 per minute after 60 minutes",
+     "url": "www.explorebikeshare.com",
+     "price": 35,
+     "is_taxable": 0
+    }
+   ]
+  }
+ },
+ "bcycle_greenbikeslc": {
+  "last_updated": 1794945501,
+  "ttl": 3600,
+  "version": "1.1",
+  "data": {
+   "plans": [
+    {
+     "plan_id": "bcycle_greenbikeslc_357",
+     "name": "24-Hour Pass",
+     "currency": "USD",
+     "description": "With this pass, you can take as many 30-minute rides as you want for 24-hours. Rides longer than 30 minutes are subject to an Extra Time Charge of $5 per additional 30 minutes.",
+     "url": "https://www.greenbikeutah.org",
+     "price": 7,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_greenbikeslc_135",
+     "name": "4-Day Explorer Pass",
+     "currency": "USD",
+     "description": "Dock bike at station every 60 minutes. Unlimited 60-minute rides for 96 hours. $5 per extra hour if late. \n\nA $19 pre-authorization is applied at checkout and released after 48-72 hours. ",
+     "url": "https://www.greenbikeutah.org",
+     "price": 18,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_greenbikeslc_136",
+     "name": "Annual Membership",
+     "currency": "USD",
+     "description": "Dock bike at station every 60 minutes. Unlimited 60-minute rides for 365 days. $5 per extra hour if late. \n\nA $19 pre-authorization is applied at checkout and released after 48-72 hours. ",
+     "url": "https://www.greenbikeutah.org",
+     "price": 100,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_greenbikeslc_134",
+     "name": "Explorer Pass",
+     "currency": "USD",
+     "description": "Dock bike at station every 60 minutes. Unlimited 60-minute rides for 24 hours. $5 per extra hour if late. \n\nA $19 pre-authorization is applied at checkout and released after 48-72 hours. ",
+     "url": "https://www.greenbikeutah.org",
+     "price": 11,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_greenbikeslc_875",
+     "name": "Monthly Membership",
+     "currency": "USD",
+     "description": "Dock bike at station every 60 minutes. Unlimited 60-minute rides for 30 days. $5 per extra hour if late. \n\nA $19 pre-authorization is applied at checkout and released after 48-72 hours.",
+     "url": "https://www.greenbikeutah.org",
+     "price": 25,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_greenbikeslc_869",
+     "name": "Single Trip Pass",
+     "currency": "USD",
+     "description": "Valid for one 60-minute ride. Bikes over 1 hour incur $5 per extra hour. Must dock bike at station to end trip. \n\nA $19 pre-authorization is applied at checkout and released after 48-72 hours. ",
+     "url": "https://www.greenbikeutah.org",
+     "price": 3.5,
+     "is_taxable": 0
+    }
+   ]
+  }
+ },
+ "bcycle_greenville": {
+  "last_updated": 1794944964,
+  "ttl": 3600,
+  "version": "1.1",
+  "data": {
+   "plans": [
+    {
+     "plan_id": "bcycle_greenville_685",
+     "name": "Annual Membership",
+     "currency": "USD",
+     "description": "Enjoy unlimited 60-minutes rides for a year! Rides longer than 60 minutes are subject to a usage fee of $3 plus tax per additional 30 minutes.",
+     "url": "greenville.bcycle.com",
+     "price": 106,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_greenville_652",
+     "name": "Guest Pass ",
+     "currency": "USD",
+     "description": "Unlimited 60-minute rides in a 24-hour period. Additional rental fee of $3 plus tax per 30 minutes for rides longer than 60 minutes. ",
+     "url": "greenville.bcycle.com",
+     "price": 15.9,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_greenville_684",
+     "name": "Monthly Membership",
+     "currency": "USD",
+     "description": "Enjoy unlimited 60-minute rides for 30 days! Rides longer than 60 minutes are subject to a usage fee of $3 plus tax per additional 30 minutes.",
+     "url": "greenville.bcycle.com",
+     "price": 21.2,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_greenville_651",
+     "name": "Single Ride",
+     "currency": "USD",
+     "description": "$7 per 30 minutes, plus tax.",
+     "url": "greenville.bcycle.com",
+     "price": 7.42,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_greenville_773",
+     "name": "Swamp Rabbit Pass",
+     "currency": "USD",
+     "description": "Take a ride on the Swamp Rabbit Trail with this 4-hour pass. $35 plus tax for 4-hours and $10 plus tax every 30 minutes thereafter.",
+     "url": "greenville.bcycle.com",
+     "price": 37.1,
+     "is_taxable": 0
+    }
+   ]
+  }
+ },
+ "bcycle_heartland": {
+  "last_updated": 1794945132,
+  "ttl": 3600,
+  "version": "1.1",
+  "data": {
+   "plans": [
+    {
+     "plan_id": "bcycle_heartland_97",
+     "name": "24H Pass",
+     "currency": "USD",
+     "description": "Includes unlimited 1-hour trips & access to the system for 24 hours. Trips longer than 1-hour cost $5 (+tax) per each additional hour and charged within 3 days of pass expiring as a separate charge. ",
+     "url": "heartland.bcycle.com",
+     "price": 12.84,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_heartland_955",
+     "name": "CWS Pass",
+     "currency": "USD",
+     "description": "Includes unlimited 1-hour trips & access to the system for 72 hours. Trips longer than 1-hour cost $5 (+tax) per each additional hour and charged within 3 days of pass expiring as a separate charge. ",
+     "url": "heartland.bcycle.com",
+     "price": 25.68,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_heartland_944",
+     "name": "FREE RIDES PASS (PROMO CODE REQUIRED to $0)",
+     "currency": "USD",
+     "description": "Annual pass for residents of the Omaha metro area (16 & up). Apply for your promo code at https://heartlandbikeshare.org/freerides.",
+     "url": "heartland.bcycle.com",
+     "price": 166.92,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_heartland_917",
+     "name": "Guest Pass",
+     "currency": "USD",
+     "description": "Includes unlimited 1-hour trips & access to the system for 24 hours. Trips longer than 1-hour cost $5 (+tax) per each additional hour and charged within 3 days of pass expiring as a separate charge. ",
+     "url": "heartland.bcycle.com",
+     "price": 16.05,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_heartland_93",
+     "name": "Heartland Annual Pass",
+     "currency": "USD",
+     "description": "$156 (plus tax) includes unlimited 1-hour trips and access to the system for 365 days. All trips longer than 1-hour cost $5 (plus tax) per each additional hour. ",
+     "url": "heartland.bcycle.com",
+     "price": 166.92,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_heartland_759",
+     "name": "Heartland Monthly Pass Subscription",
+     "currency": "USD",
+     "description": "$30 (plus tax) includes unlimited 1-hour trips and access to the system for 31 days. All trips longer than 1-hour cost $5 per each additional hour (plus tax). Cancel anytime under the 'Profile' tab.",
+     "url": "heartland.bcycle.com",
+     "price": 32.1,
+     "is_taxable": 0
+    }
+   ]
+  }
+ },
+ "bcycle_indego": {
+  "last_updated": 1794946816,
+  "ttl": 3600,
+  "version": "1.1",
+  "data": {
+   "plans": [
+    {
+     "plan_id": "bcycle_indego_239",
+     "name": "Indego30",
+     "currency": "USD",
+     "description": " ",
+     "url": "www.rideindego.com",
+     "price": 21.6,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_indego_240",
+     "name": "Indego30 Cash (Legacy pass type)",
+     "currency": "USD",
+     "description": "",
+     "url": "www.rideindego.com",
+     "price": 5,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_indego_241",
+     "name": "IndegoFlex",
+     "currency": "USD",
+     "description": "",
+     "url": "www.rideindego.com",
+     "price": 10,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_indego_243",
+     "name": "Access Pass",
+     "currency": "USD",
+     "description": " ",
+     "url": "www.rideindego.com",
+     "price": 5.4,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_indego_245",
+     "name": "Access Cash Pass (Legacy pass type)",
+     "currency": "USD",
+     "description": "",
+     "url": "www.rideindego.com",
+     "price": 5,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_indego_246",
+     "name": "$12 Pass (IBX & Student)",
+     "currency": "USD",
+     "description": " ",
+     "url": "www.rideindego.com",
+     "price": 12.96,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_indego_251",
+     "name": "Guest Pass (online purchase)",
+     "currency": "USD",
+     "description": "Unlimited 60-minute rides in a 24-hour period. ",
+     "url": "www.rideindego.com",
+     "price": 16.2,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_indego_252",
+     "name": "Indego365",
+     "currency": "USD",
+     "description": "Annual Pass ",
+     "url": "www.rideindego.com",
+     "price": 168.48,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_indego_254",
+     "name": "Indego365 Access",
+     "currency": "USD",
+     "description": "Annual Pass",
+     "url": "www.rideindego.com",
+     "price": 51.84,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_indego_257",
+     "name": "TEST Day Pass Electric",
+     "currency": "USD",
+     "url": "www.rideindego.com",
+     "price": 10,
+     "is_taxable": 0
+    }
+   ]
+  }
+ },
+ "bcycle_pacersbikeshare": {
+  "last_updated": 1794944428,
+  "ttl": 3600,
+  "version": "1.1",
+  "data": {
+   "plans": [
+    {
+     "plan_id": "bcycle_pacersbikeshare_614",
+     "name": "Annual Pass",
+     "currency": "USD",
+     "description": "Annual Pass grants access to unlimited 60-minute trips for a 365-day period. \n\n$0.25 / minute usage fees apply after 60 minutes.",
+     "url": "http://pacersbikeshare.org",
+     "price": 160.5,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_pacersbikeshare_940",
+     "name": "Butler University Pass",
+     "currency": "USD",
+     "description": "This pass grants unlimited free 30-min. trips for one year. Only available to the Butler University Community. Visit pacersbikeshare.org/butler to apply.\n\n$0.25/min. usage fees apply after 30 min.",
+     "url": "http://pacersbikeshare.org",
+     "price": 160.5,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_pacersbikeshare_913",
+     "name": "IndyRides Free",
+     "currency": "USD",
+     "description": "This pass grants access to unlimited 30-min. trips for one year. Only available to Marion County residents. Visit pacersbikeshare.org to request your pass.\n\n$0.25/min. usage fees apply after 30 min.",
+     "url": "http://pacersbikeshare.org",
+     "price": 160.5,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_pacersbikeshare_952",
+     "name": "Life in Indy Pass",
+     "currency": "USD",
+     "description": "Enjoy Pacers Bikeshare for free 30 minute trips! Usage fees ($0.25 per minute) apply after first 30 minutes.\n\nUsage fees process 1 day after end of trip. ",
+     "url": "http://pacersbikeshare.org",
+     "price": 10,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_pacersbikeshare_551",
+     "name": "Pay as You Ride",
+     "currency": "USD",
+     "description": "Classic Bikes: $0.20/Min. \nE-Bikes: $3 fee + $0.25/Min. \n\nBike must be returned to a station. \n\nCharges may take up to 48 hours after returning the bike to process.",
+     "url": "http://pacersbikeshare.org",
+     "price": 2,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_pacersbikeshare_865",
+     "name": "Take a Free Ride!",
+     "currency": "USD",
+     "url": "http://pacersbikeshare.org",
+     "price": 133.75,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_pacersbikeshare_903",
+     "name": "WNBA All-Star Pass",
+     "currency": "USD",
+     "description": "Enjoy Pacers Bikeshare for free 30 minute trips! Usage fees ($0.25 per minute) apply after first 30 minutes.\n\nPromo code required.",
+     "url": "http://pacersbikeshare.org",
+     "price": 10,
+     "is_taxable": 0
+    }
+   ]
+  }
+ },
+ "bcycle_jacksoncounty": {
+  "last_updated": 1794947651,
+  "ttl": 3600,
+  "version": "1.1",
+  "data": {
+   "plans": [
+    {
+     "plan_id": "bcycle_jacksoncounty_356",
+     "name": "Annual Membership",
+     "currency": "USD",
+     "description": "Year membership to Jackson County bike share.",
+     "url": "jacksoncounty.bcycle.com",
+     "price": 50,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_jacksoncounty_354",
+     "name": "Rent a Bike",
+     "currency": "USD",
+     "description": "$6.00 for 3 hours / $2.00 each additional hour",
+     "url": "jacksoncounty.bcycle.com",
+     "price": 6,
+     "is_taxable": 0
+    }
+   ]
+  }
+ },
+ "bcycle_madison": {
+  "last_updated": 1794944727,
+  "ttl": 3600,
+  "version": "1.1",
+  "data": {
+   "plans": [
+    {
+     "plan_id": "bcycle_madison_84",
+     "name": "Annual Pass",
+     "currency": "USD",
+     "description": "Price includes 60 minutes per ride, after each unlock. \n\nFor each trip >60 minutes: add $8 for each additional 30-minute period.\n\nPass valid for 365 days\n\n\n",
+     "url": "madison.bcycle.com",
+     "price": 180,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_madison_938",
+     "name": "Guest Pass ",
+     "currency": "USD",
+     "description": "60 min per ride, after each unlock. \nPass valid for 24 hours.\nFor each trip >60 minutes: add $8 for each additional 30-minutes of ride time.\n\nPass is valid for 24 hours from time of purchase.",
+     "url": "madison.bcycle.com",
+     "price": 20,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_madison_306",
+     "name": "Monthly Pass",
+     "currency": "USD",
+     "description": "Price includes 60 minutes per trip, after each unlock of a bike.\n\nFor each trip >60 minutes: add $8 for each additional 30-minute period.\n\nRecurring monthly subscription (30 days)",
+     "url": "madison.bcycle.com",
+     "price": 35,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_madison_583",
+     "name": "Single Ride Pass (30 min)",
+     "currency": "USD",
+     "description": "Price includes 30 minutes per ride, after each unlock.\n\nIf trip >30 minutes: add $8 for each additional 30-minute period.\n\nSingle Ride ",
+     "url": "madison.bcycle.com",
+     "price": 8,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_madison_954",
+     "name": "UW-Madison Monthly Member",
+     "currency": "USD",
+     "description": "Includes rides of 30 minutes or less. Rides over 30 minutes incur $8 usage fee per additional 30 minutes. For active UW-Madison Students, Faculty, Staff.  Email verification required.",
+     "url": "madison.bcycle.com",
+     "price": 10,
+     "is_taxable": 0
+    }
+   ]
+  }
+ },
+ "bcycle_lametro": {
+  "last_updated": 1794947664,
+  "ttl": 3600,
+  "version": "1.1",
+  "data": {
+   "plans": [
+    {
+     "plan_id": "bcycle_lametro_239",
+     "name": "Metro Bike Share Monthly Pass - No SB Fees",
+     "currency": "USD",
+     "description": "MBS 30-Day Pass",
+     "url": "bikeshare.metro.net",
+     "price": 17,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_lametro_2310108",
+     "name": "Monthly Pass",
+     "currency": "USD",
+     "description": "Monthly Pass (TapForce)",
+     "url": "bikeshare.metro.net",
+     "price": 17,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_lametro_2310109",
+     "name": "Annual Pass",
+     "currency": "USD",
+     "description": "Annual Pass (TapForce)",
+     "url": "bikeshare.metro.net",
+     "price": 150,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_lametro_2310114",
+     "name": "Metro Bike Share Flex Pass",
+     "currency": "USD",
+     "url": "bikeshare.metro.net",
+     "price": 40,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_lametro_2310115",
+     "name": "1-Ride",
+     "currency": "USD",
+     "description": "$1.75 every 30 minutes. Additional $1 to unlock an Electric Metro Bike.\nThere will be a temporary hold of funds on your card. ",
+     "url": "bikeshare.metro.net",
+     "price": 1.75,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_lametro_2310122",
+     "name": "24-Hour Access Pass",
+     "currency": "USD",
+     "description": "24 hours of unlimited rides under 30 minutes, $1.75 per 30 minutes after. Electric Metro Bikes are an additional $1 to unlock. There will be a temporary hold of funds on your card.",
+     "url": "bikeshare.metro.net",
+     "price": 5,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_lametro_2310126",
+     "name": "365-Day Pass",
+     "currency": "USD",
+     "description": "365-Day Pass (BCycle)",
+     "url": "bikeshare.metro.net",
+     "price": 150,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_lametro_2310130",
+     "name": "30-Day Pass",
+     "currency": "USD",
+     "description": "30-Day Pass (BCycle)",
+     "url": "bikeshare.metro.net",
+     "price": 17,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_lametro_2310131",
+     "name": "30-Day Reduced Fare Pass",
+     "currency": "USD",
+     "url": "bikeshare.metro.net",
+     "price": 5,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_lametro_2310132",
+     "name": "365-Day Reduced Fare Pass",
+     "currency": "USD",
+     "url": "bikeshare.metro.net",
+     "price": 50,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_lametro_2310133",
+     "name": "Bikeshare for Business",
+     "currency": "USD",
+     "description": "Bikeshare for Business Program",
+     "url": "bikeshare.metro.net",
+     "price": 0,
+     "is_taxable": 0
+    }
+   ]
+  }
+ },
+ "bcycle_nashville": {
+  "last_updated": 1794944487,
+  "ttl": 3600,
+  "version": "1.1",
+  "data": {
+   "plans": [
+    {
+     "plan_id": "bcycle_nashville_951",
+     "name": "30-Minute Pass",
+     "currency": "USD",
+     "description": "Enjoy a single ride for up to 30 min. Keep riding for an additional $10 per 30 min until bike is returned to a dock.\n\n$26 pre-auth charge, refunds in 1-3 business days. Total ride time billed daily.",
+     "url": "nashville.bcycle.com",
+     "price": 10,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_nashville_766",
+     "name": "Annual Pass (120 minute rides)",
+     "currency": "USD",
+     "description": "$160 (tax included). Enjoy unlimited 120-minute rides for a year! Rides over 120 minutes are subject to a usage fee of $3.28 (tax included) per additional 30 minutes.",
+     "url": "nashville.bcycle.com",
+     "price": 160,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_nashville_919",
+     "name": "Day Pass (120 minute rides)",
+     "currency": "USD",
+     "description": "Check out a bike for 120 minutes at a time.\nDock bike to end ride.\nCheck out again to keep riding.\n\n$3.50 usage fee per each additional 30 minutes after the first 120.\n\nPass valid for 24 hours.",
+     "url": "nashville.bcycle.com",
+     "price": 23,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_nashville_920",
+     "name": "Monthly Pass (120 minute rides)",
+     "currency": "USD",
+     "description": "$35 (tax included). Enjoy unlimited 120-minute rides for 30 days! Rides over 120 minutes are subject to a usage fee of $3.50 (tax included) per additional 30 minutes.",
+     "url": "nashville.bcycle.com",
+     "price": 35,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_nashville_900",
+     "name": "Pay Per Minute: $1 + $0.45/minute",
+     "currency": "USD",
+     "description": "$1 to unlock plus $0.45/minute\nReturn your bike to a station to end your ride.\n\nTotal ride time billed daily. \n($26 pre-auth charge)",
+     "url": "nashville.bcycle.com",
+     "price": 0,
+     "is_taxable": 0
+    }
+   ]
+  }
+ },
+ "bcycle_redding": {
+  "last_updated": 1794944430,
+  "ttl": 3600,
+  "version": "1.1",
+  "data": {}
+ },
+ "bcycle_rtcbikeshare": {
+  "last_updated": 1794944603,
+  "ttl": 3600,
+  "version": "1.1",
+  "data": {
+   "plans": [
+    {
+     "plan_id": "bcycle_rtcbikeshare_328",
+     "name": "Dasher Pass",
+     "currency": "USD",
+     "description": "Unlimited 30-minute rides over a 24-hour period. Usage fees apply $4 per 30-minutes after the first 30-minutes of your ride. Additional $1 per trip on an e-bike. ",
+     "url": "rtcbikeshare.bcycle.com",
+     "price": 5,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_rtcbikeshare_374",
+     "name": "Dasher Pass Online",
+     "currency": "USD",
+     "description": "Unlimited 30-minute rides over a 24-hour period. Usage fees apply $4 per 30-minutes after the first 30-minutes of your ride. Additional $1 per trip on an e-bike. ",
+     "url": "rtcbikeshare.bcycle.com",
+     "price": 5,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_rtcbikeshare_752",
+     "name": "Downtowner - Reduced Fare",
+     "currency": "USD",
+     "description": "Unlimited 60-minute rides over a 365-day period. Usage fees apply $4 per 60-minutes after the first 60-minutes of your ride. Additional $1 per trip on an e-bike. ",
+     "url": "rtcbikeshare.bcycle.com",
+     "price": 40,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_rtcbikeshare_753",
+     "name": "Downtowner Pass",
+     "currency": "USD",
+     "description": "Unlimited 60-minute rides over a 365-day period. Usage fees apply $4 per 60-minutes after the first 60-minutes of your ride. Additional $1 per trip on an e-bike. ",
+     "url": "rtcbikeshare.bcycle.com",
+     "price": 125,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_rtcbikeshare_756",
+     "name": "Downtowner Pass (365 Day) - Transit",
+     "currency": "USD",
+     "description": "Unlimited 60-minute rides over a 365-day period. Usage fees apply $4 per 60-minutes after the first 60-minutes of your ride. Additional $1 per trip on an e-bike. ",
+     "url": "rtcbikeshare.bcycle.com",
+     "price": 125,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_rtcbikeshare_751",
+     "name": "Explorer  - Reduced Fare",
+     "currency": "USD",
+     "description": "Unlimited 60-minute rides over a 30-day period. Usage fees apply $4 per 60-minutes after the first 60-minutes of your ride. Additional $1 per trip on an e-bike. ",
+     "url": "rtcbikeshare.bcycle.com",
+     "price": 5,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_rtcbikeshare_329",
+     "name": "Explorer Pass",
+     "currency": "USD",
+     "description": "Unlimited 60-minute rides over a 30-day period. Usage fees apply $4 per 60-minutes after the first 60-minutes of your ride. Additional $1 per trip on an e-bike. ",
+     "url": "rtcbikeshare.bcycle.com",
+     "price": 15,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_rtcbikeshare_688",
+     "name": "Explorer Pass (30 Day) - Transit",
+     "currency": "USD",
+     "description": "Unlimited 60-minute rides over a 30-day period. Usage fees apply $4 per 60-minutes after the first 60-minutes of your ride. Additional $1 per trip on an e-bike. ",
+     "url": "rtcbikeshare.bcycle.com",
+     "price": 15,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_rtcbikeshare_429",
+     "name": "RTC EMPLOYEE PASS",
+     "currency": "USD",
+     "url": "rtcbikeshare.bcycle.com",
+     "price": 0,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_rtcbikeshare_615",
+     "name": "Vegas Team Pass",
+     "currency": "USD",
+     "description": "Pass for Vegas Team members",
+     "url": "rtcbikeshare.bcycle.com",
+     "price": 0,
+     "is_taxable": 0
+    }
+   ]
+  }
+ },
+ "bcycle_sanantonio": {
+  "last_updated": 1794944934,
+  "ttl": 3600,
+  "version": "1.1",
+  "data": {
+   "plans": [
+    {
+     "plan_id": "bcycle_sanantonio_462",
+     "name": "1-Hour Pass",
+     "currency": "USD",
+     "description": "Enjoy a 1-hour trip. MUST DOCK BIKE TO END TRIP AND AVOID USAGE FEES. \n \nUsage fees = $3.25/half hour\n\n$26 pre-auth for each transaction refunds in 1-3 business days. \n\n$75 abandoned bike fee",
+     "url": "sanantonio.bcycle.com",
+     "price": 15,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_sanantonio_62",
+     "name": "Annual Membership",
+     "currency": "USD",
+     "description": "Auto-renew membership includes unlimited 90min docks for 1yr. MUST DOCK BIKE ONCE PER 90 MINS TO AVOID USAGE FEES. \n\n$75 abandoned bike fee.\n\n$26 pre-auth per transaction refunds 1-3 biz days.",
+     "url": "sanantonio.bcycle.com",
+     "price": 160,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_sanantonio_646",
+     "name": "Day Pass ",
+     "currency": "USD",
+     "description": "Unlimited 1-hour trips for 24 hours. MUST DOCK BIKE ONCE PER HOUR TO AVOID USAGE FEES. \n\n$75 abandoned bike fee.\n\n$26 pre-auth per transaction refunded in 1-3 business days.",
+     "url": "sanantonio.bcycle.com",
+     "price": 25,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_sanantonio_318",
+     "name": "Monthly Membership",
+     "currency": "USD",
+     "description": "Auto-renew membership includes unlimited 1hr trips for 31 days. MUST DOCK BIKE ONCE PER HOUR TO AVOID USAGE FEES. \n\n$75 abandoned bike fee.\n\n$26 pre-auth per transaction refunds 1-3 biz days.",
+     "url": "sanantonio.bcycle.com",
+     "price": 33,
+     "is_taxable": 0
+    }
+   ]
+  }
+ },
+ "bcycle_santabarbara": {
+  "last_updated": 1794945182,
+  "ttl": 3600,
+  "version": "1.1",
+  "data": {
+   "plans": [
+    {
+     "plan_id": "bcycle_santabarbara_641",
+     "name": "Annual Membership",
+     "currency": "USD",
+     "description": "Unlimited 60-minute trips. $3.26 per 30 mins after 1st 60 mins (tax included). Total usage fees billed 1st of every month. \n\nTemporary hold of $26 is applied to a new passes.\nPass auto-renews.",
+     "url": "santabarbara.bcycle.com",
+     "price": 244.68,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_santabarbara_939",
+     "name": "Guest Pass",
+     "currency": "USD",
+     "description": "Check out a bike for 60 minutes at a time.\n\nBike must be docked to end trip. Check out again to keep riding. \n\nAdditional $8.70 per 30 minutes for rides over 60 minutes.\n\nPass valid for 24 hours.",
+     "url": "santabarbara.bcycle.com",
+     "price": 18.5,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_santabarbara_642",
+     "name": "Monthly Membership",
+     "currency": "USD",
+     "description": "Unlimited 60-minute trips. 1st 60 mins free, $3.26/30 mins after (tax included). Additional mins/usage fees billed next day. \n\nTemporary hold of $26 applied to new passes.\nPass auto-renews.",
+     "url": "santabarbara.bcycle.com",
+     "price": 32.63,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_santabarbara_957",
+     "name": "SBCC/UCSB Monthly Membership",
+     "currency": "USD",
+     "description": "For riders with active UCSB or SBCC email address. \n\n60 mins free. $3.26 per 30 mins after (tax included). Total usage fees billed 1st of every month. \n\nTemp hold of $26 for new passes. Auto-renews.",
+     "url": "santabarbara.bcycle.com",
+     "price": 15,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_santabarbara_643",
+     "name": "Single 30-Minute Ride Pass",
+     "currency": "USD",
+     "description": "$8.70 per 30 minutes (tax included). 1st 30 mins included. Dock bike at a station to end trip. Additional riding mins/usage fees billed the next day. \n\nTemporary hold of $25 is auto-refunded.",
+     "url": "santabarbara.bcycle.com",
+     "price": 8.7,
+     "is_taxable": 0
+    }
+   ]
+  }
+ },
+ "bcycle_santacruz": {
+  "last_updated": 1794945029,
+  "ttl": 3600,
+  "version": "1.1",
+  "data": {
+   "plans": [
+    {
+     "plan_id": "bcycle_santacruz_921",
+     "name": "2 Hour - Single Ride",
+     "currency": "USD",
+     "description": "$17.50 for up to a 2 hour ride\n\nAdditional time $9.30 per 30 mins \n\nFees stop after bike is returned. Billed daily.   \n\nSurplus $20 Preauth hold refunded  \n\nSINGLE RIDE ONLY  \n\nInc Tax as applicable",
+     "url": "santacruz.bcycle.com",
+     "price": 17.5,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_santacruz_937",
+     "name": "24hr Guest Membership - Free 30 min trips",
+     "currency": "USD",
+     "description": "Unlimited free 30 min trips for 24 hours\n\nAdditional time $9.30 per 30 mins\n\nTRIPS LONGER THAN 30 MINS INCUR FEES\n\nFees stop once bike docked\n\nBilled daily. $20 Preauth refunded\n\nInc Tax as applicable",
+     "url": "santacruz.bcycle.com",
+     "price": 23.5,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_santacruz_864",
+     "name": "30 min - Single Ride",
+     "currency": "USD",
+     "description": "$9.30 for 30 mins\n\nAdditional time $9.30 per 30 mins\n\nFees stop after bike is returned to a dock\n\nBilled daily. Surplus $20 Preauth refunded.\n\nTHIS PASS IS FOR A SINGLE RIDE\n\nTax inc where applicable",
+     "url": "santacruz.bcycle.com",
+     "price": 9.3,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_santacruz_960",
+     "name": "5 Minute Single Ride - $5 unlock + 50c/min",
+     "currency": "USD",
+     "description": "$5 to unlock, first 5 mins free\n\nAdditional time 50c per minute\n\nSurplus $20 Preauth hold refunded.\n\nBilled daily\n\nPass valid 48 Hours\n\nTax inc. where applicable",
+     "url": "santacruz.bcycle.com",
+     "price": 0,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_santacruz_861",
+     "name": "Annual Pass ($0.72/day)",
+     "currency": "USD",
+     "description": "Unlimited 30-minute trips for 1 year\n\nAdditional trip time $7.99 per 30 minutes\n\nAdditional time billed next day\n\nSurplus $20 Preath hold refunded.\n\nInc Tax where applicable",
+     "url": "santacruz.bcycle.com",
+     "price": 262.7,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_santacruz_863",
+     "name": "Monthly Pass ($1.36/day)",
+     "currency": "USD",
+     "description": "Unlimited 30-minute trips for 30 days\n\nAdditional trip time $7.99 per 30 minutes\n\nAdditional time billed next day.\n\nSurplus $20 Preauth hold refunded.\n\nInc Tax where applicable",
+     "url": "santacruz.bcycle.com",
+     "price": 40.85,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_santacruz_912",
+     "name": "UCSC Student and Employee Pass",
+     "currency": "USD",
+     "description": "Discount pass for UCSC Affiliates, contact TAPS.\n\nUnlimited 30-minute trips for 1 year, standard rates apply thereafter; currently $7.99/30 mins.\n\nBilled next day\n\nTax included where applicable",
+     "url": "santacruz.bcycle.com",
+     "price": 245.81,
+     "is_taxable": 0
+    }
+   ]
+  }
+ },
+ "bcycle_truckee": {
+  "last_updated": 1794945644,
+  "ttl": 3600,
+  "version": "1.1",
+  "data": {
+   "plans": [
+    {
+     "plan_id": "bcycle_truckee_914",
+     "name": "Explore Truckee 3-Day Pass - Unlimited 30 Minutes ",
+     "currency": "USD",
+     "description": "$30+tax for unlimited 30-minute trips. Trips over 30 minutes incur usage fees of $5+tax per 30 minutes of riding. Extra riding time billed next day. Dock bike at any station to end your trip.",
+     "url": "truckee.bcycle.com",
+     "price": 32.7,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_truckee_867",
+     "name": "Monthly Pass - Unlimited 60 Minutes",
+     "currency": "USD",
+     "description": "$40+tax for unlimited 60-minute trips. Trips over 60 minutes incur usage fees of $5+tax per 30 minutes of riding. Extra riding time billed next day. Dock bike at any station to end your trip.",
+     "url": "truckee.bcycle.com",
+     "price": 43.6,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_truckee_876",
+     "name": "Season Pass 2026 *NEW LOW PRICE*",
+     "currency": "USD",
+     "description": "*END OF SEASON SPECIAL*  $50+tax for unlimited 60-minute trips. Trips over 60 minutes incur usage fees of $5+tax per 30 minutes of riding. Usage fees billed next day. Pass expires end of 2026 season.",
+     "url": "truckee.bcycle.com",
+     "price": 50,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_truckee_868",
+     "name": "Single Ride Pass - 30 Minutes",
+     "currency": "USD",
+     "description": "$7+tax for each 30-minute ride. $7+tax for EACH ADDITIONAL 30 MINUTES. Riding time billed daily. Dock bike at a station to end your trip.",
+     "url": "truckee.bcycle.com",
+     "price": 7.63,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_truckee_930",
+     "name": "Single Ride Pass PLUS - 120 Minutes",
+     "currency": "USD",
+     "description": "$18+tax for each 120-minute ride. Trips over 120 minutes incur usage fees of $5+tax per 30 minutes of riding. Extra riding time billed next day. Dock bike at any station to end your trip.",
+     "url": "truckee.bcycle.com",
+     "price": 19.62,
+     "is_taxable": 0
+    }
+   ]
+  }
+ },
+ "bcycle_valentine": {
+  "last_updated": 1794945468,
+  "ttl": 3600,
+  "version": "1.1",
+  "data": {
+   "plans": [
+    {
+     "plan_id": "bcycle_valentine_626",
+     "name": "Daily Pass",
+     "currency": "USD",
+     "description": "Access to unlimited 2-hour trips for 24 hours. Trips longer than 2-hours cost $5 per additional hour. ",
+     "url": "https://heartlandbikeshare.org",
+     "price": 10,
+     "is_taxable": 0
+    },
+    {
+     "plan_id": "bcycle_valentine_627",
+     "name": "Monthly Pass",
+     "currency": "USD",
+     "description": "Access to unlimited 2-hour trips for 30 days. Trips longer than 2-hours cost $5 per additional hour. All fees are charged on a monthly basis.",
+     "url": "https://heartlandbikeshare.org",
+     "price": 30,
+     "is_taxable": 0
+    }
+   ]
+  }
+ }
+}

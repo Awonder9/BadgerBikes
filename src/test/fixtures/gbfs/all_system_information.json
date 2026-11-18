@@ -1,0 +1,652 @@
+{
+ "bcycle_aventura": {
+  "last_updated": 1794944780,
+  "ttl": 3600,
+  "version": "1.1",
+  "data": {
+   "timezone": "America/New_York",
+   "email": "broward@bcycle.com",
+   "phone_number": "1-888-852-8665",
+   "url": "https://aventura.bcycle.com",
+   "language": "en",
+   "name": "Aventura BCycle",
+   "system_id": "bcycle_aventura",
+   "purchase_url": null,
+   "rental_apps": {
+    "android": {
+     "discovery_uri": "bcycle://",
+     "store_uri": "https://play.google.com/store/apps/details?id=com.bcycle"
+    },
+    "ios": {
+     "discovery_uri": "bcycle://",
+     "store_uri": "https://apps.apple.com/us/app/bcycle/id371185597"
+    }
+   }
+  }
+ },
+ "bcycle_bentonville": {
+  "last_updated": 1794944424,
+  "ttl": 3600,
+  "version": "1.1",
+  "data": {
+   "timezone": "America/Chicago",
+   "email": "bentonville@bcycle.com",
+   "phone_number": "479.279.7874",
+   "url": "https://bentonville.bcycle.com",
+   "language": "en",
+   "name": "Bentonville BCycle",
+   "system_id": "bcycle_bentonville",
+   "purchase_url": null,
+   "rental_apps": {
+    "android": {
+     "discovery_uri": "bcycle://",
+     "store_uri": "https://play.google.com/store/apps/details?id=com.bcycle"
+    },
+    "ios": {
+     "discovery_uri": "bcycle://",
+     "store_uri": "https://apps.apple.com/us/app/bcycle/id371185597"
+    }
+   }
+  }
+ },
+ "bcycle_bikelnk": {
+  "last_updated": 1794945039,
+  "ttl": 3600,
+  "version": "1.1",
+  "data": {
+   "timezone": "America/Chicago",
+   "email": "info@bikelnk.com",
+   "phone_number": "402.807.2005",
+   "url": "https://bikelnk.com/",
+   "language": "en",
+   "name": "BikeLNK",
+   "system_id": "bcycle_bikelnk",
+   "purchase_url": null,
+   "rental_apps": {
+    "android": {
+     "discovery_uri": "bcycle://",
+     "store_uri": "https://play.google.com/store/apps/details?id=com.bcycle"
+    },
+    "ios": {
+     "discovery_uri": "bcycle://",
+     "store_uri": "https://apps.apple.com/us/app/bcycle/id371185597"
+    }
+   }
+  }
+ },
+ "bcycle_boulder": {
+  "last_updated": 1794944469,
+  "ttl": 3600,
+  "version": "1.1",
+  "data": {
+   "timezone": "America/Denver",
+   "email": "boulder@bcycle.com",
+   "phone_number": "303-532-4412",
+   "url": "https://boulder.bcycle.com",
+   "language": "en",
+   "name": "Boulder BCycle",
+   "system_id": "bcycle_boulder",
+   "purchase_url": null,
+   "rental_apps": {
+    "android": {
+     "discovery_uri": "bcycle://",
+     "store_uri": "https://play.google.com/store/apps/details?id=com.bcycle"
+    },
+    "ios": {
+     "discovery_uri": "bcycle://",
+     "store_uri": "https://apps.apple.com/us/app/bcycle/id371185597"
+    }
+   }
+  }
+ },
+ "bcycle_bublr": {
+  "last_updated": 1794947591,
+  "ttl": 3600,
+  "version": "1.1",
+  "data": {
+   "timezone": "America/Chicago",
+   "email": "info@bublrbikes.org",
+   "phone_number": "414-931-1121",
+   "url": "http://bublrbikes.org",
+   "language": "en",
+   "name": "Bublr Bikes",
+   "system_id": "bcycle_bublr",
+   "purchase_url": null,
+   "rental_apps": {
+    "android": {
+     "discovery_uri": "bcycle://",
+     "store_uri": "https://play.google.com/store/apps/details?id=com.bcycle"
+    },
+    "ios": {
+     "discovery_uri": "bcycle://",
+     "store_uri": "https://apps.apple.com/us/app/bcycle/id371185597"
+    }
+   }
+  }
+ },
+ "bcycle_cincyredbike": {
+  "last_updated": 1794944444,
+  "ttl": 3600,
+  "version": "1.1",
+  "data": {
+   "timezone": "America/New_York",
+   "email": "support@cincyredbike.org",
+   "phone_number": "513-621-2453",
+   "url": "https://redbike.bcycle.com",
+   "language": "en",
+   "name": "Red Bike - Cincinnati",
+   "system_id": "bcycle_cincyredbike",
+   "purchase_url": null,
+   "rental_apps": {
+    "android": {
+     "discovery_uri": "bcycle://",
+     "store_uri": "https://play.google.com/store/apps/details?id=com.bcycle"
+    },
+    "ios": {
+     "discovery_uri": "bcycle://",
+     "store_uri": "https://apps.apple.com/us/app/bcycle/id371185597"
+    }
+   }
+  }
+ },
+ "bcycle_clemson": {
+  "last_updated": 1794947307,
+  "ttl": 3600,
+  "version": "1.1",
+  "data": {
+   "timezone": "America/New_York",
+   "email": "bikeshare@clemson.edu",
+   "phone_number": "864-656-2270",
+   "url": "https://clemson.bcycle.com",
+   "language": "en",
+   "name": "Clemson BikeShare",
+   "system_id": "bcycle_clemson",
+   "purchase_url": null,
+   "rental_apps": {
+    "android": {
+     "discovery_uri": "bcycle://",
+     "store_uri": "https://play.google.com/store/apps/details?id=com.bcycle"
+    },
+    "ios": {
+     "discovery_uri": "bcycle://",
+     "store_uri": "https://apps.apple.com/us/app/bcycle/id371185597"
+    }
+   }
+  }
+ },
+ "bcycle_desmoines": {
+  "last_updated": 1794947998,
+  "ttl": 3600,
+  "version": "1.1",
+  "data": {
+   "timezone": "America/Chicago",
+   "email": "bikeshare@dsmstreetcollective.org ",
+   "phone_number": "515-318-7488",
+   "url": "https://desmoines.bcycle.com",
+   "language": "en",
+   "name": "Des Moines Street Collective ",
+   "system_id": "bcycle_desmoines",
+   "purchase_url": null,
+   "rental_apps": {
+    "android": {
+     "discovery_uri": "bcycle://",
+     "store_uri": "https://play.google.com/store/apps/details?id=com.bcycle"
+    },
+    "ios": {
+     "discovery_uri": "bcycle://",
+     "store_uri": "https://apps.apple.com/us/app/bcycle/id371185597"
+    }
+   }
+  }
+ },
+ "bcycle_elpaso": {
+  "last_updated": 1794947840,
+  "ttl": 3600,
+  "version": "1.1",
+  "data": {
+   "timezone": "America/Denver",
+   "email": "SunCycle@crrma.org",
+   "phone_number": "915-212-2453",
+   "url": "https://elpaso.bcycle.com",
+   "language": "en",
+   "name": "El Paso B-cycle",
+   "system_id": "bcycle_elpaso",
+   "purchase_url": null,
+   "rental_apps": {
+    "android": {
+     "discovery_uri": "bcycle://",
+     "store_uri": "https://play.google.com/store/apps/details?id=com.bcycle"
+    },
+    "ios": {
+     "discovery_uri": "bcycle://",
+     "store_uri": "https://apps.apple.com/us/app/bcycle/id371185597"
+    }
+   }
+  }
+ },
+ "bcycle_memphis": {
+  "last_updated": 1794947513,
+  "ttl": 3600,
+  "version": "1.1",
+  "data": {
+   "timezone": "America/Chicago",
+   "email": "Info@explorebikeshare.com",
+   "phone_number": "9015902127",
+   "url": "https://www.explorebikeshare.com",
+   "language": "en",
+   "name": "Explore Bike Share",
+   "system_id": "bcycle_memphis",
+   "purchase_url": null,
+   "rental_apps": {
+    "android": {
+     "discovery_uri": "bcycle://",
+     "store_uri": "https://play.google.com/store/apps/details?id=com.bcycle"
+    },
+    "ios": {
+     "discovery_uri": "bcycle://",
+     "store_uri": "https://apps.apple.com/us/app/bcycle/id371185597"
+    }
+   }
+  }
+ },
+ "bcycle_greenbikeslc": {
+  "last_updated": 1794947776,
+  "ttl": 3600,
+  "version": "1.1",
+  "data": {
+   "timezone": "America/Denver",
+   "email": "info@greenbikeslc.org",
+   "phone_number": "8013331110",
+   "url": "https://www.greenbikeutah.org",
+   "language": "en",
+   "name": "GREENbike",
+   "system_id": "bcycle_greenbikeslc",
+   "purchase_url": null,
+   "rental_apps": {
+    "android": {
+     "discovery_uri": "bcycle://",
+     "store_uri": "https://play.google.com/store/apps/details?id=com.bcycle"
+    },
+    "ios": {
+     "discovery_uri": "bcycle://",
+     "store_uri": "https://apps.apple.com/us/app/bcycle/id371185597"
+    }
+   }
+  }
+ },
+ "bcycle_greenville": {
+  "last_updated": 1794947663,
+  "ttl": 3600,
+  "version": "1.1",
+  "data": {
+   "timezone": "America/New_York",
+   "email": "greenville@bcycle.com",
+   "phone_number": "864-428-0644",
+   "url": "https://greenville.bcycle.com",
+   "language": "en",
+   "name": "Greenville BCycle",
+   "system_id": "bcycle_greenville",
+   "purchase_url": null,
+   "rental_apps": {
+    "android": {
+     "discovery_uri": "bcycle://",
+     "store_uri": "https://play.google.com/store/apps/details?id=com.bcycle"
+    },
+    "ios": {
+     "discovery_uri": "bcycle://",
+     "store_uri": "https://apps.apple.com/us/app/bcycle/id371185597"
+    }
+   }
+  }
+ },
+ "bcycle_heartland": {
+  "last_updated": 1794947945,
+  "ttl": 3600,
+  "version": "1.1",
+  "data": {
+   "timezone": "America/Chicago",
+   "email": "info@heartlandbikeshare.org",
+   "phone_number": "402-957-2453",
+   "url": "https://heartland.bcycle.com",
+   "language": "en",
+   "name": "Heartland Bike Share",
+   "system_id": "bcycle_heartland",
+   "purchase_url": null,
+   "rental_apps": {
+    "android": {
+     "discovery_uri": "bcycle://",
+     "store_uri": "https://play.google.com/store/apps/details?id=com.bcycle"
+    },
+    "ios": {
+     "discovery_uri": "bcycle://",
+     "store_uri": "https://apps.apple.com/us/app/bcycle/id371185597"
+    }
+   }
+  }
+ },
+ "bcycle_indego": {
+  "last_updated": 1794946777,
+  "ttl": 3600,
+  "version": "1.1",
+  "data": {
+   "timezone": "America/New_York",
+   "email": "support@rideindego.com",
+   "phone_number": "844.4.INDEGO",
+   "url": "https://www.rideindego.com",
+   "language": "en",
+   "name": "Indego",
+   "system_id": "bcycle_indego",
+   "purchase_url": null,
+   "rental_apps": {
+    "android": {
+     "discovery_uri": "bcycle://",
+     "store_uri": "https://play.google.com/store/apps/details?id=com.bcycle"
+    },
+    "ios": {
+     "discovery_uri": "bcycle://",
+     "store_uri": "https://apps.apple.com/us/app/bcycle/id371185597"
+    }
+   }
+  }
+ },
+ "bcycle_pacersbikeshare": {
+  "last_updated": 1794944428,
+  "ttl": 3600,
+  "version": "1.1",
+  "data": {
+   "timezone": "America/New_York",
+   "email": "operations@indyculturaltrail.org",
+   "phone_number": "317-653-1947",
+   "url": "http://pacersbikeshare.org",
+   "language": "en",
+   "name": "Pacers Bikeshare ",
+   "system_id": "bcycle_pacersbikeshare",
+   "purchase_url": null,
+   "rental_apps": {
+    "android": {
+     "discovery_uri": "bcycle://",
+     "store_uri": "https://play.google.com/store/apps/details?id=com.bcycle"
+    },
+    "ios": {
+     "discovery_uri": "bcycle://",
+     "store_uri": "https://apps.apple.com/us/app/bcycle/id371185597"
+    }
+   }
+  }
+ },
+ "bcycle_jacksoncounty": {
+  "last_updated": 1794947903,
+  "ttl": 3600,
+  "version": "1.1",
+  "data": {
+   "timezone": "America/New_York",
+   "email": "klewis@co.jackson.mi.us",
+   "phone_number": "517-768-2901",
+   "url": "https://jacksoncounty.bcycle.com",
+   "language": "en",
+   "name": "Jackson County",
+   "system_id": "bcycle_jacksoncounty",
+   "purchase_url": null,
+   "rental_apps": {
+    "android": {
+     "discovery_uri": "bcycle://",
+     "store_uri": "https://play.google.com/store/apps/details?id=com.bcycle"
+    },
+    "ios": {
+     "discovery_uri": "bcycle://",
+     "store_uri": "https://apps.apple.com/us/app/bcycle/id371185597"
+    }
+   }
+  }
+ },
+ "bcycle_madison": {
+  "last_updated": 1794944659,
+  "ttl": 3600,
+  "version": "1.1",
+  "data": {
+   "timezone": "America/Chicago",
+   "email": "madison@bcycle.com",
+   "phone_number": "800.473.4743",
+   "url": "https://madison.bcycle.com",
+   "language": "en",
+   "name": "Madison BCycle",
+   "system_id": "bcycle_madison",
+   "purchase_url": null,
+   "rental_apps": {
+    "android": {
+     "discovery_uri": "bcycle://",
+     "store_uri": "https://play.google.com/store/apps/details?id=com.bcycle"
+    },
+    "ios": {
+     "discovery_uri": "bcycle://",
+     "store_uri": "https://apps.apple.com/us/app/bcycle/id371185597"
+    }
+   }
+  }
+ },
+ "bcycle_lametro": {
+  "last_updated": 1794947494,
+  "ttl": 3600,
+  "version": "1.1",
+  "data": {
+   "timezone": "America/Los_Angeles",
+   "email": "support@bikeshare.metro.net",
+   "phone_number": "844.857.2453",
+   "url": "https://bikeshare.metro.net",
+   "language": "en",
+   "name": "Metro Bike Share",
+   "system_id": "bcycle_lametro",
+   "purchase_url": "https://www.taptogo.net/metrobikeshare",
+   "rental_apps": {
+    "android": {
+     "discovery_uri": "bcycle://",
+     "store_uri": "https://play.google.com/store/apps/details?id=com.bcycle"
+    },
+    "ios": {
+     "discovery_uri": "bcycle://",
+     "store_uri": "https://apps.apple.com/us/app/bcycle/id371185597"
+    }
+   }
+  }
+ },
+ "bcycle_nashville": {
+  "last_updated": 1794947879,
+  "ttl": 3600,
+  "version": "1.1",
+  "data": {
+   "timezone": "America/Chicago",
+   "email": "Nashville@bcycle.com",
+   "phone_number": "844-982-4533",
+   "url": "https://nashville.bcycle.com",
+   "language": "en",
+   "name": "Nashville BCycle",
+   "system_id": "bcycle_nashville",
+   "purchase_url": null,
+   "rental_apps": {
+    "android": {
+     "discovery_uri": "bcycle://",
+     "store_uri": "https://play.google.com/store/apps/details?id=com.bcycle"
+    },
+    "ios": {
+     "discovery_uri": "bcycle://",
+     "store_uri": "https://apps.apple.com/us/app/bcycle/id371185597"
+    }
+   }
+  }
+ },
+ "bcycle_redding": {
+  "last_updated": 1794947787,
+  "ttl": 3600,
+  "version": "1.1",
+  "data": {
+   "timezone": "America/Los_Angeles",
+   "email": "communications@shastalivingstreets.org",
+   "phone_number": "530.355.9434",
+   "url": "https://shastalivingstreets.org/redding-bikeshare/",
+   "language": "en",
+   "name": "Redding Bikeshare",
+   "system_id": "bcycle_redding",
+   "purchase_url": null,
+   "rental_apps": {
+    "android": {
+     "discovery_uri": "bcycle://",
+     "store_uri": "https://play.google.com/store/apps/details?id=com.bcycle"
+    },
+    "ios": {
+     "discovery_uri": "bcycle://",
+     "store_uri": "https://apps.apple.com/us/app/bcycle/id371185597"
+    }
+   }
+  }
+ },
+ "bcycle_rtcbikeshare": {
+  "last_updated": 1794947964,
+  "ttl": 3600,
+  "version": "1.1",
+  "data": {
+   "timezone": "America/Los_Angeles",
+   "email": "support@bikeshare.rtcsnv.com",
+   "phone_number": "844.641.7823",
+   "url": "https://rtcbikeshare.bcycle.com",
+   "language": "en",
+   "name": "RTC Bike Share",
+   "system_id": "bcycle_rtcbikeshare",
+   "purchase_url": null,
+   "rental_apps": {
+    "android": {
+     "discovery_uri": "bcycle://",
+     "store_uri": "https://play.google.com/store/apps/details?id=com.bcycle"
+    },
+    "ios": {
+     "discovery_uri": "bcycle://",
+     "store_uri": "https://apps.apple.com/us/app/bcycle/id371185597"
+    }
+   }
+  }
+ },
+ "bcycle_sanantonio": {
+  "last_updated": 1794947799,
+  "ttl": 3600,
+  "version": "1.1",
+  "data": {
+   "timezone": "America/Chicago",
+   "email": "sanantonio@bcycle.com",
+   "phone_number": "210.281.0101",
+   "url": "https://sanantonio.bcycle.com",
+   "language": "en",
+   "name": "San Antonio BCycle",
+   "system_id": "bcycle_sanantonio",
+   "purchase_url": null,
+   "rental_apps": {
+    "android": {
+     "discovery_uri": "bcycle://",
+     "store_uri": "https://play.google.com/store/apps/details?id=com.bcycle"
+    },
+    "ios": {
+     "discovery_uri": "bcycle://",
+     "store_uri": "https://apps.apple.com/us/app/bcycle/id371185597"
+    }
+   }
+  }
+ },
+ "bcycle_santabarbara": {
+  "last_updated": 1794947783,
+  "ttl": 3600,
+  "version": "1.1",
+  "data": {
+   "timezone": "America/Los_Angeles",
+   "email": "santabarbara@bcycle.com",
+   "phone_number": "855-964-3904",
+   "url": "https://santabarbara.bcycle.com",
+   "language": "en",
+   "name": "Santa Barbara BCycle",
+   "system_id": "bcycle_santabarbara",
+   "purchase_url": null,
+   "rental_apps": {
+    "android": {
+     "discovery_uri": "bcycle://",
+     "store_uri": "https://play.google.com/store/apps/details?id=com.bcycle"
+    },
+    "ios": {
+     "discovery_uri": "bcycle://",
+     "store_uri": "https://apps.apple.com/us/app/bcycle/id371185597"
+    }
+   }
+  }
+ },
+ "bcycle_santacruz": {
+  "last_updated": 1794947786,
+  "ttl": 3600,
+  "version": "1.1",
+  "data": {
+   "timezone": "America/Los_Angeles",
+   "email": "santacruz@bcycle.com",
+   "phone_number": "8312783132",
+   "url": "https://santacruz.bcycle.com",
+   "language": "en",
+   "name": "Santa Cruz BCycle",
+   "system_id": "bcycle_santacruz",
+   "purchase_url": null,
+   "rental_apps": {
+    "android": {
+     "discovery_uri": "bcycle://",
+     "store_uri": "https://play.google.com/store/apps/details?id=com.bcycle"
+    },
+    "ios": {
+     "discovery_uri": "bcycle://",
+     "store_uri": "https://apps.apple.com/us/app/bcycle/id371185597"
+    }
+   }
+  }
+ },
+ "bcycle_truckee": {
+  "last_updated": 1794946157,
+  "ttl": 3600,
+  "version": "1.1",
+  "data": {
+   "timezone": "America/Los_Angeles",
+   "email": "truckee@bcycle.com",
+   "phone_number": "530-453-0509",
+   "url": "https://truckee.bcycle.com",
+   "language": "en",
+   "name": "Truckee BCycle",
+   "system_id": "bcycle_truckee",
+   "purchase_url": null,
+   "rental_apps": {
+    "android": {
+     "discovery_uri": "bcycle://",
+     "store_uri": "https://play.google.com/store/apps/details?id=com.bcycle"
+    },
+    "ios": {
+     "discovery_uri": "bcycle://",
+     "store_uri": "https://apps.apple.com/us/app/bcycle/id371185597"
+    }
+   }
+  }
+ },
+ "bcycle_valentine": {
+  "last_updated": 1794945468,
+  "ttl": 3600,
+  "version": "1.1",
+  "data": {
+   "timezone": "America/Chicago",
+   "email": "hello@valentinebikeshare.org",
+   "phone_number": "402-282-8700",
+   "url": "https://heartlandbikeshare.org",
+   "language": "en",
+   "name": "Valentine Bike Share",
+   "system_id": "bcycle_valentine",
+   "purchase_url": null,
+   "rental_apps": {
+    "android": {
+     "discovery_uri": "bcycle://",
+     "store_uri": "https://play.google.com/store/apps/details?id=com.bcycle"
+    },
+    "ios": {
+     "discovery_uri": "bcycle://",
+     "store_uri": "https://apps.apple.com/us/app/bcycle/id371185597"
+    }
+   }
+  }
+ }
+}

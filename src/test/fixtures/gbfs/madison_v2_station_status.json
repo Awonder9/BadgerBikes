@@ -1,0 +1,1563 @@
+{
+ "last_updated": 1794945039,
+ "ttl": 0,
+ "version": "2.1",
+ "data": {
+  "stations": [
+   {
+    "station_id": "bcycle_madison_1874",
+    "num_bikes_available": 5,
+    "num_docks_available": 4,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 5
+    }
+   },
+   {
+    "station_id": "bcycle_madison_1878",
+    "num_bikes_available": 6,
+    "num_docks_available": 5,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 6
+    }
+   },
+   {
+    "station_id": "bcycle_madison_1880",
+    "num_bikes_available": 3,
+    "num_docks_available": 2,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 3
+    }
+   },
+   {
+    "station_id": "bcycle_madison_1881",
+    "num_bikes_available": 1,
+    "num_docks_available": 8,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 1
+    }
+   },
+   {
+    "station_id": "bcycle_madison_1882",
+    "num_bikes_available": 6,
+    "num_docks_available": 10,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 6
+    }
+   },
+   {
+    "station_id": "bcycle_madison_1885",
+    "num_bikes_available": 2,
+    "num_docks_available": 15,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 2
+    }
+   },
+   {
+    "station_id": "bcycle_madison_1886",
+    "num_bikes_available": 3,
+    "num_docks_available": 10,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 3
+    }
+   },
+   {
+    "station_id": "bcycle_madison_1887",
+    "num_bikes_available": 3,
+    "num_docks_available": 6,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 3
+    }
+   },
+   {
+    "station_id": "bcycle_madison_1888",
+    "num_bikes_available": 6,
+    "num_docks_available": 10,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 6
+    }
+   },
+   {
+    "station_id": "bcycle_madison_1889",
+    "num_bikes_available": 2,
+    "num_docks_available": 11,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 2
+    }
+   },
+   {
+    "station_id": "bcycle_madison_1890",
+    "num_bikes_available": 3,
+    "num_docks_available": 5,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 3
+    }
+   },
+   {
+    "station_id": "bcycle_madison_1891",
+    "num_bikes_available": 4,
+    "num_docks_available": 19,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 4
+    }
+   },
+   {
+    "station_id": "bcycle_madison_1892",
+    "num_bikes_available": 2,
+    "num_docks_available": 7,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 2
+    }
+   },
+   {
+    "station_id": "bcycle_madison_1893",
+    "num_bikes_available": 1,
+    "num_docks_available": 8,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 1
+    }
+   },
+   {
+    "station_id": "bcycle_madison_1897",
+    "num_bikes_available": 2,
+    "num_docks_available": 13,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 2
+    }
+   },
+   {
+    "station_id": "bcycle_madison_1898",
+    "num_bikes_available": 4,
+    "num_docks_available": 11,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 4
+    }
+   },
+   {
+    "station_id": "bcycle_madison_1903",
+    "num_bikes_available": 5,
+    "num_docks_available": 6,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 5
+    }
+   },
+   {
+    "station_id": "bcycle_madison_1904",
+    "num_bikes_available": 6,
+    "num_docks_available": 10,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 6
+    }
+   },
+   {
+    "station_id": "bcycle_madison_1906",
+    "num_bikes_available": 2,
+    "num_docks_available": 14,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 2
+    }
+   },
+   {
+    "station_id": "bcycle_madison_1907",
+    "num_bikes_available": 14,
+    "num_docks_available": 8,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 14
+    }
+   },
+   {
+    "station_id": "bcycle_madison_1908",
+    "num_bikes_available": 22,
+    "num_docks_available": 0,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 22
+    }
+   },
+   {
+    "station_id": "bcycle_madison_1912",
+    "num_bikes_available": 1,
+    "num_docks_available": 6,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 1
+    }
+   },
+   {
+    "station_id": "bcycle_madison_1913",
+    "num_bikes_available": 21,
+    "num_docks_available": 2,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 21
+    }
+   },
+   {
+    "station_id": "bcycle_madison_2072",
+    "num_bikes_available": 0,
+    "num_docks_available": 8,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 0
+    }
+   },
+   {
+    "station_id": "bcycle_madison_2124",
+    "num_bikes_available": 2,
+    "num_docks_available": 9,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 2
+    }
+   },
+   {
+    "station_id": "bcycle_madison_2133",
+    "num_bikes_available": 8,
+    "num_docks_available": 4,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 8
+    }
+   },
+   {
+    "station_id": "bcycle_madison_2146",
+    "num_bikes_available": 0,
+    "num_docks_available": 9,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 0
+    }
+   },
+   {
+    "station_id": "bcycle_madison_2147",
+    "num_bikes_available": 2,
+    "num_docks_available": 11,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 2
+    }
+   },
+   {
+    "station_id": "bcycle_madison_2148",
+    "num_bikes_available": 9,
+    "num_docks_available": 6,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 9
+    }
+   },
+   {
+    "station_id": "bcycle_madison_2394",
+    "num_bikes_available": 2,
+    "num_docks_available": 2,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 2
+    }
+   },
+   {
+    "station_id": "bcycle_madison_2554",
+    "num_bikes_available": 3,
+    "num_docks_available": 6,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 3
+    }
+   },
+   {
+    "station_id": "bcycle_madison_2556",
+    "num_bikes_available": 4,
+    "num_docks_available": 8,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 4
+    }
+   },
+   {
+    "station_id": "bcycle_madison_2557",
+    "num_bikes_available": 5,
+    "num_docks_available": 10,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 5
+    }
+   },
+   {
+    "station_id": "bcycle_madison_2672",
+    "num_bikes_available": 1,
+    "num_docks_available": 8,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 1
+    }
+   },
+   {
+    "station_id": "bcycle_madison_3313",
+    "num_bikes_available": 4,
+    "num_docks_available": 10,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 4
+    }
+   },
+   {
+    "station_id": "bcycle_madison_3694",
+    "num_bikes_available": 6,
+    "num_docks_available": 3,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 6
+    }
+   },
+   {
+    "station_id": "bcycle_madison_3696",
+    "num_bikes_available": 0,
+    "num_docks_available": 11,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 0
+    }
+   },
+   {
+    "station_id": "bcycle_madison_3725",
+    "num_bikes_available": 2,
+    "num_docks_available": 9,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 2
+    }
+   },
+   {
+    "station_id": "bcycle_madison_3759",
+    "num_bikes_available": 2,
+    "num_docks_available": 6,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 2
+    }
+   },
+   {
+    "station_id": "bcycle_madison_3780",
+    "num_bikes_available": 2,
+    "num_docks_available": 7,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 2
+    }
+   },
+   {
+    "station_id": "bcycle_madison_3889",
+    "num_bikes_available": 3,
+    "num_docks_available": 8,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 3
+    }
+   },
+   {
+    "station_id": "bcycle_madison_4501",
+    "num_bikes_available": 3,
+    "num_docks_available": 10,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 3
+    }
+   },
+   {
+    "station_id": "bcycle_madison_4503",
+    "num_bikes_available": 2,
+    "num_docks_available": 15,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 2
+    }
+   },
+   {
+    "station_id": "bcycle_madison_4551",
+    "num_bikes_available": 7,
+    "num_docks_available": 4,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 7
+    }
+   },
+   {
+    "station_id": "bcycle_madison_4588",
+    "num_bikes_available": 1,
+    "num_docks_available": 7,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 1
+    }
+   },
+   {
+    "station_id": "bcycle_madison_4602",
+    "num_bikes_available": 6,
+    "num_docks_available": 2,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 6
+    }
+   },
+   {
+    "station_id": "bcycle_madison_4609",
+    "num_bikes_available": 5,
+    "num_docks_available": 4,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 5
+    }
+   },
+   {
+    "station_id": "bcycle_madison_4659",
+    "num_bikes_available": 1,
+    "num_docks_available": 5,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 1
+    }
+   },
+   {
+    "station_id": "bcycle_madison_4664",
+    "num_bikes_available": 2,
+    "num_docks_available": 9,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 2
+    }
+   },
+   {
+    "station_id": "bcycle_madison_4929",
+    "num_bikes_available": 5,
+    "num_docks_available": 2,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 5
+    }
+   },
+   {
+    "station_id": "bcycle_madison_4944",
+    "num_bikes_available": 3,
+    "num_docks_available": 9,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 3
+    }
+   },
+   {
+    "station_id": "bcycle_madison_4946",
+    "num_bikes_available": 3,
+    "num_docks_available": 6,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 3
+    }
+   },
+   {
+    "station_id": "bcycle_madison_4975",
+    "num_bikes_available": 1,
+    "num_docks_available": 6,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 1
+    }
+   },
+   {
+    "station_id": "bcycle_madison_6026",
+    "num_bikes_available": 4,
+    "num_docks_available": 4,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 4
+    }
+   },
+   {
+    "station_id": "bcycle_madison_6031",
+    "num_bikes_available": 2,
+    "num_docks_available": 4,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 2
+    }
+   },
+   {
+    "station_id": "bcycle_madison_7047",
+    "num_bikes_available": 1,
+    "num_docks_available": 7,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 1
+    }
+   },
+   {
+    "station_id": "bcycle_madison_7048",
+    "num_bikes_available": 0,
+    "num_docks_available": 7,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 0
+    }
+   },
+   {
+    "station_id": "bcycle_madison_7052",
+    "num_bikes_available": 7,
+    "num_docks_available": 7,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 7
+    }
+   },
+   {
+    "station_id": "bcycle_madison_7072",
+    "num_bikes_available": 1,
+    "num_docks_available": 7,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 1
+    }
+   },
+   {
+    "station_id": "bcycle_madison_7196",
+    "num_bikes_available": 5,
+    "num_docks_available": 4,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 5
+    }
+   },
+   {
+    "station_id": "bcycle_madison_7199",
+    "num_bikes_available": 5,
+    "num_docks_available": 3,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 5
+    }
+   },
+   {
+    "station_id": "bcycle_madison_7200",
+    "num_bikes_available": 1,
+    "num_docks_available": 7,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 1
+    }
+   },
+   {
+    "station_id": "bcycle_madison_7201",
+    "num_bikes_available": 4,
+    "num_docks_available": 4,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 4
+    }
+   },
+   {
+    "station_id": "bcycle_madison_7276",
+    "num_bikes_available": 3,
+    "num_docks_available": 6,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 3
+    }
+   },
+   {
+    "station_id": "bcycle_madison_7356",
+    "num_bikes_available": 3,
+    "num_docks_available": 6,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 3
+    }
+   },
+   {
+    "station_id": "bcycle_madison_7362",
+    "num_bikes_available": 3,
+    "num_docks_available": 6,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 3
+    }
+   },
+   {
+    "station_id": "bcycle_madison_7363",
+    "num_bikes_available": 3,
+    "num_docks_available": 6,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 3
+    }
+   },
+   {
+    "station_id": "bcycle_madison_7364",
+    "num_bikes_available": 4,
+    "num_docks_available": 4,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 4
+    }
+   },
+   {
+    "station_id": "bcycle_madison_7366",
+    "num_bikes_available": 4,
+    "num_docks_available": 4,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 4
+    }
+   },
+   {
+    "station_id": "bcycle_madison_7367",
+    "num_bikes_available": 4,
+    "num_docks_available": 4,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 4
+    }
+   },
+   {
+    "station_id": "bcycle_madison_7368",
+    "num_bikes_available": 3,
+    "num_docks_available": 5,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 3
+    }
+   },
+   {
+    "station_id": "bcycle_madison_7369",
+    "num_bikes_available": 0,
+    "num_docks_available": 6,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 0
+    }
+   },
+   {
+    "station_id": "bcycle_madison_7370",
+    "num_bikes_available": 1,
+    "num_docks_available": 3,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 1
+    }
+   },
+   {
+    "station_id": "bcycle_madison_7371",
+    "num_bikes_available": 2,
+    "num_docks_available": 6,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 2
+    }
+   },
+   {
+    "station_id": "bcycle_madison_7372",
+    "num_bikes_available": 4,
+    "num_docks_available": 4,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 4
+    }
+   },
+   {
+    "station_id": "bcycle_madison_7373",
+    "num_bikes_available": 5,
+    "num_docks_available": 0,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 5
+    }
+   },
+   {
+    "station_id": "bcycle_madison_7620",
+    "num_bikes_available": 1,
+    "num_docks_available": 15,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 1
+    }
+   },
+   {
+    "station_id": "bcycle_madison_7629",
+    "num_bikes_available": 6,
+    "num_docks_available": 2,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 6
+    }
+   },
+   {
+    "station_id": "bcycle_madison_7630",
+    "num_bikes_available": 3,
+    "num_docks_available": 3,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 3
+    }
+   },
+   {
+    "station_id": "bcycle_madison_7631",
+    "num_bikes_available": 4,
+    "num_docks_available": 3,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 4
+    }
+   },
+   {
+    "station_id": "bcycle_madison_7635",
+    "num_bikes_available": 3,
+    "num_docks_available": 3,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 3
+    }
+   },
+   {
+    "station_id": "bcycle_madison_7638",
+    "num_bikes_available": 3,
+    "num_docks_available": 3,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 3
+    }
+   },
+   {
+    "station_id": "bcycle_madison_7640",
+    "num_bikes_available": 6,
+    "num_docks_available": 2,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 6
+    }
+   },
+   {
+    "station_id": "bcycle_madison_7656",
+    "num_bikes_available": 4,
+    "num_docks_available": 4,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 4
+    }
+   },
+   {
+    "station_id": "bcycle_madison_7657",
+    "num_bikes_available": 2,
+    "num_docks_available": 2,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 2
+    }
+   },
+   {
+    "station_id": "bcycle_madison_7659",
+    "num_bikes_available": 6,
+    "num_docks_available": 6,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 6
+    }
+   },
+   {
+    "station_id": "bcycle_madison_7662",
+    "num_bikes_available": 2,
+    "num_docks_available": 3,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 2
+    }
+   },
+   {
+    "station_id": "bcycle_madison_7665",
+    "num_bikes_available": 2,
+    "num_docks_available": 2,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 2
+    }
+   },
+   {
+    "station_id": "bcycle_madison_7666",
+    "num_bikes_available": 5,
+    "num_docks_available": 3,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 5
+    }
+   },
+   {
+    "station_id": "bcycle_madison_7668",
+    "num_bikes_available": 1,
+    "num_docks_available": 9,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 1
+    }
+   },
+   {
+    "station_id": "bcycle_madison_7718",
+    "num_bikes_available": 3,
+    "num_docks_available": 3,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 3
+    }
+   },
+   {
+    "station_id": "bcycle_madison_7723",
+    "num_bikes_available": 2,
+    "num_docks_available": 8,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 2
+    }
+   },
+   {
+    "station_id": "bcycle_madison_7776",
+    "num_bikes_available": 2,
+    "num_docks_available": 3,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 2
+    }
+   },
+   {
+    "station_id": "bcycle_madison_7780",
+    "num_bikes_available": 2,
+    "num_docks_available": 4,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 2
+    }
+   },
+   {
+    "station_id": "bcycle_madison_7788",
+    "num_bikes_available": 2,
+    "num_docks_available": 4,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 2
+    }
+   },
+   {
+    "station_id": "bcycle_madison_7789",
+    "num_bikes_available": 3,
+    "num_docks_available": 6,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 3
+    }
+   },
+   {
+    "station_id": "bcycle_madison_7791",
+    "num_bikes_available": 3,
+    "num_docks_available": 5,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 3
+    }
+   },
+   {
+    "station_id": "bcycle_madison_7797",
+    "num_bikes_available": 7,
+    "num_docks_available": 1,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 7
+    }
+   },
+   {
+    "station_id": "bcycle_madison_7798",
+    "num_bikes_available": 6,
+    "num_docks_available": 0,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 6
+    }
+   },
+   {
+    "station_id": "bcycle_madison_7801",
+    "num_bikes_available": 3,
+    "num_docks_available": 2,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 3
+    }
+   },
+   {
+    "station_id": "bcycle_madison_7819",
+    "num_bikes_available": 3,
+    "num_docks_available": 6,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 3
+    }
+   },
+   {
+    "station_id": "bcycle_madison_7820",
+    "num_bikes_available": 0,
+    "num_docks_available": 5,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 0
+    }
+   },
+   {
+    "station_id": "bcycle_madison_7821",
+    "num_bikes_available": 3,
+    "num_docks_available": 5,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 3
+    }
+   },
+   {
+    "station_id": "bcycle_madison_8841",
+    "num_bikes_available": 3,
+    "num_docks_available": 9,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 3
+    }
+   },
+   {
+    "station_id": "bcycle_madison_8855",
+    "num_bikes_available": 2,
+    "num_docks_available": 4,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 2
+    }
+   },
+   {
+    "station_id": "bcycle_madison_8859",
+    "num_bikes_available": 3,
+    "num_docks_available": 3,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 3
+    }
+   },
+   {
+    "station_id": "bcycle_madison_8861",
+    "num_bikes_available": 2,
+    "num_docks_available": 4,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 2
+    }
+   },
+   {
+    "station_id": "bcycle_madison_8866",
+    "num_bikes_available": 4,
+    "num_docks_available": 2,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 4
+    }
+   },
+   {
+    "station_id": "bcycle_madison_8976",
+    "num_bikes_available": 1,
+    "num_docks_available": 6,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 1
+    }
+   },
+   {
+    "station_id": "bcycle_madison_8977",
+    "num_bikes_available": 3,
+    "num_docks_available": 3,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 3
+    }
+   },
+   {
+    "station_id": "bcycle_madison_9035",
+    "num_bikes_available": 0,
+    "num_docks_available": 5,
+    "is_installed": true,
+    "is_renting": true,
+    "is_returning": true,
+    "last_reported": 1794945039,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 0
+    }
+   }
+  ]
+ }
+}

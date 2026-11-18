@@ -1,0 +1,849 @@
+{
+ "last_updated": 1794948125,
+ "ttl": 0,
+ "version": "1.1",
+ "data": {
+  "stations": [
+   {
+    "station_id": "bcycle_lametro_3005",
+    "num_bikes_available": 8,
+    "num_docks_available": 23,
+    "is_installed": 1,
+    "is_renting": 1,
+    "is_returning": 1,
+    "last_reported": 1794948125,
+    "num_bikes_available_types": {
+     "classic": 8,
+     "smart": 0,
+     "electric": 0
+    }
+   },
+   {
+    "station_id": "bcycle_lametro_3006",
+    "num_bikes_available": 7,
+    "num_docks_available": 22,
+    "is_installed": 1,
+    "is_renting": 1,
+    "is_returning": 1,
+    "last_reported": 1794948125,
+    "num_bikes_available_types": {
+     "classic": 7,
+     "smart": 0,
+     "electric": 0
+    }
+   },
+   {
+    "station_id": "bcycle_lametro_3007",
+    "num_bikes_available": 10,
+    "num_docks_available": 12,
+    "is_installed": 1,
+    "is_renting": 1,
+    "is_returning": 1,
+    "last_reported": 1794948125,
+    "num_bikes_available_types": {
+     "classic": 6,
+     "smart": 0,
+     "electric": 4
+    }
+   },
+   {
+    "station_id": "bcycle_lametro_3008",
+    "num_bikes_available": 9,
+    "num_docks_available": 6,
+    "is_installed": 1,
+    "is_renting": 1,
+    "is_returning": 1,
+    "last_reported": 1794948125,
+    "num_bikes_available_types": {
+     "classic": 9,
+     "smart": 0,
+     "electric": 0
+    }
+   },
+   {
+    "station_id": "bcycle_lametro_3010",
+    "num_bikes_available": 4,
+    "num_docks_available": 11,
+    "is_installed": 1,
+    "is_renting": 1,
+    "is_returning": 1,
+    "last_reported": 1794948125,
+    "num_bikes_available_types": {
+     "classic": 4,
+     "smart": 0,
+     "electric": 0
+    }
+   },
+   {
+    "station_id": "bcycle_lametro_3011",
+    "num_bikes_available": 9,
+    "num_docks_available": 10,
+    "is_installed": 1,
+    "is_renting": 1,
+    "is_returning": 1,
+    "last_reported": 1794948125,
+    "num_bikes_available_types": {
+     "classic": 9,
+     "smart": 0,
+     "electric": 0
+    }
+   },
+   {
+    "station_id": "bcycle_lametro_3014",
+    "num_bikes_available": 1,
+    "num_docks_available": 27,
+    "is_installed": 1,
+    "is_renting": 1,
+    "is_returning": 1,
+    "last_reported": 1794948125,
+    "num_bikes_available_types": {
+     "classic": 1,
+     "smart": 0,
+     "electric": 0
+    }
+   },
+   {
+    "station_id": "bcycle_lametro_3016",
+    "num_bikes_available": 14,
+    "num_docks_available": 1,
+    "is_installed": 1,
+    "is_renting": 1,
+    "is_returning": 1,
+    "last_reported": 1794948125,
+    "num_bikes_available_types": {
+     "classic": 13,
+     "smart": 0,
+     "electric": 1
+    }
+   },
+   {
+    "station_id": "bcycle_lametro_3018",
+    "num_bikes_available": 14,
+    "num_docks_available": 4,
+    "is_installed": 1,
+    "is_renting": 1,
+    "is_returning": 1,
+    "last_reported": 1794948125,
+    "num_bikes_available_types": {
+     "classic": 14,
+     "smart": 0,
+     "electric": 0
+    }
+   },
+   {
+    "station_id": "bcycle_lametro_3019",
+    "num_bikes_available": 12,
+    "num_docks_available": 7,
+    "is_installed": 1,
+    "is_renting": 1,
+    "is_returning": 1,
+    "last_reported": 1794948125,
+    "num_bikes_available_types": {
+     "classic": 12,
+     "smart": 0,
+     "electric": 0
+    }
+   },
+   {
+    "station_id": "bcycle_lametro_3020",
+    "num_bikes_available": 7,
+    "num_docks_available": 8,
+    "is_installed": 1,
+    "is_renting": 1,
+    "is_returning": 1,
+    "last_reported": 1794948125,
+    "num_bikes_available_types": {
+     "classic": 6,
+     "smart": 0,
+     "electric": 1
+    }
+   },
+   {
+    "station_id": "bcycle_lametro_3022",
+    "num_bikes_available": 6,
+    "num_docks_available": 14,
+    "is_installed": 1,
+    "is_renting": 1,
+    "is_returning": 1,
+    "last_reported": 1794948125,
+    "num_bikes_available_types": {
+     "classic": 5,
+     "smart": 0,
+     "electric": 1
+    }
+   },
+   {
+    "station_id": "bcycle_lametro_3024",
+    "num_bikes_available": 6,
+    "num_docks_available": 9,
+    "is_installed": 1,
+    "is_renting": 1,
+    "is_returning": 1,
+    "last_reported": 1794948125,
+    "num_bikes_available_types": {
+     "classic": 6,
+     "smart": 0,
+     "electric": 0
+    }
+   },
+   {
+    "station_id": "bcycle_lametro_3025",
+    "num_bikes_available": 2,
+    "num_docks_available": 12,
+    "is_installed": 1,
+    "is_renting": 1,
+    "is_returning": 1,
+    "last_reported": 1794948125,
+    "num_bikes_available_types": {
+     "classic": 2,
+     "smart": 0,
+     "electric": 0
+    }
+   },
+   {
+    "station_id": "bcycle_lametro_3026",
+    "num_bikes_available": 5,
+    "num_docks_available": 10,
+    "is_installed": 1,
+    "is_renting": 1,
+    "is_returning": 1,
+    "last_reported": 1794948125,
+    "num_bikes_available_types": {
+     "classic": 5,
+     "smart": 0,
+     "electric": 0
+    }
+   },
+   {
+    "station_id": "bcycle_lametro_3027",
+    "num_bikes_available": 6,
+    "num_docks_available": 9,
+    "is_installed": 1,
+    "is_renting": 1,
+    "is_returning": 1,
+    "last_reported": 1794948125,
+    "num_bikes_available_types": {
+     "classic": 5,
+     "smart": 0,
+     "electric": 1
+    }
+   },
+   {
+    "station_id": "bcycle_lametro_3030",
+    "num_bikes_available": 15,
+    "num_docks_available": 14,
+    "is_installed": 1,
+    "is_renting": 1,
+    "is_returning": 1,
+    "last_reported": 1794948125,
+    "num_bikes_available_types": {
+     "classic": 14,
+     "smart": 0,
+     "electric": 1
+    }
+   },
+   {
+    "station_id": "bcycle_lametro_3032",
+    "num_bikes_available": 7,
+    "num_docks_available": 19,
+    "is_installed": 1,
+    "is_renting": 1,
+    "is_returning": 1,
+    "last_reported": 1794948125,
+    "num_bikes_available_types": {
+     "classic": 6,
+     "smart": 0,
+     "electric": 1
+    }
+   },
+   {
+    "station_id": "bcycle_lametro_3033",
+    "num_bikes_available": 6,
+    "num_docks_available": 9,
+    "is_installed": 1,
+    "is_renting": 1,
+    "is_returning": 1,
+    "last_reported": 1794948125,
+    "num_bikes_available_types": {
+     "classic": 6,
+     "smart": 0,
+     "electric": 0
+    }
+   },
+   {
+    "station_id": "bcycle_lametro_3034",
+    "num_bikes_available": 20,
+    "num_docks_available": 5,
+    "is_installed": 1,
+    "is_renting": 1,
+    "is_returning": 1,
+    "last_reported": 1794948125,
+    "num_bikes_available_types": {
+     "classic": 18,
+     "smart": 0,
+     "electric": 2
+    }
+   },
+   {
+    "station_id": "bcycle_lametro_3035",
+    "num_bikes_available": 19,
+    "num_docks_available": 4,
+    "is_installed": 1,
+    "is_renting": 1,
+    "is_returning": 1,
+    "last_reported": 1794948125,
+    "num_bikes_available_types": {
+     "classic": 18,
+     "smart": 0,
+     "electric": 1
+    }
+   },
+   {
+    "station_id": "bcycle_lametro_3036",
+    "num_bikes_available": 5,
+    "num_docks_available": 10,
+    "is_installed": 1,
+    "is_renting": 1,
+    "is_returning": 1,
+    "last_reported": 1794948125,
+    "num_bikes_available_types": {
+     "classic": 3,
+     "smart": 0,
+     "electric": 2
+    }
+   },
+   {
+    "station_id": "bcycle_lametro_3037",
+    "num_bikes_available": 11,
+    "num_docks_available": 7,
+    "is_installed": 1,
+    "is_renting": 1,
+    "is_returning": 1,
+    "last_reported": 1794948125,
+    "num_bikes_available_types": {
+     "classic": 11,
+     "smart": 0,
+     "electric": 0
+    }
+   },
+   {
+    "station_id": "bcycle_lametro_3040",
+    "num_bikes_available": 0,
+    "num_docks_available": 3,
+    "is_installed": 1,
+    "is_renting": 1,
+    "is_returning": 1,
+    "last_reported": 1794948125,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 0
+    }
+   },
+   {
+    "station_id": "bcycle_lametro_3042",
+    "num_bikes_available": 9,
+    "num_docks_available": 19,
+    "is_installed": 1,
+    "is_renting": 1,
+    "is_returning": 1,
+    "last_reported": 1794948125,
+    "num_bikes_available_types": {
+     "classic": 9,
+     "smart": 0,
+     "electric": 0
+    }
+   },
+   {
+    "station_id": "bcycle_lametro_3045",
+    "num_bikes_available": 6,
+    "num_docks_available": 4,
+    "is_installed": 1,
+    "is_renting": 1,
+    "is_returning": 1,
+    "last_reported": 1794948125,
+    "num_bikes_available_types": {
+     "classic": 4,
+     "smart": 0,
+     "electric": 2
+    }
+   },
+   {
+    "station_id": "bcycle_lametro_3046",
+    "num_bikes_available": 6,
+    "num_docks_available": 11,
+    "is_installed": 1,
+    "is_renting": 1,
+    "is_returning": 1,
+    "last_reported": 1794948125,
+    "num_bikes_available_types": {
+     "classic": 5,
+     "smart": 0,
+     "electric": 1
+    }
+   },
+   {
+    "station_id": "bcycle_lametro_3047",
+    "num_bikes_available": 9,
+    "num_docks_available": 15,
+    "is_installed": 1,
+    "is_renting": 1,
+    "is_returning": 1,
+    "last_reported": 1794948125,
+    "num_bikes_available_types": {
+     "classic": 8,
+     "smart": 0,
+     "electric": 1
+    }
+   },
+   {
+    "station_id": "bcycle_lametro_3048",
+    "num_bikes_available": 6,
+    "num_docks_available": 10,
+    "is_installed": 1,
+    "is_renting": 1,
+    "is_returning": 1,
+    "last_reported": 1794948125,
+    "num_bikes_available_types": {
+     "classic": 5,
+     "smart": 0,
+     "electric": 1
+    }
+   },
+   {
+    "station_id": "bcycle_lametro_3052",
+    "num_bikes_available": 10,
+    "num_docks_available": 12,
+    "is_installed": 1,
+    "is_renting": 1,
+    "is_returning": 1,
+    "last_reported": 1794948125,
+    "num_bikes_available_types": {
+     "classic": 7,
+     "smart": 0,
+     "electric": 3
+    }
+   },
+   {
+    "station_id": "bcycle_lametro_3054",
+    "num_bikes_available": 8,
+    "num_docks_available": 7,
+    "is_installed": 1,
+    "is_renting": 1,
+    "is_returning": 1,
+    "last_reported": 1794948125,
+    "num_bikes_available_types": {
+     "classic": 7,
+     "smart": 0,
+     "electric": 1
+    }
+   },
+   {
+    "station_id": "bcycle_lametro_3056",
+    "num_bikes_available": 7,
+    "num_docks_available": 8,
+    "is_installed": 1,
+    "is_renting": 1,
+    "is_returning": 1,
+    "last_reported": 1794948125,
+    "num_bikes_available_types": {
+     "classic": 7,
+     "smart": 0,
+     "electric": 0
+    }
+   },
+   {
+    "station_id": "bcycle_lametro_3058",
+    "num_bikes_available": 8,
+    "num_docks_available": 7,
+    "is_installed": 1,
+    "is_renting": 0,
+    "is_returning": 0,
+    "last_reported": 1794948125,
+    "num_bikes_available_types": {
+     "classic": 7,
+     "smart": 0,
+     "electric": 1
+    }
+   },
+   {
+    "station_id": "bcycle_lametro_3062",
+    "num_bikes_available": 9,
+    "num_docks_available": 6,
+    "is_installed": 1,
+    "is_renting": 1,
+    "is_returning": 1,
+    "last_reported": 1794948125,
+    "num_bikes_available_types": {
+     "classic": 8,
+     "smart": 0,
+     "electric": 1
+    }
+   },
+   {
+    "station_id": "bcycle_lametro_3063",
+    "num_bikes_available": 11,
+    "num_docks_available": 11,
+    "is_installed": 1,
+    "is_renting": 1,
+    "is_returning": 1,
+    "last_reported": 1794948125,
+    "num_bikes_available_types": {
+     "classic": 11,
+     "smart": 0,
+     "electric": 0
+    }
+   },
+   {
+    "station_id": "bcycle_lametro_3064",
+    "num_bikes_available": 10,
+    "num_docks_available": 7,
+    "is_installed": 1,
+    "is_renting": 1,
+    "is_returning": 1,
+    "last_reported": 1794948125,
+    "num_bikes_available_types": {
+     "classic": 10,
+     "smart": 0,
+     "electric": 0
+    }
+   },
+   {
+    "station_id": "bcycle_lametro_3065",
+    "num_bikes_available": 4,
+    "num_docks_available": 11,
+    "is_installed": 1,
+    "is_renting": 1,
+    "is_returning": 1,
+    "last_reported": 1794948125,
+    "num_bikes_available_types": {
+     "classic": 2,
+     "smart": 0,
+     "electric": 2
+    }
+   },
+   {
+    "station_id": "bcycle_lametro_3066",
+    "num_bikes_available": 8,
+    "num_docks_available": 7,
+    "is_installed": 1,
+    "is_renting": 1,
+    "is_returning": 1,
+    "last_reported": 1794948125,
+    "num_bikes_available_types": {
+     "classic": 8,
+     "smart": 0,
+     "electric": 0
+    }
+   },
+   {
+    "station_id": "bcycle_lametro_3068",
+    "num_bikes_available": 5,
+    "num_docks_available": 9,
+    "is_installed": 1,
+    "is_renting": 1,
+    "is_returning": 1,
+    "last_reported": 1794948125,
+    "num_bikes_available_types": {
+     "classic": 4,
+     "smart": 0,
+     "electric": 1
+    }
+   },
+   {
+    "station_id": "bcycle_lametro_3069",
+    "num_bikes_available": 9,
+    "num_docks_available": 8,
+    "is_installed": 1,
+    "is_renting": 1,
+    "is_returning": 1,
+    "last_reported": 1794948125,
+    "num_bikes_available_types": {
+     "classic": 9,
+     "smart": 0,
+     "electric": 0
+    }
+   },
+   {
+    "station_id": "bcycle_lametro_3074",
+    "num_bikes_available": 2,
+    "num_docks_available": 20,
+    "is_installed": 1,
+    "is_renting": 1,
+    "is_returning": 1,
+    "last_reported": 1794948125,
+    "num_bikes_available_types": {
+     "classic": 2,
+     "smart": 0,
+     "electric": 0
+    }
+   },
+   {
+    "station_id": "bcycle_lametro_3075",
+    "num_bikes_available": 8,
+    "num_docks_available": 8,
+    "is_installed": 1,
+    "is_renting": 1,
+    "is_returning": 1,
+    "last_reported": 1794948125,
+    "num_bikes_available_types": {
+     "classic": 8,
+     "smart": 0,
+     "electric": 0
+    }
+   },
+   {
+    "station_id": "bcycle_lametro_3076",
+    "num_bikes_available": 1,
+    "num_docks_available": 11,
+    "is_installed": 1,
+    "is_renting": 1,
+    "is_returning": 1,
+    "last_reported": 1794948125,
+    "num_bikes_available_types": {
+     "classic": 1,
+     "smart": 0,
+     "electric": 0
+    }
+   },
+   {
+    "station_id": "bcycle_lametro_3077",
+    "num_bikes_available": 5,
+    "num_docks_available": 8,
+    "is_installed": 1,
+    "is_renting": 1,
+    "is_returning": 1,
+    "last_reported": 1794948125,
+    "num_bikes_available_types": {
+     "classic": 5,
+     "smart": 0,
+     "electric": 0
+    }
+   },
+   {
+    "station_id": "bcycle_lametro_3078",
+    "num_bikes_available": 3,
+    "num_docks_available": 12,
+    "is_installed": 1,
+    "is_renting": 1,
+    "is_returning": 1,
+    "last_reported": 1794948125,
+    "num_bikes_available_types": {
+     "classic": 3,
+     "smart": 0,
+     "electric": 0
+    }
+   },
+   {
+    "station_id": "bcycle_lametro_3079",
+    "num_bikes_available": 3,
+    "num_docks_available": 11,
+    "is_installed": 1,
+    "is_renting": 1,
+    "is_returning": 1,
+    "last_reported": 1794948125,
+    "num_bikes_available_types": {
+     "classic": 3,
+     "smart": 0,
+     "electric": 0
+    }
+   },
+   {
+    "station_id": "bcycle_lametro_3081",
+    "num_bikes_available": 10,
+    "num_docks_available": 2,
+    "is_installed": 1,
+    "is_renting": 1,
+    "is_returning": 1,
+    "last_reported": 1794948125,
+    "num_bikes_available_types": {
+     "classic": 10,
+     "smart": 0,
+     "electric": 0
+    }
+   },
+   {
+    "station_id": "bcycle_lametro_3082",
+    "num_bikes_available": 12,
+    "num_docks_available": 10,
+    "is_installed": 1,
+    "is_renting": 1,
+    "is_returning": 1,
+    "last_reported": 1794948125,
+    "num_bikes_available_types": {
+     "classic": 12,
+     "smart": 0,
+     "electric": 0
+    }
+   },
+   {
+    "station_id": "bcycle_lametro_4202",
+    "num_bikes_available": 9,
+    "num_docks_available": 11,
+    "is_installed": 1,
+    "is_renting": 1,
+    "is_returning": 1,
+    "last_reported": 1794948125,
+    "num_bikes_available_types": {
+     "classic": 9,
+     "smart": 0,
+     "electric": 0
+    }
+   },
+   {
+    "station_id": "bcycle_lametro_4204",
+    "num_bikes_available": 13,
+    "num_docks_available": 3,
+    "is_installed": 1,
+    "is_renting": 1,
+    "is_returning": 1,
+    "last_reported": 1794948125,
+    "num_bikes_available_types": {
+     "classic": 11,
+     "smart": 0,
+     "electric": 2
+    }
+   },
+   {
+    "station_id": "bcycle_lametro_4205",
+    "num_bikes_available": 4,
+    "num_docks_available": 12,
+    "is_installed": 1,
+    "is_renting": 1,
+    "is_returning": 1,
+    "last_reported": 1794948125,
+    "num_bikes_available_types": {
+     "classic": 4,
+     "smart": 0,
+     "electric": 0
+    }
+   },
+   {
+    "station_id": "bcycle_lametro_4206",
+    "num_bikes_available": 4,
+    "num_docks_available": 19,
+    "is_installed": 1,
+    "is_renting": 1,
+    "is_returning": 1,
+    "last_reported": 1794948125,
+    "num_bikes_available_types": {
+     "classic": 4,
+     "smart": 0,
+     "electric": 0
+    }
+   },
+   {
+    "station_id": "bcycle_lametro_4207",
+    "num_bikes_available": 0,
+    "num_docks_available": 0,
+    "is_installed": 1,
+    "is_renting": 0,
+    "is_returning": 0,
+    "last_reported": 1794948125,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 0
+    }
+   },
+   {
+    "station_id": "bcycle_lametro_4208",
+    "num_bikes_available": 9,
+    "num_docks_available": 7,
+    "is_installed": 1,
+    "is_renting": 1,
+    "is_returning": 1,
+    "last_reported": 1794948125,
+    "num_bikes_available_types": {
+     "classic": 9,
+     "smart": 0,
+     "electric": 0
+    }
+   },
+   {
+    "station_id": "bcycle_lametro_4441",
+    "num_bikes_available": 4,
+    "num_docks_available": 3,
+    "is_installed": 1,
+    "is_renting": 1,
+    "is_returning": 1,
+    "last_reported": 1794948125,
+    "num_bikes_available_types": {
+     "classic": 2,
+     "smart": 0,
+     "electric": 2
+    }
+   },
+   {
+    "station_id": "bcycle_lametro_4473",
+    "num_bikes_available": 7,
+    "num_docks_available": 1,
+    "is_installed": 1,
+    "is_renting": 0,
+    "is_returning": 0,
+    "last_reported": 1794948125,
+    "num_bikes_available_types": {
+     "classic": 6,
+     "smart": 0,
+     "electric": 1
+    }
+   },
+   {
+    "station_id": "bcycle_lametro_4494",
+    "num_bikes_available": 0,
+    "num_docks_available": 9,
+    "is_installed": 0,
+    "is_renting": 0,
+    "is_returning": 0,
+    "last_reported": 1794948125,
+    "num_bikes_available_types": {
+     "classic": 0,
+     "smart": 0,
+     "electric": 0
+    }
+   },
+   {
+    "station_id": "bcycle_lametro_4566",
+    "num_bikes_available": 10,
+    "num_docks_available": 4,
+    "is_installed": 1,
+    "is_renting": 0,
+    "is_returning": 0,
+    "last_reported": 1794948125,
+    "num_bikes_available_types": {
+     "classic": 9,
+     "smart": 0,
+     "electric": 1
+    }
+   },
+   {
+    "station_id": "bcycle_lametro_4627",
+    "num_bikes_available": 9,
+    "num_docks_available": 8,
+    "is_installed": 1,
+    "is_renting": 1,
+    "is_returning": 1,
+    "last_reported": 1794948125,
+    "num_bikes_available_types": {
+     "classic": 9,
+     "smart": 0,
+     "electric": 0
+    }
+   },
+   {
+    "station_id": "bcycle_lametro_4734",
+    "num_bikes_available": 8,
+    "num_docks_available": 7,
+    "is_installed": 1,
+    "is_renting": 1,
+    "is_returning": 1,
+    "last_reported": 1794948125,
+    "num_bikes_available_types": {
+     "classic": 6,
+     "smart": 0,
+     "electric": 2
+    }
+   }
+  ]
+ }
+}

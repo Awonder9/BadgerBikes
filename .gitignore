@@ -1,0 +1,33 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+
+node_modules
+dist
+dist-ssr
+dev-dist
+coverage
+*.local
+.env
+.env.*
+!.env.example
+
+# Playwright
+test-results
+playwright-report
+blob-report
+playwright/.cache
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.sw?
+
+# Cloudflare
+.wrangler
+.dev.vars*
+!.dev.vars.example

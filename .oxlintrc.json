@@ -1,0 +1,51 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": [
+    "react",
+    "typescript",
+    "oxc",
+    "unicorn",
+    "vitest",
+    "jsx-a11y"
+  ],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn"
+  },
+  "rules": {
+    "react/rules-of-hooks": "error",
+    "react/exhaustive-deps": "warn",
+    "react/only-export-components": [
+      "warn",
+      {
+        "allowConstantExport": true
+      }
+    ],
+    "react/no-danger": "error",
+    "react/jsx-no-target-blank": "error",
+    "react/react-in-jsx-scope": "off",
+    "unicorn/no-array-sort": "off",
+    "unicorn/consistent-function-scoping": "off",
+    "jsx-a11y/prefer-tag-over-role": "off",
+    "jsx-a11y/no-noninteractive-element-to-interactive-role": "off",
+    "jsx-a11y/no-autofocus": "off"
+  },
+  "ignorePatterns": [
+    "dist",
+    "dev-dist",
+    "node_modules",
+    "coverage",
+    "playwright-report",
+    "test-results"
+  ],
+  "overrides": [
+    {
+      "files": [
+        "src/ui/browse/SearchBox.tsx"
+      ],
+      "rules": {
+        "jsx-a11y/click-events-have-key-events": "off"
+      }
+    }
+  ]
+}
