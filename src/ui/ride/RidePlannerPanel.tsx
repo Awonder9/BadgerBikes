@@ -186,7 +186,16 @@ export function RidePlannerPanel() {
                   Change
                 </button>
               </p>
-              <div className="flex gap-1.5">
+              {(() => {
+                // More than 4 buttons in the row: shrink text, icons and padding so labels still fit.
+                const buttons = rideParts.length + (plan.walkToDock ? 1 : 0) + (walkLink ? 1 : 0)
+                const tier = buttons <= 4 ? 0 : buttons === 5 ? 1 : 2
+                const walkCls = ['px-2.5 text-sm gap-1', 'px-1.5 text-xs gap-0.5', 'px-1 text-[11px] gap-0.5'][tier]
+                const walkIcon = [18, 15, 13][tier] ?? 18
+                const bikeCls = ['px-1.5 gap-1', 'px-1 text-sm gap-0.5', 'px-0.5 text-xs gap-0.5'][tier]
+                const bikeIcon = [16, 14, 12][tier] ?? 16
+                return (
+              <div className={`flex ${tier ? 'gap-1' : 'gap-1.5'}`}>
                 {plan.walkToDock && (
                   <a
                     href={plan.walkToDock.url}
@@ -194,9 +203,9 @@ export function RidePlannerPanel() {
                     rel="noopener noreferrer"
                     onClick={() => ride.openWalkToDock()}
                     aria-label={`Walk to ${start.name} in Google Maps${ride.walkToDockOpened ? ', opened' : ''}`}
-                    className="flex min-h-12 shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-xl bg-white px-2.5 text-sm font-medium ring-1 ring-slate-300 dark:bg-slate-900 dark:ring-slate-600"
+                    className={`flex min-h-12 shrink-0 items-center justify-center whitespace-nowrap rounded-xl bg-white font-medium ring-1 ring-slate-300 dark:bg-slate-900 dark:ring-slate-600 ${walkCls}`}
                   >
-                    <Icon name={ride.walkToDockOpened ? 'check' : 'walk'} size={18} /> Dock
+                    <Icon name={ride.walkToDockOpened ? 'check' : 'walk'} size={walkIcon} className="shrink-0" /> Dock
                   </a>
                 )}
                 {rideParts.map((l, i) => {
@@ -215,20 +224,22 @@ export function RidePlannerPanel() {
                         // The last link of the trip: stop saving the plan on the device.
                         if (!walkLink && i === rideParts.length - 1) ride.finishPlan()
                       }}
-                      className={`flex min-h-12 min-w-0 flex-1 items-center justify-center gap-1 whitespace-nowrap rounded-xl px-1.5 font-semibold ${
+                      className={`flex min-h-12 min-w-0 flex-1 items-center justify-center whitespace-nowrap rounded-xl font-semibold ${bikeCls} ${
                         done && !isNext ? 'bg-white text-brand-800 ring-1 ring-brand-700 dark:bg-slate-900 dark:text-brand-200' : 'bg-brand-700 text-white'
                       } ${isNext && riding ? 'ring-4 ring-brand-300 dark:ring-brand-600' : ''}`}
                     >
-                      <Icon name={done ? 'check' : 'external'} size={16} className="shrink-0" /> {rideParts.length === 1 ? 'Open in Google Maps' : `Part ${i + 1}`}
+                      <Icon name={done ? 'check' : 'external'} size={bikeIcon} className="shrink-0" /> {rideParts.length === 1 ? 'Open in Google Maps' : `Part ${i + 1}`}
                     </a>
                   )
                 })}
                 {walkLink && (
-                  <a href={walkLink.url} target="_blank" rel="noopener noreferrer" onClick={() => ride.finishPlan()} aria-label="Then walk to your destination in Google Maps" className="flex min-h-12 shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-xl bg-white px-2.5 text-sm font-medium ring-1 ring-slate-300 dark:bg-slate-900 dark:ring-slate-600">
-                    <Icon name="walk" size={18} /> Walk
+                  <a href={walkLink.url} target="_blank" rel="noopener noreferrer" onClick={() => ride.finishPlan()} aria-label="Then walk to your destination in Google Maps" className={`flex min-h-12 shrink-0 items-center justify-center whitespace-nowrap rounded-xl bg-white font-medium ring-1 ring-slate-300 dark:bg-slate-900 dark:ring-slate-600 ${walkCls}`}>
+                    <Icon name="walk" size={walkIcon} className="shrink-0" /> Walk
                   </a>
                 )}
               </div>
+                )
+              })()}
             </div>
           ) : (
             along.length > 0 && <p className="text-sm text-slate-500">Keep at least one dock checked to end your ride.</p>
