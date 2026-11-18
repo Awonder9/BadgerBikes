@@ -258,6 +258,22 @@ export const en = {
   },
   elevationProfile: 'Elevation profile',
 
+  // Saved places
+  savePlace: 'Save place',
+  placeSaved: 'Saved',
+  savedAsHome: 'Saved as Home',
+  savedAsWork: 'Saved as Work',
+  saveToFavorites: 'Save to favorites',
+  removeFromFavorites: 'Remove from favorites',
+  favorites: 'Favorites',
+  notSet: 'Not set',
+  set: 'Set',
+  cancel: 'Cancel',
+  remove: (name: string) => `Remove ${name}`,
+  addFavorite: 'Add a favorite place',
+  searchToSave: 'Search a place, address or dock',
+  pinHint: 'Tip: press and hold the map (right-click on a computer) to drop a pin, then save it as Home, Work or a favorite.',
+
   // Ride in progress
   rideInProgress: 'Ride in progress',
   ridingFor: (clock: string) => `Riding ${clock}`,

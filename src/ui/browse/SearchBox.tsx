@@ -46,7 +46,7 @@ export function SearchBox({ label, placeholder, initialValue = '', autoFocus, in
     const query = q.trim()
     if (includeMyLocation && !query) out.push({ key: 'me', icon: 'locate', title: t.myLocation, place: 'myLocation' })
     if (!query) {
-      for (const s of saved.filter((p) => p.systemId === systemId)) out.push({ key: `saved:${s.id}`, icon: s.icon, title: s.icon === 'home' ? t.home : s.icon === 'work' ? t.work : s.label, detail: s.place.name, place: { ...s.place, kind: s.place.kind } })
+      for (const s of saved.filter((p) => p.systemId === systemId)) out.push({ key: `saved:${s.id}`, icon: s.icon, title: s.icon === 'home' ? t.home : s.icon === 'work' ? t.work : s.place.name, detail: s.icon === 'star' ? s.place.detail : s.place.name, place: { ...s.place, kind: s.place.kind } })
       for (const [i, r] of recent.entries()) out.push({ key: `recent:${i}`, icon: 'clock', title: r.kind === 'myLocation' ? t.myLocation : r.name, detail: r.detail, place: r })
       return out
     }

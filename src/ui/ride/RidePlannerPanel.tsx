@@ -16,7 +16,7 @@ import { useMapApiGetter } from '../../map/mapApiContext'
 import { chooseRoute, docksAlong, loadRideRoute, useRideStore } from '../../ride/rideStore'
 import { rideSeconds, type RouteDock } from '../../ride/stationsAlongRoute'
 import { sameRoute } from '../../routing/sameRoute'
-import { useAppStore } from '../../store/appStore'
+import { findSavedPlace, useAppStore } from '../../store/appStore'
 import { useI18n } from '../../i18n/useT'
 import type { Place, Station } from '../../types'
 import { SearchBox } from '../browse/SearchBox'
@@ -97,7 +97,10 @@ export function RidePlannerPanel() {
       </div>
 
       <div className="space-y-1">
-        <p className="text-sm font-medium text-slate-500">{t.stepWhereTo}</p>
+        <div className="flex min-h-6 items-center justify-between gap-2">
+          <p className="text-sm font-medium text-slate-500">{t.stepWhereTo}</p>
+          {systemId && dest && dest.kind !== 'myLocation' && <FavoriteToggle systemId={systemId} place={dest} />}
+        </div>
         <SearchBox key={`dest:${dest?.name ?? ''}`} label={t.destination} placeholder={t.destinationPlaceholder} initialValue={dest?.name ?? ''} onSelect={(p) => ride.setDestination(p)} />
         {!dest && <QuickDestinations />}
       </div>
@@ -456,6 +459,32 @@ function RouteError({ error }: { error: { kind: 'busy' | 'unroutable' | 'other';
         {wait > 0 ? t.tryAgainIn(wait) : t.tryAgain}
       </button>
     </div>
+  )
+}
+
+/** ☆ on the destination: a dock is starred like on its station card; any other place becomes a favorite. */
+function FavoriteToggle({ systemId, place }: { systemId: string; place: Place }) {
+  const { saved, starred } = useAppStore(useShallow((s) => ({ saved: s.savedPlaces, starred: s.starredStations })))
+  const { t } = useI18n()
+  const stationKey = place.stationId ? `${systemId}:${place.stationId}` : null
+  const existing = stationKey ? undefined : findSavedPlace(saved, systemId, 'star', place.coord)
+  const on = stationKey ? starred.includes(stationKey) : !!existing
+  const toggle = () => {
+    const store = useAppStore.getState()
+    if (place.stationId) store.toggleStar(systemId, place.stationId)
+    else if (existing) store.removeSavedPlace(existing.id)
+    else store.savePlace({ systemId, icon: 'star', label: place.name, place: { ...place, kind: 'saved' } })
+  }
+  return (
+    <button
+      type="button"
+      aria-pressed={on}
+      aria-label={on ? t.removeFromFavorites : t.saveToFavorites}
+      onClick={toggle}
+      className={`-my-2 inline-flex min-h-11 items-center gap-1 rounded-lg px-2 text-sm font-medium ${on ? 'text-amber-600 dark:text-amber-400' : 'text-brand-700 dark:text-brand-300'}`}
+    >
+      <Icon name="star" size={16} /> {on ? t.placeSaved : t.saveToFavorites}
+    </button>
   )
 }
 

@@ -1,6 +1,6 @@
 // Browse-mode panels: home (search, quick actions, saved/starred), dropped pin, station list,
 // settings and about.
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { POLL, RIDE } from '../../config'
 import { useMeta, useNow, useStationsSnapshot, useSystemDetails } from '../../data/hooks'
@@ -9,7 +9,8 @@ import { useReverseGeocode } from '../../geocode/hooks'
 import { formatDistance, formatTimeAgo } from '../../lib/format'
 import { haversine } from '../../lib/geo'
 import { classifyStation } from '../../lib/stationState'
-import { useAppStore } from '../../store/appStore'
+import { findSavedPlace, useAppStore } from '../../store/appStore'
+import type { SavedPlace } from '../../store/types'
 import { LANG_NAMES, LANGS, type LanguageSetting } from '../../i18n/lang'
 import { useI18n } from '../../i18n/useT'
 import { useLocationStore } from '../../location/locationStore'
@@ -110,8 +111,14 @@ export function BrowsePanel() {
               <li key={s.id}>
                 <button type="button" className="flex min-h-12 w-full items-center gap-3 rounded-xl px-2 text-left hover:bg-slate-100 dark:hover:bg-slate-800" onClick={() => rideTo(s.place)}>
                   <Icon name={s.icon} size={20} className="text-slate-500" />
-                  <span className="font-medium">{s.icon === 'home' ? t.home : s.icon === 'work' ? t.work : s.label}</span>
-                  <span className="truncate text-sm text-slate-500">{s.place.name}</span>
+                  {s.icon === 'star' ? (
+                    <span className="truncate font-medium">{s.place.name}</span>
+                  ) : (
+                    <>
+                      <span className="font-medium">{s.icon === 'home' ? t.home : t.work}</span>
+                      <span className="truncate text-sm text-slate-500">{s.place.name}</span>
+                    </>
+                  )}
                 </button>
               </li>
             ))}
@@ -134,6 +141,7 @@ export function BrowsePanel() {
           })}
         </ul>
       )}
+      {saved.filter((s) => s.systemId === systemId).length === 0 && <p className="text-sm text-slate-500">{t.pinHint}</p>}
     </div>
   )
 }
@@ -141,6 +149,7 @@ export function BrowsePanel() {
 export function PinCard() {
   const pin = useAppStore((s) => s.pin)
   const systemId = useAppStore((s) => s.systemId)
+  const saved = useAppStore((s) => s.savedPlaces)
   const { place, loading } = useReverseGeocode(pin)
   const { t } = useI18n()
   if (!pin) return null
@@ -165,16 +174,28 @@ export function PinCard() {
         <Button variant="secondary" onClick={() => startRideFrom(asPlace)}>
           {t.startFromHere}
         </Button>
-        {systemId && (
-          <Button variant="ghost" icon="home" onClick={() => useAppStore.getState().savePlace({ systemId, icon: 'home', label: t.home, place: { ...asPlace, kind: 'saved' } })}>
-            {t.saveAsHome}
-          </Button>
-        )}
-        {systemId && (
-          <Button variant="ghost" icon="work" onClick={() => useAppStore.getState().savePlace({ systemId, icon: 'work', label: t.work, place: { ...asPlace, kind: 'saved' } })}>
-            {t.saveAsWork}
-          </Button>
-        )}
+        {systemId &&
+          (['home', 'work', 'star'] as const).map((icon) => {
+            const existing = findSavedPlace(saved, systemId, icon, pin)
+            const label = icon === 'home' ? (existing ? t.savedAsHome : t.saveAsHome) : icon === 'work' ? (existing ? t.savedAsWork : t.saveAsWork) : existing ? t.placeSaved : t.savePlace
+            return (
+              <Button
+                key={icon}
+                variant={existing ? 'primary' : 'ghost'}
+                icon={existing ? 'check' : icon}
+                aria-pressed={!!existing}
+                disabled={loading}
+                className={icon === 'star' ? 'col-span-2' : ''}
+                onClick={() => {
+                  const store = useAppStore.getState()
+                  if (existing) store.removeSavedPlace(existing.id)
+                  else store.savePlace({ systemId, icon, label: icon === 'home' ? t.home : icon === 'work' ? t.work : p.name, place: { ...asPlace, kind: 'saved' } })
+                }}
+              >
+                {label}
+              </Button>
+            )
+          })}
       </div>
     </section>
   )
@@ -330,6 +351,7 @@ export function SettingsPanel() {
             <option value="dark">{t.styleDark}</option>
           </select>
         </label>
+        {systemId && <SavedPlacesSettings systemId={systemId} />}
         <p className="px-4 py-3 text-sm text-slate-500">
           {t.storageNote}
         </p>
@@ -338,6 +360,81 @@ export function SettingsPanel() {
           <Icon name="chevronRight" size={20} />
         </button>
       </div>
+    </section>
+  )
+}
+
+/** Home, Work and favorite places for this city: set or change them by search, or remove them. */
+function SavedPlacesSettings({ systemId }: { systemId: string }) {
+  const all = useAppStore((s) => s.savedPlaces)
+  const { t } = useI18n()
+  const [editing, setEditing] = useState<SavedPlace['icon'] | null>(null)
+  const saved = all.filter((p) => p.systemId === systemId)
+  const home = saved.find((p) => p.icon === 'home')
+  const work = saved.find((p) => p.icon === 'work')
+  const favorites = saved.filter((p) => p.icon === 'star')
+  const remove = (p: SavedPlace, name: string) => (
+    <IconButton icon="close" label={t.remove(name)} variant="ghost" onClick={() => useAppStore.getState().removeSavedPlace(p.id)} />
+  )
+  const searchFor = (icon: SavedPlace['icon']) =>
+    editing === icon && (
+      <div className="flex items-center gap-2 px-4 pb-3">
+        <div className="min-w-0 flex-1">
+          <SearchBox
+            key={icon}
+            autoFocus
+            label={t.searchToSave}
+            placeholder={t.searchToSave}
+            onCancel={() => setEditing(null)}
+            onSelect={(p) => {
+              useAppStore.getState().savePlace({ systemId, icon, label: icon === 'home' ? t.home : icon === 'work' ? t.work : p.name, place: { ...p, kind: 'saved' } })
+              setEditing(null)
+            }}
+          />
+        </div>
+        <button type="button" className="min-h-11 shrink-0 px-1 text-sm font-medium text-brand-700 dark:text-brand-300" onClick={() => setEditing(null)}>
+          {t.cancel}
+        </button>
+      </div>
+    )
+  const homeWork = (icon: 'home' | 'work', p: SavedPlace | undefined) => {
+    const name = icon === 'home' ? t.home : t.work
+    return (
+      <div key={icon}>
+        <div className="flex min-h-14 items-center gap-3 px-4 py-2">
+          <Icon name={icon} size={20} className="shrink-0 text-slate-500" />
+          <span className="min-w-0 flex-1">
+            <span className="block">{name}</span>
+            <span className="block truncate text-sm text-slate-500">{p ? p.place.name : t.notSet}</span>
+          </span>
+          <button type="button" className="min-h-11 shrink-0 px-2 text-sm font-medium text-brand-700 dark:text-brand-300" onClick={() => setEditing(icon)}>
+            {p ? t.change : t.set}
+          </button>
+          {p && remove(p, name)}
+        </div>
+        {searchFor(icon)}
+      </div>
+    )
+  }
+  return (
+    <section aria-label={t.savedPlaces}>
+      <h3 className="px-4 pb-1 pt-4 text-sm font-medium text-slate-500">{t.savedPlaces}</h3>
+      {homeWork('home', home)}
+      {homeWork('work', work)}
+      {favorites.map((p) => (
+        <div key={p.id} className="flex min-h-12 items-center gap-3 px-4 py-1">
+          <Icon name="star" size={20} className="shrink-0 text-amber-500" />
+          <span className="min-w-0 flex-1 truncate">{p.place.name}</span>
+          {remove(p, p.place.name)}
+        </div>
+      ))}
+      {editing === 'star' ? (
+        searchFor('star')
+      ) : (
+        <button type="button" className="flex min-h-12 w-full items-center gap-3 px-4 text-left font-medium text-brand-700 dark:text-brand-300" onClick={() => setEditing('star')}>
+          <Icon name="plus" size={20} className="shrink-0" /> {t.addFavorite}
+        </button>
+      )}
     </section>
   )
 }

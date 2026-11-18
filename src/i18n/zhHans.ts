@@ -253,6 +253,22 @@ export const zhHans: Messages = {
   },
   elevationProfile: '海拔剖面图',
 
+  // Saved places
+  savePlace: '收藏地点',
+  placeSaved: '已收藏',
+  savedAsHome: '已设为家',
+  savedAsWork: '已设为公司',
+  saveToFavorites: '收藏',
+  removeFromFavorites: '取消收藏',
+  favorites: '收藏',
+  notSet: '未设置',
+  set: '设置',
+  cancel: '取消',
+  remove: (name) => `移除 ${name}`,
+  addFavorite: '添加收藏地点',
+  searchToSave: '搜索地点、地址或站点',
+  pinHint: '提示：在地图上长按（电脑上右键点击）放置图钉，即可将其设为家、公司或收藏。',
+
   // Ride in progress
   rideInProgress: '骑行中',
   ridingFor: (clock) => `已骑行 ${clock}`,

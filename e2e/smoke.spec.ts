@@ -204,6 +204,36 @@ test('start from my location: walk to the best dock, trip total, walk-instead, p
   await expect(card).toContainText('Riding 0:0')
 })
 
+test('Home, Work and favorites can be set from Settings and starred from the planner', async ({ page, context }) => {
+  await mockApi(context, { routes: 'ok' })
+  await skipInstallTip(page)
+  await page.goto('/')
+  await expect(page.getByText(/press and hold the map/)).toBeVisible() // how to drop a pin, until something is saved
+  await page.getByRole('button', { name: 'Settings' }).click()
+  const savedSection = page.getByRole('region', { name: 'Saved places' })
+  await expect(savedSection).toContainText('Not set')
+  await savedSection.getByRole('button', { name: 'Set' }).first().click()
+  await savedSection.getByRole('combobox', { name: 'Search a place, address or dock' }).fill('Bravo')
+  await page.getByRole('option', { name: /Bravo Park/ }).click()
+  await expect(savedSection).toContainText('Bravo Park')
+  await savedSection.getByRole('button', { name: 'Add a favorite place' }).click()
+  await savedSection.getByRole('combobox', { name: 'Search a place, address or dock' }).fill('Charlie')
+  await page.getByRole('option', { name: /Charlie Square/ }).click()
+  await expect(savedSection.getByRole('button', { name: 'Remove Charlie Square' })).toBeVisible()
+  await savedSection.getByRole('button', { name: 'Remove Charlie Square' }).click()
+  await expect(savedSection.getByRole('button', { name: 'Remove Charlie Square' })).toHaveCount(0)
+  await page.getByRole('button', { name: 'Back' }).click()
+  const savedList = page.getByRole('list', { name: 'Saved places' })
+  await expect(savedList).toContainText('Home')
+  await expect(savedList).toContainText('Bravo Park')
+  // The planner's destination can be starred (a dock: same star as on its station card).
+  await page.goto(`/?start=st_a&to=${C[1]},${C[0]}&toName=Charlie%20Square&toStation=st_c&route=1`)
+  await page.getByRole('button', { name: 'Save to favorites' }).click()
+  await expect(page.getByRole('button', { name: 'Remove from favorites' })).toHaveAttribute('aria-pressed', 'true')
+  await page.getByRole('button', { name: 'Back' }).click()
+  await expect(page.getByRole('list', { name: 'Starred stations' })).toContainText('Charlie Square')
+})
+
 test.describe('on a Taiwanese (zh-TW) browser', () => {
   test.use({ locale: 'zh-TW' })
 
