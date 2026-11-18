@@ -1,7 +1,9 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { resetHttpState, setFetchImpl } from '../lib/http'
 import valhallaBike from '../test/fixtures/valhalla/route_bicycle.json'
+import { MADISON, makeSnapshot, makeStation } from '../test/factories'
 import { normalizeValhallaRoute } from '../routing/valhalla'
-import { restoreRide, useRideStore } from './rideStore'
+import { loadRideRoute, restoreRide, useRideStore } from './rideStore'
 
 const leg = normalizeValhallaRoute(valhallaBike, { role: 'ride', mode: 'bike', from: [-89.3842, 43.07467], to: [-89.4003, 43.07652], units: 'imperial', language: 'en-US' })
 const dest = { kind: 'search' as const, name: 'Memorial Union', coord: [-89.4003, 43.07652] as [number, number] }
@@ -98,6 +100,54 @@ describe('starting from a place', () => {
     expect(t0).not.toBeNull()
     s.markPartOpened(1, true) // a re-dock later still restarts it
     expect(useRideStore.getState().rideStartedAtMs).toBeGreaterThanOrEqual(t0!)
+  })
+})
+
+describe('routing the plan', () => {
+  let restore: (() => void) | undefined
+  beforeEach(() => useRideStore.getState().reset())
+  afterEach(() => {
+    restore?.()
+    restore = undefined
+    resetHttpState()
+  })
+  const snapshot = makeSnapshot([makeStation({ id: 'a', coord: MADISON.capitol }), makeStation({ id: 'b', coord: MADISON.libraryMall })])
+
+  /** /api/routes answers only when `answer()` is called (and gives up if the request is aborted first). */
+  function slowRoutes() {
+    let answer = () => {}
+    restore = setFetchImpl(
+      (_url, init) =>
+        new Promise<Response>((resolve, reject) => {
+          init?.signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')))
+          answer = () => resolve(new Response(JSON.stringify({ routes: [leg, leg, leg] }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+        }),
+    )
+    return () => answer()
+  }
+
+  it('shows the route options when they arrive', async () => {
+    const answer = slowRoutes()
+    useRideStore.getState().setStart('a')
+    useRideStore.getState().setDestination(dest)
+    const done = loadRideRoute('bcycle_madison', snapshot, 'imperial', 1)
+    expect(useRideStore.getState().status).toBe('routing')
+    answer()
+    await done
+    expect(useRideStore.getState()).toMatchObject({ status: 'ready', routeIndex: 0 })
+    expect(useRideStore.getState().routes).toHaveLength(3)
+  })
+
+  it('an answer for the previous start or destination never comes back as the plan', async () => {
+    const answer = slowRoutes()
+    const s = useRideStore.getState()
+    s.setStart('a')
+    s.setDestination(dest)
+    const done = loadRideRoute('bcycle_madison', snapshot, 'imperial', 1)
+    s.setStart(null) // "Change" while the request is out: the plan has no start now
+    answer()
+    await done
+    expect(useRideStore.getState()).toMatchObject({ status: 'idle', startId: null, routes: [], route: null })
   })
 })
 

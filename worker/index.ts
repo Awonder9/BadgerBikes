@@ -10,8 +10,9 @@ export { UpstreamGate } from './gate'
 
 export default {
   async fetch(request, env, ctx): Promise<Response> {
-    void ctx
     const upstream = createUpstream({
+      // Cache writes and gate releases finish after the response is sent.
+      waitUntil: (work) => ctx.waitUntil(work),
       gateFor: (group) => {
         try {
           return env.UPSTREAM_GATE.get(env.UPSTREAM_GATE.idFromName(group))

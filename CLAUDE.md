@@ -16,7 +16,8 @@ turn-by-turn directions, with ride progress tracked in the app.
 - `npm run cf-typegen` — regenerate `worker-configuration.d.ts` after changing `wrangler.jsonc`
 - `npm run e2e` — Playwright smoke tests (Chromium, network-free) in `e2e/`
 - Dev-only debugging: `window.__bcycle.app` / `window.__bcycle.ride` expose the Zustand stores,
-  `window.__bcycle.map.current` the map API (getViewport, fitBounds…)
+  `window.__bcycle.map.current` the map API (getViewport, fitBounds…; calls made before the lazily loaded
+  map exists are applied when it is created)
 - `npm run update-systems` — regenerate `src/data/systems.json` from the live BCycle feeds
 
 ## Where code runs
@@ -49,9 +50,10 @@ oxlint (not ESLint). Before using a library API you are not certain about, check
   are deterministic.
 - Tests are colocated as `*.test.ts(x)` next to the module. Use the real captured API responses in
   `src/test/fixtures/` (see its README) instead of hand-written mock payloads.
-- maplibre-gl: call `setWorkerUrl()` with the URL from
-  `import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url'` before creating a map —
-  Vite's dependency pre-bundling breaks maplibre's default worker URL resolution.
+- maplibre-gl is loaded on demand: import it (including `?url`/`?worker&url` imports of its files and its CSS)
+  only in `src/map/maplibre.ts`, which also calls `setWorkerUrl()` (Vite's dependency pre-bundling breaks
+  maplibre's default worker URL resolution). Everywhere else use `import type`: a static import would pull the
+  ~1 MB library back into the startup bundle. Check with `npm run build`: index.html must not modulepreload it.
 - `tsconfig` has `noUncheckedIndexedAccess`: array/record indexing returns `T | undefined`; handle it.
 - Import paths omit file extensions (`import { x } from '../lib/geo'`), except in the root config files.
 - Coordinates are `[lon, lat]` (`LngLat`) everywhere in app code, matching GeoJSON/maplibre. Distances

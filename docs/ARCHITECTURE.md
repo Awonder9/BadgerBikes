@@ -100,7 +100,9 @@ endpoints (the code supports this via env).
 Durable Object per group (`interactive > background` priority, ≥ `minSpacingMs` between request starts,
 ≤ `maxInFlight`, queue deadlines, circuit breaker on 429/503 or repeated errors; a denial is
 `upstream_unavailable`) → fetch with `APP.userAgent` + contact email → cache with TTL. The gate's logic is
-a pure core (`worker/gateCore.ts`) tested in Node; `worker/gate.ts` is the thin Durable Object.
+a pure core (`worker/gateCore.ts`) tested in Node; `worker/gate.ts` is the thin Durable Object. Work the
+response doesn't wait for runs under `ctx.waitUntil`: Cache API writes (the in-isolate copy is stored at
+once) and gate releases (a lost release would hold FOSSGIS's single slot until the 30 s reclaim).
 
 **Capacity**: FOSSGIS allows ~1 request/second for the whole site, and one `/api/routes` call makes three
 Valhalla requests. When the gate or the servers refuse, the route options would degrade to straight-line
@@ -110,7 +112,8 @@ and the planner shows "Route server busy … try again in a few seconds" with a 
 
 **Static asset headers** (`public/_headers`): CSP (`connect-src 'self' https://tiles.openfreemap.org`, …),
 `Referrer-Policy: strict-origin-when-cross-origin`, `X-Content-Type-Options: nosniff`,
-`Permissions-Policy: geolocation=(self), camera=(), microphone=()`.
+`Permissions-Policy: geolocation=(self), camera=(), microphone=()`; `/assets/*` (content-hashed names) is
+`Cache-Control: public, max-age=31536000, immutable` (Cloudflare's default is `max-age=0, must-revalidate`).
 
 ---
 
@@ -185,7 +188,10 @@ stretch would exceed the rider's max ride time (`settings.maxRideMinutes`, defau
 the last on-route dock is more than a 400 m walk away. `optimizedStops` preselects the fewest docks that keep
 every ride within the limit (greedy: re-dock at the farthest usable dock still in range), ending at the
 usable dock closest to the destination; the rest are shown as optional stops. Ride times use the chosen
-route's pace (duration ÷ distance) so they match the route cards. The last checked dock ends the ride.
+route's pace (duration ÷ distance) so they match the route cards. The last checked dock ends the ride. The
+list is recomputed from live counts, but the stops already chosen always stay in it (`keepIds`): a chosen
+dock that fills up stays the end of the ride and is reported as full (with a usable alternative listed),
+instead of silently dropping out of the plan and its Google links.
 
 **Google Maps links** (`googleMaps.ts`, Maps URLs, no API key): a link carries only an origin, a destination
 and ≤ 3 waypoints (mobile), and Google picks its own path between them. To keep it on the chosen route:
@@ -215,11 +221,15 @@ starts at a dock (the rider unlocks a bike there) restarts the ride timer.
 **Ride in progress** (`rideProgress.ts` pure; `useRideStatus.ts`, `RideProgress.tsx`): timer vs the pass's
 included minutes (warn at `RIDE.timerWarnMinutes`), end dock `ok | low | full` for the party, replacement
 docks with space within `RIDE.replacementRadiusMeters` of the destination (each with a Google Maps link from
-the rider's position), one-shot alerts (vibration + system notification if permitted). A web page cannot run
-while Google Maps is in front, so alerts and counts update when the app is open again — the UI says so.
+the rider's position), one-shot alerts (vibration + system notification if permitted, shown through the
+service worker's `showNotification` because Android Chrome refuses `new Notification()`; tapping one focuses
+the app via `public/sw-notifications.js`). A web page cannot run while Google Maps is in front, so alerts and
+counts update when the app is open again — the UI says so. Mid-ride, a dock tapped on the map opens its card
+(it never replaces the destination, which would also clear the ride timer and opened parts).
 
 **Share links** (`src/lib/urlParams.ts`): `?system=<id>&start=<station id>&to=<lat,lon>&toName=&toStation=&route=<0-2>`,
-validated on load, applied to the ride store, then removed from the address bar.
+validated on load, applied to the ride store (replacing any saved plan; a link to another city switches it
+like Settings → City), then removed from the address bar.
 
 ---
 
@@ -228,21 +238,42 @@ validated on load, applied to the ride store, then removed from the address bar.
 - **Layout**: MapView mounted once. Desktop side panel for wide screens; otherwise full-screen map + bottom
   sheet (peek/half/full in `svh`, so the on-screen keyboard never resizes it; "full" stops below the map
   buttons). `h-dvh`, safe-area insets.
-- **Map**: only `src/map/MapView.tsx` imports maplibre (`setWorkerUrl` first). Station source with
-  `promoteId: 'id'`; mode toggle changes paint only; chosen route on top of faded alternatives; start/stops/
-  end rings; user location dot from `useLocationStore` (outside React). While planning, a tapped dock fills
-  the planner (start, then destination) instead of opening the station card.
+- **Map**: maplibre-gl (with its CSS) is imported only by `src/map/maplibre.ts`, which sets the worker URL
+  and is loaded on demand: `src/map/MapView.tsx` imports maplibre's types only and starts the dynamic import
+  when the app starts, so the ~1 MB library never delays the first paint or the first station request (a
+  static import of anything in maplibre-gl elsewhere would pull it back into the startup bundle). Until the
+  map exists, the MapApi keeps padding and the latest camera request and applies them on creation. Station
+  source with `promoteId: 'id'`; mode toggle changes paint only; the station features are re-uploaded when
+  the city, data revision, party size, plan roles or stars change; chosen route on top of faded alternatives;
+  start/stops/end rings; selection via feature-state (re-applied after a style reload); user location dot
+  from `useLocationStore` (outside React). The theme follows the OS (`prefers-color-scheme`) live; the style
+  is only reloaded when it actually changes. Taps hit the nearest station dot within 12 px; a long press
+  (touch timer or the browser's contextmenu) picks a point once. While planning, a tapped dock fills the
+  planner (start, then destination) instead of opening the station card.
 - **Location** (`src/location/locationStore.ts`): watched only after the rider asks (Locate, Nearest dock,
-  "My location" search); `waitForFix()` for one-shot needs.
+  "My location" search); asking again after an error (denied, unavailable) starts a new watch, and Locate
+  says why when there is no position. `waitForFix()` for one-shot needs: a fresh fix, else the next one, else
+  (on timeout) the last known position.
 - **Stores**: `useAppStore` (persisted: settings, saved/starred/recent places — device-only, explained in
   Settings), `useRideStore` (§7), `useLocationStore` (never persisted).
 - **Refresh**: the home panel's *Refresh* button refetches station counts immediately (BCycle itself
   publishes about once a minute, so that is the freshest possible).
 - **Data hooks**: `useStationsSnapshot` polls `/api/stations` (`cache: 'no-store'`) after the feed's CDN
-  expiry, refetches on focus, keeps the last data on error, tracks `revision`/`changedIds`; freshness badge.
+  expiry, refetches on focus, keeps the last data on error, tracks `revision`/`changedIds`; it has no timers
+  (many always-mounted components use it) — the freshness badge ages on its own clock. The first request
+  starts before React's first render (`prefetchStations` in `App.tsx`). `/api/system` is requested only
+  where it is shown or once a route exists (pass minutes), not at startup.
+- **Re-renders**: nothing ticks app-wide. Clocks (`useNow`) live in leaf components and pause when unused:
+  the ride clock only while a ride timer runs, the launch screen's only while it is up; ride alerts, the
+  arrival check and the station watch are leaf components of `AppShell`. `useRidePlan` memoizes each
+  derivation and shares the docks-along-route computation across its callers.
 - **Map while planning**: once a route is shown, only the start dock and the docks along the route (the
   selectable stops) stay on the map; other docks are filtered out until you leave the planner.
-- **Launch screen** (`LoadingScreen.tsx`) until the first snapshot; the install tip waits for it.
+- **Launch screen**: a static copy in `index.html` (inline CSS, no JavaScript) paints as soon as the page
+  arrives; `LoadingScreen.tsx` replaces it on the first render with the same layout (status lines reserve two
+  lines in every language, so nothing shifts) and stays until the first snapshot; the install tip waits for it.
+- **Search**: place search (the public geocoder) runs only for text the rider typed, never for a prefilled
+  name, a picked result or "My location".
 
 ---
 

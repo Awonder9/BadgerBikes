@@ -32,13 +32,16 @@ interface Option {
 
 export function SearchBox({ label, placeholder, initialValue = '', autoFocus, includeMyLocation, onSelect, onCancel }: SearchBoxProps) {
   const [q, setQ] = useState(initialValue)
+  // Place search (a request to the public geocoder) runs only for text the rider typed — not for a prefilled
+  // name, the result they just picked, or "My location".
+  const [typed, setTyped] = useState(false)
   const [open, setOpen] = useState(false)
   const [active, setActive] = useState(0)
   const listId = useId()
   const { systemId, recent, saved } = useAppStore(useShallow((s) => ({ systemId: s.systemId, recent: s.recentPlaces, saved: s.savedPlaces })))
   const fix = useLocationStore((s) => s.fix)
   const { snapshot } = useStationsSnapshot(systemId)
-  const { places, loading, error } = useGeocodeSearch(q, systemId, fix?.coord ?? null)
+  const { places, loading, error } = useGeocodeSearch(typed ? q : '', systemId, fix?.coord ?? null)
   const { t } = useI18n()
 
   const options = useMemo<Option[]>(() => {
@@ -63,6 +66,7 @@ export function SearchBox({ label, placeholder, initialValue = '', autoFocus, in
   const choose = (o: Option | undefined) => {
     if (!o) return
     setOpen(false)
+    setTyped(false)
     if (o.place === 'myLocation') {
       setQ(t.myLocation)
       void waitForFix().then((c) => {
@@ -96,6 +100,7 @@ export function SearchBox({ label, placeholder, initialValue = '', autoFocus, in
           onBlur={() => setTimeout(() => setOpen(false), 150)}
           onChange={(e) => {
             setQ(e.target.value)
+            setTyped(true)
             setActive(0)
             setOpen(true)
           }}
@@ -111,12 +116,20 @@ export function SearchBox({ label, placeholder, initialValue = '', autoFocus, in
         />
         {loading && <Spinner size={18} className="text-slate-400" label={t.searching} />}
         {q && (
-          <button type="button" aria-label={t.clearSearch} className="p-2 text-slate-500" onClick={() => setQ('')}>
+          <button
+            type="button"
+            aria-label={t.clearSearch}
+            className="p-2 text-slate-500"
+            onClick={() => {
+              setQ('')
+              setActive(0)
+            }}
+          >
             <Icon name="close" size={18} />
           </button>
         )}
       </label>
-      {open && systemId && options.length === 0 && normalizeQuery(q).length >= GEOCODE.minChars && (
+      {open && systemId && typed && options.length === 0 && normalizeQuery(q).length >= GEOCODE.minChars && (
         <p role="status" className="absolute z-30 mt-1 w-full rounded-xl bg-white px-3 py-3 text-sm text-slate-500 shadow-xl ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-700">
           {loading ? t.searchingDots : error ? t.searchUnavailable : t.noPlacesFound}
         </p>

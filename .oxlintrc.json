@@ -28,7 +28,15 @@
     "unicorn/consistent-function-scoping": "off",
     "jsx-a11y/prefer-tag-over-role": "off",
     "jsx-a11y/no-noninteractive-element-to-interactive-role": "off",
-    "jsx-a11y/no-autofocus": "off"
+    "jsx-a11y/no-autofocus": "off",
+    "no-underscore-dangle": [
+      "warn",
+      {
+        "allow": [
+          "__bcycle"
+        ]
+      }
+    ]
   },
   "ignorePatterns": [
     "dist",

@@ -30,13 +30,19 @@ export function createQueryClient(): QueryClient {
 
 const retryable = (failureCount: number, err: unknown, max: number) => err instanceof AppError && err.retryable && err.code !== 'rate_limited' && failureCount < max
 
-/** Re-renders every `intervalMs` with the current time (for freshness/age displays). */
-export function useNow(intervalMs: number): number {
+/**
+ * Re-renders every `intervalMs` with the current time (for freshness/age displays and timers). With
+ * `enabled` false it stops ticking (no re-renders), and catches up as soon as it is enabled again.
+ */
+export function useNow(intervalMs: number, enabled = true): number {
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), intervalMs)
+    if (!enabled) return
+    const tick = () => setNow(Date.now())
+    tick()
+    const id = setInterval(tick, intervalMs)
     return () => clearInterval(id)
-  }, [intervalMs])
+  }, [intervalMs, enabled])
   return now
 }
 
@@ -52,8 +58,30 @@ function selectSnapshot(data: StationsResponse): ClientStationsSnapshot {
   return next
 }
 
+/** The latest client snapshot for a system, outside React (event handlers); undefined before the first. */
+export function latestSnapshot(systemId: string | null): ClientStationsSnapshot | undefined {
+  return systemId ? snapshotCache.get(systemId) : undefined
+}
+
+/** The stations request (shared by useStationsSnapshot and the startup prefetch, so they are one request). */
+const stationsQuery = (systemId: string) => ({
+  queryKey: qk.stations(systemId),
+  queryFn: ({ signal }: { signal: AbortSignal }) => api.stations(systemId, signal),
+  staleTime: POLL.statusMinMs,
+  retry: (n: number, err: unknown) => retryable(n, err, 3),
+})
+
+/**
+ * Starts loading a system's stations before React's first render (the launch screen waits for them). The
+ * hooks pick up the same request.
+ */
+export function prefetchStations(client: QueryClient, systemId: string | null): void {
+  if (systemId) void client.prefetchQuery(stationsQuery(systemId))
+}
+
 export interface StationsQuery {
   snapshot: ClientStationsSnapshot | undefined
+  /** As of the last response; displays that show it over time age it on their own clock (FreshnessBadge). */
   freshness: Freshness
   error: AppError | null
   isFetching: boolean
@@ -63,25 +91,22 @@ export interface StationsQuery {
 /**
  * Live stations for a system. Polls right after each feed refresh is expected (see
  * statusPollInterval); `active` (navigating / StationCard open) caps the interval lower. Keeps the last
- * good snapshot when a poll fails (freshness becomes 'stale').
+ * good snapshot when a poll fails (freshness becomes 'stale'). Re-renders only when the data or the request
+ * state changes (no timers: many always-mounted components use this).
  */
 export function useStationsSnapshot(systemId: string | null, opts: { active?: boolean } = {}): StationsQuery {
   const active = opts.active ?? false
-  const now = useNow(10_000)
   const q = useQuery({
-    queryKey: qk.stations(systemId ?? '-'),
-    queryFn: ({ signal }) => api.stations(systemId as string, signal),
+    ...stationsQuery(systemId ?? '-'),
     enabled: systemId !== null,
     select: selectSnapshot,
     refetchInterval: (query) => statusPollInterval(query.state.data?.lastUpdatedMs, Date.now(), active),
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
-    staleTime: POLL.statusMinMs,
-    retry: (n, err) => retryable(n, err, 3),
   })
   return {
     snapshot: q.data,
-    freshness: freshnessOf({ hasData: q.data !== undefined, isError: q.isError, lastUpdatedMs: q.data?.lastUpdatedMs, nowMs: now }),
+    freshness: freshnessOf({ hasData: q.data !== undefined, isError: q.isError, lastUpdatedMs: q.data?.lastUpdatedMs, nowMs: q.dataUpdatedAt }),
     error: q.error ? toAppError(q.error) : null,
     isFetching: q.isFetching,
     refetch: () => {
@@ -90,11 +115,12 @@ export function useStationsSnapshot(systemId: string | null, opts: { active?: bo
   }
 }
 
-export function useSystemDetails(systemId: string | null): { details: SystemDetails | undefined; error: AppError | null } {
+/** System details (passes, contact, app links). `enabled` false: no request, but cached data is returned. */
+export function useSystemDetails(systemId: string | null, enabled = true): { details: SystemDetails | undefined; error: AppError | null } {
   const q = useQuery({
     queryKey: qk.system(systemId ?? '-'),
     queryFn: ({ signal }) => api.system(systemId as string, signal),
-    enabled: systemId !== null,
+    enabled: systemId !== null && enabled,
     staleTime: POLL.systemDetailsStaleMs,
     gcTime: 2 * POLL.systemDetailsStaleMs,
     retry: (n, err) => retryable(n, err, 2),

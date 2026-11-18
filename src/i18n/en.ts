@@ -39,6 +39,8 @@ export const en = {
   updateAvailable: 'Update available',
   newVersion: (app: string) => `A new version of ${app} is ready. Refresh to update.`,
   watchReady: (name: string, n: number, kind: Kind, baseline: number) => `${name} now has ${count(n, kind)} (up from ${baseline}).`,
+  locationDenied: 'Location is off for this site. Allow it in your browser settings, then try again.',
+  locationNotFound: 'Couldn’t find your location. Try again in a moment.',
 
   // Loading screen
   yourCity: 'your city',

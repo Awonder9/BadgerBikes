@@ -18,6 +18,15 @@ describe('ride actions', () => {
     expect(useRideStore.getState().destination).toMatchObject({ kind: 'station', stationId: 'b', name: 'Dock B' })
   })
 
+  it('mid-ride, a tapped dock opens its card instead of replacing the destination (and the ride progress)', () => {
+    rideMapTap('a', 'Dock A', [-89.4, 43.07])
+    rideMapTap('b', 'Dock B', [-89.38, 43.08])
+    useRideStore.getState().markPartOpened(0, true)
+    rideMapTap('c', 'Dock C', [-89.37, 43.08])
+    expect(useRideStore.getState()).toMatchObject({ destination: { stationId: 'b' }, openedParts: [0] })
+    expect(useAppStore.getState()).toMatchObject({ panel: 'station', selectedStationId: 'c' })
+  })
+
   it('opening the planner grows a peeking sheet but never shrinks a full one', () => {
     startRideAt({ id: 'a', name: 'Dock A', coord: [-89.4, 43.07] })
     expect(useAppStore.getState().sheet).toBe('half')

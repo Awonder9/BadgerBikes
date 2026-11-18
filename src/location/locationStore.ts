@@ -13,6 +13,8 @@ export interface LocationState {
   geoError: GeoErrorCode | null
   /** The rider asked to use their location (starts the watch). */
   requested: boolean
+  /** Bumped when the rider asks again after an error: restarts the watch (and asks for permission again). */
+  attempt: number
   requestLocation(): void
   setFix(fix: GeoFix): void
   setGeoError(code: GeoErrorCode | null): void
@@ -23,7 +25,10 @@ export const useLocationStore = create<LocationState>()(
     fix: null,
     geoError: null,
     requested: false,
-    requestLocation: () => set({ requested: true }),
+    attempt: 0,
+    // Asking while the watch is running changes nothing; asking after an error (denied, unavailable, timed
+    // out) starts a new watch, so a rider who has since allowed location isn't stuck until a reload.
+    requestLocation: () => set((s) => (s.requested && !s.geoError ? s : { requested: true, geoError: null, attempt: s.attempt + 1 })),
     setFix: (fix) => set({ fix, geoError: null }),
     setGeoError: (geoError) => set({ geoError }),
   })),
@@ -37,11 +42,14 @@ export function toGeoFix(pos: GeolocationPosition): GeoFix {
 
 const ERR: Record<number, GeoErrorCode> = { 1: 'geo_denied', 2: 'geo_unavailable', 3: 'geo_timeout' }
 
-/** Mounted once (App): watches the position while requested, restarting a watch that went quiet. */
+/**
+ * Mounted once (App): watches the position once requested (attempt > 0), restarting a watch that went quiet,
+ * and starting over when the rider asks again after an error.
+ */
 export function useLocationWatcher(): void {
-  const requested = useLocationStore((s) => s.requested)
+  const attempt = useLocationStore((s) => s.attempt)
   useEffect(() => {
-    if (!requested) return
+    if (attempt === 0) return
     const geo = typeof navigator !== 'undefined' ? navigator.geolocation : undefined
     const store = useLocationStore.getState()
     if (!geo) {
@@ -61,9 +69,12 @@ export function useLocationWatcher(): void {
       )
     }
     begin()
+    let watchdog: ReturnType<typeof setTimeout> | null = null
     const onVisible = () => {
       if (document.visibilityState !== 'visible') return
-      setTimeout(() => {
+      if (watchdog) clearTimeout(watchdog)
+      watchdog = setTimeout(() => {
+        watchdog = null
         if (Date.now() - lastFixAt > LOCATION.watchdogMs && watchId !== null) {
           geo.clearWatch(watchId)
           begin()
@@ -73,30 +84,37 @@ export function useLocationWatcher(): void {
     document.addEventListener('visibilitychange', onVisible)
     return () => {
       document.removeEventListener('visibilitychange', onVisible)
+      if (watchdog) clearTimeout(watchdog)
       if (watchId !== null) geo.clearWatch(watchId)
     }
-  }, [requested])
+  }, [attempt])
 }
 
-/** Resolves with a recent position (asking for location if needed), or null on denial/timeout. */
+/**
+ * Resolves with a recent position, asking for location if needed: a fix newer than LOCATION.freshFixMs right
+ * away, else the next fix. Gives up on denial or after `ms`, then falls back to the last known position (a
+ * stationary phone may not report again), or null when there is none.
+ */
 export function waitForFix(ms: number = LOCATION.waitMs): Promise<LngLat | null> {
   const s = useLocationStore.getState()
   if (s.fix && Date.now() - s.fix.timestampMs < LOCATION.freshFixMs) return Promise.resolve(s.fix.coord)
-  s.requestLocation()
+  const known = s.fix
   return new Promise((resolve) => {
-    const timer = setTimeout(() => {
+    const finish = (coord: LngLat | null) => {
+      clearTimeout(timer)
       unsub()
-      resolve(null)
-    }, ms)
+      resolve(coord)
+    }
+    const timer = setTimeout(() => finish(useLocationStore.getState().fix?.coord ?? null), ms)
+    // Subscribed before asking, so an answer that arrives right away is never missed.
     const unsub = useLocationStore.subscribe(
       (st) => [st.fix, st.geoError] as const,
       ([fix, err]) => {
-        if (fix || err === 'geo_denied' || err === 'geo_unsupported') {
-          clearTimeout(timer)
-          unsub()
-          resolve(fix?.coord ?? null)
-        }
+        if (fix && fix !== known) finish(fix.coord)
+        else if (err === 'geo_denied' || err === 'geo_unsupported') finish(null)
       },
+      { equalityFn: (a, b) => a[0] === b[0] && a[1] === b[1] },
     )
+    useLocationStore.getState().requestLocation()
   })
 }

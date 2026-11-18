@@ -5,15 +5,116 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="description" content="Live BCycle bike and dock availability with bike-share-aware turn-by-turn navigation." />
+    <meta name="description" content="Live BCycle bike and dock availability with ride planning and Google Maps directions." />
     <meta name="theme-color" content="#0f766e" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <!-- Map style, tiles and fonts all come from here: connect while the app's code loads. -->
+    <link rel="preconnect" href="https://tiles.openfreemap.org" crossorigin />
     <title>Badger Bikes</title>
+    <style>
+      /* Launch screen shown before the app's code has loaded (no JavaScript needed, so it paints as soon as
+         the page arrives). Same layout as src/ui/layout/LoadingScreen.tsx, which replaces it on the first
+         render and adds the city and status text in the rider's language. */
+      .splash {
+        position: fixed;
+        inset: 0;
+        z-index: 50;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 24px;
+        padding: 0 32px;
+        text-align: center;
+        color: #fff;
+        background: linear-gradient(to bottom, #0f766e, #134e4a);
+        font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+      .splash-logo {
+        display: grid;
+        place-items: center;
+        width: 96px;
+        height: 96px;
+        border-radius: 9999px;
+        background: rgb(255 255 255 / 0.1);
+        box-shadow: 0 0 0 1px rgb(255 255 255 / 0.2);
+      }
+      .splash-logo svg {
+        animation: splash-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+      }
+      .splash h1 {
+        margin: 0;
+        font-size: 30px;
+        line-height: 36px;
+        font-weight: 700;
+        letter-spacing: -0.025em;
+      }
+      .splash p {
+        margin: 0;
+      }
+      .splash-status {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        width: 100%;
+        max-width: 320px;
+      }
+      .splash-bar {
+        height: 6px;
+        overflow: hidden;
+        border-radius: 9999px;
+        background: rgb(255 255 255 / 0.2);
+      }
+      .splash-bar div {
+        width: 33.333%;
+        height: 100%;
+        border-radius: 9999px;
+        background: #fff;
+        animation: splash-bar 1.2s ease-in-out infinite;
+      }
+      @keyframes splash-bar {
+        0% {
+          transform: translateX(-110%);
+        }
+        100% {
+          transform: translateX(320%);
+        }
+      }
+      @keyframes splash-pulse {
+        50% {
+          opacity: 0.5;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .splash-logo svg,
+        .splash-bar div {
+          animation: none;
+        }
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div class="splash" aria-hidden="true">
+        <div class="splash-logo">
+          <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5.75 17.83a3.75 3.75 0 1 0 0-7.5 3.75 3.75 0 0 0 0 7.5Zm12.5 0a3.75 3.75 0 1 0 0-7.5 3.75 3.75 0 0 0 0 7.5ZM5.75 14.08h5l5.42-7.5M10.75 14.08 8.67 7.42M5 7.42h5.33M16.17 6.58h2.08M16.17 6.58l2.08 7.5" />
+          </svg>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 4px">
+          <h1>Badger Bikes</h1>
+          <p style="height: 24px"></p>
+        </div>
+        <div class="splash-status">
+          <p style="height: 56px"></p>
+          <div class="splash-bar"><div></div></div>
+          <p style="height: 40px"></p>
+        </div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

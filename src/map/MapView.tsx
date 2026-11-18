@@ -1,6 +1,7 @@
-// The single map (mounted once at the app root). Only this file imports the maplibre runtime.
-import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
-import { GPUInitializationError, Map as MlMap, setWorkerUrl, type GeoJSONSource, type MapMouseEvent } from 'maplibre-gl'
+// The single map (mounted once at the app root). The maplibre runtime is loaded on demand from ./maplibre
+// (this file imports only its types): it is most of the app's JavaScript, so it downloads in parallel with
+// the first station request instead of before it. Until it has loaded, the map API queues camera changes.
+import type { GeoJSONSource, MapGeoJSONFeature, MapMouseEvent, Map as MlMap } from 'maplibre-gl'
 import { useEffect, useEffectEvent, useImperativeHandle, useMemo, useRef } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { MAP } from '../config'
@@ -10,17 +11,20 @@ import { AppError } from '../lib/errors'
 import { useAppStore } from '../store/appStore'
 import { useT } from '../i18n/useT'
 import { useLocationStore } from '../location/locationStore'
-import type { MapMode } from '../types'
+import type { BBox, LngLat, MapMode } from '../types'
 import { useRideStore } from '../ride/rideStore'
+import { isDarkStyle, usePrefersDark } from '../ui/useMediaQuery'
 import { useRidePlan } from '../ui/ride/useRidePlan'
 import { AVAILABILITY_COLORS, PATH_COLORS, ROUTE_COLORS, STAR_GOLD, USER_PUCK } from './colors'
 import { addSavedIcons, savedImageId } from './savedIcons'
 import { useRouteDetails } from '../data/routeDetails'
 import type { PathKind } from '../routing/details'
 import { buildEndpointFeatures, buildSavedPlaceFeatures, buildPathKindFeatures, buildRouteFeatures, buildWalkFeatures, buildStationFeatures, buildUserFeatures, emptyCollection, rideRoles } from './features'
-import { LAYER_IDS as L, SOURCE_IDS as S, type MapViewProps } from './types'
+import { LAYER_IDS as L, SOURCE_IDS as S, type MapViewProps, type Padding } from './types'
 
-setWorkerUrl(workerUrl)
+// Starts downloading the map runtime as soon as the app starts. A failure is reported when the map is created.
+const runtime = import('./maplibre')
+runtime.catch(() => {})
 
 const ATTRIBUTION = [
   'Routing: <a href="https://valhalla1.openstreetmap.de">Valhalla</a> &amp; OSRM by FOSSGIS',
@@ -48,11 +52,6 @@ function labelColorExpr(mode: MapMode) {
 function pathColorExpr(dark: boolean) {
   const entries = (Object.entries(PATH_COLORS) as Array<[PathKind, string]>).flatMap(([k, c]) => [k, dark && k === 'quietStreet' ? '#94a3b8' : c])
   return ['match', ['get', 'kind'], ...entries, '#0f766e'] as never
-}
-
-function isDark(style: 'auto' | 'light' | 'dark'): boolean {
-  if (style !== 'auto') return style === 'dark'
-  return typeof window !== 'undefined' && window.matchMedia?.('(prefers-color-scheme: dark)').matches === true
 }
 
 function ensureLayers(map: MlMap, mode: MapMode, dark: boolean) {
@@ -98,19 +97,46 @@ const STARRED_FILTER = ['==', ['get', 'starred'], true] as never
 
 const source = (map: MlMap, id: string) => map.getSource(id) as GeoJSONSource | undefined
 
+/** The point feature of `layer` nearest to a tap, within MAP.tapSlopPx, and its distance in px. */
+function featureNear(map: MlMap, at: { x: number; y: number }, layer: string): { feature: MapGeoJSONFeature; px: number } | null {
+  if (!map.getLayer(layer)) return null
+  const slop = MAP.tapSlopPx
+  const box: [[number, number], [number, number]] = [
+    [at.x - slop, at.y - slop],
+    [at.x + slop, at.y + slop],
+  ]
+  let best: { feature: MapGeoJSONFeature; px: number } | null = null
+  for (const feature of map.queryRenderedFeatures(box, { layers: [layer] })) {
+    if (feature.geometry.type !== 'Point') continue
+    const p = map.project(feature.geometry.coordinates as [number, number])
+    const px = Math.hypot(p.x - at.x, p.y - at.y)
+    if (!best || px < best.px) best = { feature, px }
+  }
+  return best
+}
+
+/** A camera change asked for before the map runtime had loaded (applied without animation once it has). */
+type PendingCamera = { kind: 'fly'; center: LngLat; zoom?: number } | { kind: 'fit'; bbox: BBox; maxZoom?: number }
+
 export function MapView({ ref, onStationClick, onBackgroundClick, onMapPick, onError }: MapViewProps) {
   const container = useRef<HTMLDivElement>(null)
   const msg = useT()
   const mapRef = useRef<MlMap | null>(null)
   const readyRef = useRef(false)
-  const lastRevision = useRef('')
+  const lastStationsKey = useRef('')
+  /** The style URL the map has (or is loading), so an unchanged theme never reloads it. */
+  const appliedStyle = useRef<string | null>(null)
+  /** The station whose feature-state is `selected` on the map. */
+  const selectedOnMap = useRef<string | null>(null)
+  const pendingCamera = useRef<PendingCamera | null>(null)
+  const padding = useRef<Padding | null>(null)
   const { systemId, mode, selectedStationId, settings, starred, saved } = useAppStore(
     useShallow((s) => ({ systemId: s.systemId, mode: s.mapMode, selectedStationId: s.selectedStationId, settings: s.settings, starred: s.starredStations, saved: s.savedPlaces })),
   )
   const ride = useRideStore(useShallow((s) => ({ route: s.route, routes: s.routes, startId: s.startId, stopIds: s.stopIds, destination: s.destination, origin: s.origin })))
-  const roles = rideRoles(ride.startId, ride.stopIds)
   const rolesKey = `${ride.startId ?? ''}|${ride.stopIds.join(',')}`
-  const dark = isDark(settings.mapStyle)
+  const dark = isDarkStyle(settings.mapStyle, usePrefersDark())
+  const styleUrl = dark ? MAP.styles.dark : MAP.styles.light
   const { snapshot } = useStationsSnapshot(systemId)
   const { details } = useRouteDetails(systemId, ride.route)
   // While planning (route shown, ride not started), only the docks that matter stay on the map: the start
@@ -128,70 +154,97 @@ export function MapView({ ref, onStationClick, onBackgroundClick, onMapPick, onE
   const startCoord = ride.startId ? snapshot?.byId.get(ride.startId)?.coord : undefined
   const endCoord = endId ? snapshot?.byId.get(endId)?.coord : undefined
   const walkKey = `${startCoord?.join(',') ?? ''}|${endCoord?.join(',') ?? ''}`
+  // Everything the station features depend on: the city (revisions restart at 1 in each city), its data
+  // revision, the party size (availability colors), plan roles and stars.
+  const stationsKey = snapshot ? `${snapshot.systemId}|${snapshot.revision}|${settings.partySize}|${rolesKey}|${starred.join(',')}` : ''
+  // Everything the route layers depend on.
+  const routeScene = useMemo(
+    () => ({ route: ride.route, routes: ride.routes, destination: ride.destination, origin: ride.origin, segments: details?.segments, walkKey }),
+    [ride.route, ride.routes, ride.destination, ride.origin, details, walkKey],
+  )
 
   const emitStation = useEffectEvent((id: string) => onStationClick(id))
   const emitBackground = useEffectEvent(() => onBackgroundClick())
   const emitPick = useEffectEvent((c: [number, number]) => onMapPick(c))
   const emitError = useEffectEvent((e: AppError) => onError(e))
-  const applyDockFilter = useEffectEvent(() => {
+  const applyDockFilter = useEffectEvent((ids: readonly string[] | null) => {
     const map = mapRef.current
     if (!map || !readyRef.current) return
-    const filter = routeDockIds ? (['in', ['get', 'id'], ['literal', routeDockIds]] as never) : null
+    const filter = ids ? (['in', ['get', 'id'], ['literal', ids]] as never) : null
     for (const id of [L.stationCircle, L.stationCount, L.stationSelected]) if (map.getLayer(id)) map.setFilter(id, filter)
     if (map.getLayer(L.stationStarred)) map.setFilter(L.stationStarred, filter ? (['all', STARRED_FILTER, filter] as never) : STARRED_FILTER)
   })
+  const syncSaved = useEffectEvent((places: typeof saved, sid: string | null) => {
+    const map = mapRef.current
+    if (!map || !readyRef.current) return
+    void source(map, S.saved)?.setData(buildSavedPlaceFeatures(places, sid) as never)
+  })
+  const syncStations = useEffectEvent((key: string) => {
+    const map = mapRef.current
+    if (!map || !readyRef.current || !snapshot || key === lastStationsKey.current) return
+    lastStationsKey.current = key
+    const sid = snapshot.systemId
+    const star = new Set(starred.filter((k) => k.startsWith(`${sid}:`)).map((k) => k.slice(sid.length + 1)))
+    void source(map, S.stations)?.setData(buildStationFeatures(snapshot, { partySize: settings.partySize, starred: star, roles: rideRoles(ride.startId, ride.stopIds) }) as never)
+  })
+  const applySelection = useEffectEvent((id: string | null) => {
+    const map = mapRef.current
+    if (!map || !readyRef.current || !map.getSource(S.stations)) return
+    const prev = selectedOnMap.current
+    if (prev && prev !== id) map.setFeatureState({ source: S.stations, id: prev }, { selected: false })
+    if (id) map.setFeatureState({ source: S.stations, id }, { selected: true })
+    selectedOnMap.current = id
+  })
+  const syncRoute = useEffectEvent((scene: typeof routeScene) => {
+    const map = mapRef.current
+    if (!map || !readyRef.current) return
+    const { route, destination } = scene
+    // Other route options faded underneath, the chosen one on top.
+    const others = scene.routes.filter((r) => r !== route)
+    const routes = buildRouteFeatures(route ? [...others, route] : [], others.length)
+    // Walking legs: from a starting place to the pickup dock, and from the end dock to the destination.
+    const origin = scene.origin && !scene.origin.stationId ? scene.origin.coord : null
+    const walks: Array<[[number, number], [number, number]]> = []
+    if (origin && startCoord) walks.push([origin, startCoord])
+    if (route && endCoord && destination) walks.push([endCoord, destination.coord])
+    routes.features.push(...buildWalkFeatures(walks))
+    void source(map, S.route)?.setData(routes as never)
+    void source(map, S.routeKinds)?.setData(buildPathKindFeatures(route ? (scene.segments ?? []) : []) as never)
+    void source(map, S.endpoints)?.setData(buildEndpointFeatures(destination?.coord ?? null, origin) as never)
+  })
+  // User location dot, outside React.
+  const drawUser = useEffectEvent(() => {
+    const map = mapRef.current
+    const fix = useLocationStore.getState().fix
+    if (!map || !readyRef.current) return
+    void source(map, S.user)?.setData(buildUserFeatures(fix, fix && fix.accuracy <= 30 ? 'good' : 'degraded', fix?.heading ?? null) as never)
+  })
+  /** Everything onto a freshly loaded style (first load, or after a theme change). */
   const redraw = useEffectEvent(() => {
     const map = mapRef.current
     if (!map || !readyRef.current) return
     ensureLayers(map, mode, dark)
-    applyDockFilter()
-    lastRevision.current = ''
-    syncStations()
-    syncRoute()
-    syncSaved()
+    applyDockFilter(routeDockIds)
+    // A (re)loaded style starts with empty sources and no feature-state.
+    lastStationsKey.current = ''
+    selectedOnMap.current = null
+    syncStations(stationsKey)
+    applySelection(selectedStationId)
+    syncRoute(routeScene)
+    syncSaved(saved, systemId)
     drawUser()
   })
-  const syncSaved = useEffectEvent(() => {
-    const map = mapRef.current
-    if (!map || !readyRef.current) return
-    void source(map, S.saved)?.setData(buildSavedPlaceFeatures(saved, systemId) as never)
-  })
-  const syncStations = useEffectEvent(() => {
-    const map = mapRef.current
-    if (!map || !readyRef.current || !snapshot) return
-    const sid = snapshot.systemId
-    const key = `${snapshot.revision}|${rolesKey}|${starred.join(',')}`
-    if (key === lastRevision.current) return
-    lastRevision.current = key
-    const star = new Set(starred.filter((k) => k.startsWith(`${sid}:`)).map((k) => k.slice(sid.length + 1)))
-    void source(map, S.stations)?.setData(buildStationFeatures(snapshot, { partySize: settings.partySize, starred: star, roles }) as never)
-  })
-  const syncRoute = useEffectEvent(() => {
-    const map = mapRef.current
-    if (!map || !readyRef.current) return
-    // Other route options faded underneath, the chosen one on top.
-    const others = ride.routes.filter((r) => r !== ride.route)
-    const routes = buildRouteFeatures(ride.route ? [...others, ride.route] : [], others.length)
-    // Walking legs: from a starting place to the pickup dock, and from the end dock to the destination.
-    const origin = ride.origin && !ride.origin.stationId ? ride.origin.coord : null
-    const walks: Array<[[number, number], [number, number]]> = []
-    if (origin && startCoord) walks.push([origin, startCoord])
-    if (ride.route && endCoord && ride.destination) walks.push([endCoord, ride.destination.coord])
-    routes.features.push(...buildWalkFeatures(walks))
-    void source(map, S.route)?.setData(routes as never)
-    void source(map, S.routeKinds)?.setData(buildPathKindFeatures(ride.route ? (details?.segments ?? []) : []) as never)
-    void source(map, S.endpoints)?.setData(buildEndpointFeatures(ride.destination?.coord ?? null, origin) as never)
-  })
 
-  // Create the map once.
-  useEffect(() => {
-    if (!container.current) return
-    const sys = getSystem(useAppStore.getState().systemId)
+  /** Creates the map once the runtime has loaded, with the current theme, padding and camera. */
+  const createMap = useEffectEvent((ml: typeof import('./maplibre')): (() => void) | undefined => {
+    const el = container.current
+    if (!el) return
+    const sys = getSystem(systemId)
     let map: MlMap
     try {
-      map = new MlMap({
-        container: container.current,
-        style: dark ? MAP.styles.dark : MAP.styles.light,
+      map = new ml.Map({
+        container: el,
+        style: styleUrl,
         center: sys?.center ?? [-96, 39],
         zoom: sys ? MAP.defaultZoom : 3,
         attributionControl: { compact: true, customAttribution: ATTRIBUTION },
@@ -199,26 +252,44 @@ export function MapView({ ref, onStationClick, onBackgroundClick, onMapPick, onE
         canvasContextAttributes: { contextType: 'webgl2', preserveDrawingBuffer: typeof navigator !== 'undefined' && navigator.webdriver === true },
       })
     } catch (err) {
-      emitError(new AppError('webgl_unavailable', err instanceof GPUInitializationError ? 'WebGL2 is unavailable' : 'Map failed to start', { cause: err }))
+      emitError(new AppError('webgl_unavailable', err instanceof ml.GPUInitializationError ? 'WebGL2 is unavailable' : 'Map failed to start', { cause: err }))
       return
     }
     mapRef.current = map
+    appliedStyle.current = styleUrl
+    // What the rest of the app asked for while the runtime was loading.
+    if (padding.current) map.setPadding(padding.current)
+    const pending = pendingCamera.current
+    pendingCamera.current = null
+    if (pending?.kind === 'fly') map.jumpTo({ center: pending.center, zoom: pending.zoom ?? 15 })
+    else if (pending?.kind === 'fit') map.fitBounds([[pending.bbox[0], pending.bbox[1]], [pending.bbox[2], pending.bbox[3]]], { maxZoom: pending.maxZoom ?? 16, duration: 0 })
+    else if (sys) map.fitBounds([[sys.bbox[0], sys.bbox[1]], [sys.bbox[2], sys.bbox[3]]], { padding: 40, maxZoom: 14, duration: 0 })
+
     map.on('style.load', () => {
       readyRef.current = true
       redraw()
     })
+    // One long press can produce both our touch timer and the browser's contextmenu (Android), and then a
+    // click: one pick, and the press's own click doesn't count as a tap on the map.
+    let lastPickAt = -Infinity
+    const pick = (c: [number, number]) => {
+      if (Date.now() - lastPickAt < MAP.afterPickIgnoreMs) return
+      lastPickAt = Date.now()
+      emitPick(c)
+    }
     map.on('click', (e: MapMouseEvent) => {
-      // A saved place (marker drawn on top) opens its place card at the exact saved spot.
-      const savedHit = map.getLayer(L.savedPlaces) ? map.queryRenderedFeatures(e.point, { layers: [L.savedPlaces] })[0] : undefined
-      const savedPlace = savedHit && useAppStore.getState().savedPlaces.find((p) => p.id === savedHit.properties?.id)
+      if (Date.now() - lastPickAt < MAP.afterPickIgnoreMs) return
+      // A saved place (marker drawn on top) opens its place card at the exact saved spot; otherwise the
+      // nearest station dot within reach of the finger.
+      const savedHit = featureNear(map, e.point, L.savedPlaces)
+      const stationHit = featureNear(map, e.point, L.stationCircle)
+      const savedPlace = savedHit && (!stationHit || savedHit.px <= stationHit.px) ? useAppStore.getState().savedPlaces.find((p) => p.id === savedHit.feature.properties?.id) : undefined
       if (savedPlace) return emitPick(savedPlace.place.coord)
-      const hit = map.queryRenderedFeatures(e.point, { layers: [L.stationCircle] })[0]
-      const id = hit?.properties?.id
+      const id = stationHit?.feature.properties?.id
       if (typeof id === 'string') emitStation(id)
       else emitBackground()
     })
-    map.on('contextmenu', (e: MapMouseEvent) => emitPick([e.lngLat.lng, e.lngLat.lat]))
-    // Long-press (touch) → pick a point.
+    // Long-press (touch) or right-click → pick a point.
     let timer: ReturnType<typeof setTimeout> | null = null
     let start: { x: number; y: number } | null = null
     const canvas = map.getCanvasContainer()
@@ -226,53 +297,100 @@ export function MapView({ ref, onStationClick, onBackgroundClick, onMapPick, onE
       if (timer) clearTimeout(timer)
       timer = null
     }
+    map.on('contextmenu', (e: MapMouseEvent) => {
+      cancel()
+      pick([e.lngLat.lng, e.lngLat.lat])
+    })
     const onTouchStart = (e: TouchEvent) => {
-      if (e.touches.length !== 1) return cancel()
+      cancel()
+      if (e.touches.length !== 1) return
       const t = e.touches[0]!
       start = { x: t.clientX, y: t.clientY }
       timer = setTimeout(() => {
+        timer = null
+        if (!start) return
         const rect = canvas.getBoundingClientRect()
-        const ll = map.unproject([start!.x - rect.left, start!.y - rect.top])
-        emitPick([ll.lng, ll.lat])
-      }, 500)
+        const ll = map.unproject([start.x - rect.left, start.y - rect.top])
+        pick([ll.lng, ll.lat])
+      }, MAP.longPressMs)
     }
     const onTouchMove = (e: TouchEvent) => {
       const t = e.touches[0]
-      if (start && t && Math.hypot(t.clientX - start.x, t.clientY - start.y) > 10) cancel()
+      if (e.touches.length !== 1 || (start && t && Math.hypot(t.clientX - start.x, t.clientY - start.y) > MAP.longPressMovePx)) cancel()
     }
     canvas.addEventListener('touchstart', onTouchStart, { passive: true })
     canvas.addEventListener('touchmove', onTouchMove, { passive: true })
     canvas.addEventListener('touchend', cancel)
+    canvas.addEventListener('touchcancel', cancel)
     map.on('error', (e) => console.warn('[map]', (e as unknown as { error?: Error }).error?.message ?? e))
     return () => {
       cancel()
+      canvas.removeEventListener('touchstart', onTouchStart)
+      canvas.removeEventListener('touchmove', onTouchMove)
+      canvas.removeEventListener('touchend', cancel)
+      canvas.removeEventListener('touchcancel', cancel)
       readyRef.current = false
       mapRef.current = null
+      appliedStyle.current = null
       map.remove()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- created once; later changes are applied below
+  })
+
+  // Create the map once, when its runtime has loaded.
+  useEffect(() => {
+    let cancelled = false
+    let destroy: (() => void) | undefined
+    runtime.then(
+      (ml) => {
+        if (!cancelled) destroy = createMap(ml)
+      },
+      (err: unknown) => {
+        if (!cancelled) emitError(new AppError('network', 'The map could not be loaded', { cause: err }))
+      },
+    )
+    return () => {
+      cancelled = true
+      destroy?.()
+    }
   }, [])
 
-  useImperativeHandle(ref, () => ({
-    flyTo: (center, o) => mapRef.current?.flyTo({ center, zoom: o?.zoom ?? Math.max(mapRef.current.getZoom(), 15), duration: o?.durationMs ?? 800 }),
-    fitBounds: (b, o) => mapRef.current?.fitBounds([[b[0], b[1]], [b[2], b[3]]], { maxZoom: o?.maxZoom ?? 16, duration: o?.durationMs ?? 800 }),
-    setPadding: (p) => mapRef.current?.setPadding(p),
-    getViewport: () => {
-      const m = mapRef.current
-      if (!m) return null
-      const b = m.getBounds()
-      const c = m.getCenter()
-      return { center: [c.lng, c.lat], bbox: [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()], zoom: m.getZoom() }
-    },
-  }))
+  // Before the map exists, camera changes are kept and applied when it is created (see createMap).
+  useImperativeHandle(
+    ref,
+    () => ({
+      flyTo: (center, o) => {
+        const map = mapRef.current
+        if (!map) pendingCamera.current = { kind: 'fly', center, zoom: o?.zoom }
+        else map.flyTo({ center, zoom: o?.zoom ?? Math.max(map.getZoom(), 15), duration: o?.durationMs ?? 800 })
+      },
+      fitBounds: (b, o) => {
+        const map = mapRef.current
+        if (!map) pendingCamera.current = { kind: 'fit', bbox: b, maxZoom: o?.maxZoom }
+        else map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { maxZoom: o?.maxZoom ?? 16, duration: o?.durationMs ?? 800 })
+      },
+      setPadding: (p) => {
+        padding.current = p
+        mapRef.current?.setPadding(p)
+      },
+      getViewport: () => {
+        const m = mapRef.current
+        if (!m) return null
+        const b = m.getBounds()
+        const c = m.getCenter()
+        return { center: [c.lng, c.lat], bbox: [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()], zoom: m.getZoom() }
+      },
+    }),
+    [],
+  )
 
-  // Theme.
+  // Theme: only a different style is loaded (the map already has the one it was created with).
   useEffect(() => {
     const map = mapRef.current
-    if (!map) return
+    if (!map || appliedStyle.current === styleUrl) return
+    appliedStyle.current = styleUrl
     readyRef.current = false
-    map.setStyle(dark ? MAP.styles.dark : MAP.styles.light)
-  }, [dark])
+    map.setStyle(styleUrl)
+  }, [styleUrl])
 
   // Mode → paint/layout only (data unchanged).
   useEffect(() => {
@@ -285,30 +403,23 @@ export function MapView({ ref, onStationClick, onBackgroundClick, onMapPick, onE
   }, [mode])
 
   useEffect(() => {
-    syncStations()
-  }, [snapshot, rolesKey, starred, settings.partySize])
+    syncStations(stationsKey)
+  }, [stationsKey])
   useEffect(() => {
-    syncRoute()
-  }, [ride.route, ride.routes, ride.destination, ride.origin, walkKey, details])
-
+    syncRoute(routeScene)
+  }, [routeScene])
   useEffect(() => {
-    applyDockFilter()
+    applyDockFilter(routeDockIds)
   }, [routeDockIds])
   useEffect(() => {
-    syncSaved()
+    syncSaved(saved, systemId)
   }, [saved, systemId])
-
   // Selection via feature-state.
   useEffect(() => {
-    const map = mapRef.current
-    if (!map || !readyRef.current || !selectedStationId) return
-    map.setFeatureState({ source: S.stations, id: selectedStationId }, { selected: true })
-    return () => {
-      if (mapRef.current?.getSource(S.stations)) mapRef.current.setFeatureState({ source: S.stations, id: selectedStationId }, { selected: false })
-    }
-  }, [selectedStationId, snapshot])
+    applySelection(selectedStationId)
+  }, [selectedStationId])
 
-  // Fly to the system when it changes.
+  // Fly to the system when it changes (the first one is framed when the map is created).
   useEffect(() => {
     const sys = getSystem(systemId)
     const map = mapRef.current
@@ -316,13 +427,6 @@ export function MapView({ ref, onStationClick, onBackgroundClick, onMapPick, onE
     map.fitBounds([[sys.bbox[0], sys.bbox[1]], [sys.bbox[2], sys.bbox[3]]], { padding: 40, maxZoom: 14, duration: 0 })
   }, [systemId])
 
-  // User location dot, outside React.
-  const drawUser = useEffectEvent(() => {
-    const map = mapRef.current
-    const fix = useLocationStore.getState().fix
-    if (!map || !readyRef.current) return
-    void source(map, S.user)?.setData(buildUserFeatures(fix, fix && fix.accuracy <= 30 ? 'good' : 'degraded', fix?.heading ?? null) as never)
-  })
   useEffect(() => useLocationStore.subscribe((s) => s.fix, () => drawUser()), [])
 
   // Wrapper owns positioning: maplibre's CSS sets .maplibregl-map { position: relative } on the inner div.

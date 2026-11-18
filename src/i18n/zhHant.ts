@@ -40,6 +40,8 @@ export const zhHant: Messages = {
   updateAvailable: '有可用的更新',
   newVersion: (app) => `${app} 有新版本。重新整理即可更新。`,
   watchReady: (name, n, kind, baseline) => `${name} 現在有 ${count(n, kind)}（原本為 ${baseline}）。`,
+  locationDenied: '此網站的定位權限已關閉。請在瀏覽器設定中允許定位，然後再試一次。',
+  locationNotFound: '無法取得你的位置，請稍後再試。',
 
   // Loading screen
   yourCity: '你的城市',

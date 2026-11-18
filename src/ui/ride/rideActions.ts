@@ -10,10 +10,15 @@ function openRide() {
   if (app.sheet === 'peek') app.setSheet('half')
 }
 
-/** A dock tapped on the map while planning: it becomes the start, or (once there is one) the destination. */
+/**
+ * A dock tapped on the map while planning: it becomes the start, or (once there is one) the destination.
+ * Mid-ride the plan is in use, so the tap just opens the dock's card: replacing the destination would also
+ * clear the ride timer and the parts already opened.
+ */
 export function rideMapTap(stationId: string, name: string, coord: LngLat): void {
   const ride = useRideStore.getState()
-  if (!ride.origin && !ride.startId) ride.setOrigin({ kind: 'station', name, coord, stationId })
+  if (ride.openedParts.length > 0 || ride.walkToDockOpened) useAppStore.getState().selectStation(stationId)
+  else if (!ride.origin && !ride.startId) ride.setOrigin({ kind: 'station', name, coord, stationId })
   else if (stationId !== ride.startId) ride.setDestination({ kind: 'station', name, coord, stationId })
 }
 

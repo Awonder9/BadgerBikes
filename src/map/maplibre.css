@@ -1,0 +1,4 @@
+/* maplibre-gl's stylesheet, loaded with the map code (src/map/maplibre.ts) instead of blocking the first paint.
+   In the `base` layer (declared first by Tailwind in src/index.css), so Tailwind utilities and the overrides in
+   src/index.css win over its defaults. */
+@import 'maplibre-gl/dist/maplibre-gl.css' layer(base);

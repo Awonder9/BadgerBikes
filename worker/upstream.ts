@@ -21,6 +21,11 @@ export interface UpstreamDeps {
   now?: () => number
   /** Cache API (caches.default) when available. */
   cache?: Cache | null
+  /**
+   * Keeps work the response doesn't wait for alive after it is sent (ctx.waitUntil): Cache API writes and
+   * gate releases. Without it (tests) that work is awaited / fire-and-forget.
+   */
+  waitUntil?: (work: Promise<unknown>) => void
 }
 
 const memory = new LruCache<string, { body: unknown; expires: number }>(500)
@@ -82,6 +87,16 @@ export function createUpstream(deps: UpstreamDeps): UpstreamFetch {
     return req.method === 'POST' ? postJson<T>(req.url, req.body, opts) : fetchJson<T>(req.url, { ...opts, dedupe: true })
   }
 
+  /**
+   * Returns a slot to the gate. It must arrive even after the response has gone out: with FOSSGIS's single
+   * slot, a lost release blocks every route request until the gate reclaims it (30 s).
+   */
+  function release(gate: Gate, ticket: string, outcome: GateOutcome): void {
+    if (!ticket) return
+    const done = gate.release(ticket, outcome).catch(() => {})
+    deps.waitUntil?.(done)
+  }
+
   return async function upstream<T>(req: UpstreamRequest): Promise<T> {
     if (req.cacheKey) {
       const cached = await cacheGet(req.cacheKey)
@@ -101,14 +116,14 @@ export function createUpstream(deps: UpstreamDeps): UpstreamFetch {
         }
         if (!grant.ok) throw new AppError('upstream_unavailable', `${req.provider} is busy; try again shortly`, { provider: req.provider, retryable: true })
         if (req.signal?.aborted) {
-          if (grant.ticket) void gate.release(grant.ticket, 'aborted').catch(() => {})
+          release(gate, grant.ticket, 'aborted')
           throw new AppError('aborted', 'Aborted')
         }
         try {
           result = await doFetch<T>(req)
-          if (grant.ticket) void gate.release(grant.ticket, 'ok').catch(() => {})
+          release(gate, grant.ticket, 'ok')
         } catch (err) {
-          if (grant.ticket) void gate.release(grant.ticket, outcomeOf(err)).catch(() => {})
+          release(gate, grant.ticket, outcomeOf(err))
           throw err
         }
       } else {
@@ -122,7 +137,11 @@ export function createUpstream(deps: UpstreamDeps): UpstreamFetch {
     }
     if (req.cacheKey && req.cacheTtlMs !== undefined) {
       const ttl = typeof req.cacheTtlMs === 'function' ? req.cacheTtlMs(result) : req.cacheTtlMs
-      await cachePut(req.cacheKey, result, ttl)
+      // The in-isolate copy is stored at once (cachePut sets it before its first await); the Cache API write
+      // finishes in the background instead of delaying this response.
+      const put = cachePut(req.cacheKey, result, ttl)
+      if (deps.waitUntil) deps.waitUntil(put)
+      else await put
     }
     return result
   }

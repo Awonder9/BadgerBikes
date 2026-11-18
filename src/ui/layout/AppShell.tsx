@@ -3,13 +3,13 @@ import { useEffect, useEffectEvent, useRef, useState, type ReactNode } from 'rea
 import { useRegisterSW } from 'virtual:pwa-register/react'
 import { useShallow } from 'zustand/react/shallow'
 import { APP, UI } from '../../config'
-import { useStationsSnapshot } from '../../data/hooks'
+import { latestSnapshot, useStationsSnapshot } from '../../data/hooks'
 import { MapApiContext } from '../../map/mapApiContext'
 import { MapView } from '../../map/MapView'
 import type { MapApi } from '../../map/types'
 import { useAppStore } from '../../store/appStore'
 import { currentMessages, useI18n } from '../../i18n/useT'
-import { useLocationStore } from '../../location/locationStore'
+import { useLocationStore, waitForFix } from '../../location/locationStore'
 import type { Panel } from '../../store/types'
 import { InstallTip } from './InstallTip'
 import { AboutPanel, BrowsePanel, PinCard, SettingsPanel, StationList } from '../browse/panels'
@@ -63,6 +63,8 @@ function BottomSheet({ children, onHeight }: { children: ReactNode; onHeight: (p
   const { t } = useI18n()
   const ref = useRef<HTMLDivElement>(null)
   const drag = useRef<{ y: number; h: number } | null>(null)
+  // A drag already chose the snap: the click a mouse sends after it must not step the size again.
+  const dragged = useRef(false)
   const [dragH, setDragH] = useState<number | null>(null)
   // Height of the app area (h-dvh), not window.innerHeight: on phones the window shrinks while the keyboard
   // is open, which used to collapse a "full" sheet to about half on the next re-render.
@@ -89,27 +91,39 @@ function BottomSheet({ children, onHeight }: { children: ReactNode; onHeight: (p
     const best = (['peek', 'half', 'full'] as const).reduce((a, b) => (Math.abs(snapPx(b, area) - h) < Math.abs(snapPx(a, area) - h) ? b : a))
     useAppStore.getState().setSheet(best)
   }
+  const endDrag = () => {
+    if (dragH !== null) snapTo(dragH)
+    drag.current = null
+    setDragH(null)
+  }
   return (
     <div ref={ref} className="absolute inset-x-0 bottom-0 z-20 flex flex-col rounded-t-3xl bg-white shadow-[0_-8px_30px_rgba(0,0,0,0.15)] dark:bg-slate-950" style={{ height: dragH ?? SNAP_CSS[sheet] }}>
       <button
         type="button"
         aria-label={t.panelSize(sheet)}
         className="flex h-8 w-full shrink-0 touch-none items-center justify-center"
-        onClick={() => useAppStore.getState().setSheet(sheet === 'peek' ? 'half' : sheet === 'half' ? 'full' : 'peek')}
+        onClick={() => {
+          if (dragged.current) {
+            dragged.current = false
+            return
+          }
+          useAppStore.getState().setSheet(sheet === 'peek' ? 'half' : sheet === 'half' ? 'full' : 'peek')
+        }}
         onPointerDown={(e) => {
           drag.current = { y: e.clientY, h: ref.current?.offsetHeight ?? 0 }
+          dragged.current = false
           e.currentTarget.setPointerCapture(e.pointerId)
         }}
         onPointerMove={(e) => {
           if (!drag.current) return
           const h = Math.min(areaHeight() * 0.95, Math.max(120, drag.current.h + (drag.current.y - e.clientY)))
-          if (Math.abs(drag.current.y - e.clientY) > 6) setDragH(h)
+          if (Math.abs(drag.current.y - e.clientY) > 6) {
+            dragged.current = true
+            setDragH(h)
+          }
         }}
-        onPointerUp={() => {
-          if (dragH !== null) snapTo(dragH)
-          drag.current = null
-          setDragH(null)
-        }}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
       >
         <span className="h-1.5 w-10 rounded-full bg-slate-300 dark:bg-slate-600" />
       </button>
@@ -152,8 +166,25 @@ function UpdatePrompt() {
   )
 }
 
-/** "Tell me when a bike/dock frees up" while the app is open. */
-function useStationWatcher() {
+/** A message over the map with a dismiss button; `autoHideMs` hides it on its own (key it by the message). */
+function Toast({ message, onDismiss, autoHideMs }: { message: string; onDismiss: () => void; autoHideMs?: number }) {
+  const { t } = useI18n()
+  const dismiss = useEffectEvent(onDismiss)
+  useEffect(() => {
+    if (!autoHideMs) return
+    const id = setTimeout(() => dismiss(), autoHideMs)
+    return () => clearTimeout(id)
+  }, [autoHideMs])
+  return (
+    <div role="alert" className="absolute inset-x-3 top-20 z-40 flex items-center gap-2 rounded-2xl bg-brand-700 p-3 text-white shadow-xl">
+      <span className="flex-1">{message}</span>
+      <IconButton icon="close" label={t.dismiss} variant="ghost" className="text-white" onClick={onDismiss} />
+    </div>
+  )
+}
+
+/** "Tell me when a bike/dock frees up" while the app is open. Its own component: polls re-render only this. */
+function StationWatchToast() {
   const { systemId, watched } = useAppStore(useShallow((s) => ({ systemId: s.systemId, watched: s.watchedStation })))
   const { snapshot } = useStationsSnapshot(systemId, { active: watched !== null })
   const [message, setMessage] = useState<string | null>(null)
@@ -168,19 +199,32 @@ function useStationWatcher() {
     useAppStore.getState().watchStation(null)
     queueMicrotask(() => setMessage(text))
   }, [ready, watched, st, n])
-  return [message, () => setMessage(null)] as const
+  return message ? <Toast message={message} onDismiss={() => setMessage(null)} /> : null
+}
+
+/** Ride alerts and the arrival check, in a leaf: the ride clock re-renders only this, not the whole app. */
+function RideWatchers() {
+  useRideAlerts()
+  useArrivalCheck()
+  return null
 }
 
 export function AppShell() {
   const mapRef = useRef<MapApi | null>(null)
   const desktop = useIsDesktop()
-  const { systemId, panel, mode } = useAppStore(useShallow((s) => ({ systemId: s.systemId, panel: s.panel, mode: s.mapMode })))
+  const { panel, mode } = useAppStore(useShallow((s) => ({ panel: s.panel, mode: s.mapMode })))
   const [webglFailed, setWebglFailed] = useState(false)
+  const [notice, setNotice] = useState<string | null>(null)
   const { t } = useI18n()
-  const [watchMsg, clearWatchMsg] = useStationWatcher()
-  const { snapshot } = useStationsSnapshot(systemId)
-  useRideAlerts()
-  useArrivalCheck()
+  /** Locate: the known position right away, then a fresh one; says why when location isn't available. */
+  const locate = () => {
+    const known = useLocationStore.getState().fix
+    if (known) mapRef.current?.flyTo(known.coord, { zoom: 16 })
+    void waitForFix().then((coord) => {
+      if (coord && coord !== known?.coord) mapRef.current?.flyTo(coord, { zoom: 16 })
+      else if (!coord) setNotice(useLocationStore.getState().geoError === 'geo_denied' ? currentMessages().locationDenied : currentMessages().locationNotFound)
+    })
+  }
   // Coming back mid-ride (e.g. after Google Maps, or the page was reloaded): show the plan right away.
   useEffect(() => {
     if (useRideStore.getState().openedParts.length > 0) {
@@ -207,7 +251,7 @@ export function AppShell() {
           ref={mapRef}
           onStationClick={(id) => {
             // While planning a ride, a tapped dock fills the planner instead of leaving it.
-            const st = snapshot?.byId.get(id)
+            const st = latestSnapshot(useAppStore.getState().systemId)?.byId.get(id)
             if (useAppStore.getState().panel === 'ride' && st) rideMapTap(id, st.name, st.coord)
             else useAppStore.getState().selectStation(id)
           }}
@@ -221,34 +265,15 @@ export function AppShell() {
           }}
           onMapPick={(c) => useAppStore.getState().dropPin(c)}
           onError={(e) => {
-            if (e.code === 'webgl_unavailable') setWebglFailed(true)
+            // No WebGL2, or the map's code couldn't be downloaded: the station list stands in for the map.
+            if (e.code === 'webgl_unavailable' || e.code === 'network') setWebglFailed(true)
           }}
         />
 
         {/* Locate left · Bikes/Docks centered · Settings right (equal side columns keep the toggle centered). */}
         <div className="pointer-events-none absolute inset-x-0 top-0 z-10 grid grid-cols-[1fr_auto_1fr] items-center gap-2 p-3 pt-[max(0.75rem,env(safe-area-inset-top))]" style={desktop ? { left: 400 } : undefined}>
           <div className="flex justify-start">
-            <IconButton
-              icon="locate"
-              label={t.showMyLocation}
-              className="pointer-events-auto shadow-md"
-              onClick={() => {
-                useLocationStore.getState().requestLocation()
-                const f = useLocationStore.getState().fix
-                if (f) mapRef.current?.flyTo(f.coord, { zoom: 16 })
-                else {
-                  const unsub = useLocationStore.subscribe(
-                    (s) => s.fix,
-                    (fix) => {
-                      if (fix) {
-                        unsub()
-                        mapRef.current?.flyTo(fix.coord, { zoom: 16 })
-                      }
-                    },
-                  )
-                }
-              }}
-            />
+            <IconButton icon="locate" label={t.showMyLocation} className="pointer-events-auto shadow-md" onClick={locate} />
           </div>
           <div className="pointer-events-auto flex h-11 items-center rounded-full bg-white p-1 shadow-md dark:bg-slate-900" role="group" aria-label={t.mapShows}>
             {(['bikes', 'docks'] as const).map((m) => (
@@ -275,15 +300,12 @@ export function AppShell() {
         )}
 
         <RideBanner />
+        <RideWatchers />
         <UpdatePrompt />
         <InstallTip />
         <LoadingScreen />
-        {watchMsg && (
-          <div role="alert" className="absolute inset-x-3 top-20 z-40 flex items-center gap-2 rounded-2xl bg-brand-700 p-3 text-white shadow-xl">
-            <span className="flex-1">{watchMsg}</span>
-            <IconButton icon="close" label={t.dismiss} variant="ghost" className="text-white" onClick={clearWatchMsg} />
-          </div>
-        )}
+        <StationWatchToast />
+        {notice && <Toast key={notice} message={notice} onDismiss={() => setNotice(null)} autoHideMs={UI.noticeMs} />}
       </div>
     </MapApiContext>
   )

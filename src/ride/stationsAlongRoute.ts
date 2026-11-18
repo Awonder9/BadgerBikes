@@ -85,13 +85,24 @@ const usableDock = (s: Station, partySize: number) => !!s.status?.isInstalled &&
 
 /**
  * Docks to show for a route, in ride order: only docks on the route line, plus (a) an off-route re-dock
- * option wherever riding would exceed `maxRideMinutes` without a usable on-route dock, and (b) the
- * dock closest to the destination when the last on-route dock leaves a walk over MAX_FINAL_WALK_METERS.
+ * option wherever riding would exceed `maxRideMinutes` without a usable on-route dock, (b) the
+ * dock closest to the destination when the last on-route dock leaves a walk over MAX_FINAL_WALK_METERS, and
+ * (c) every dock in `keepIds` (stops the rider already chose), even when its live counts no longer qualify it:
+ * a chosen dock that fills up stays in the plan (and is shown as full) instead of being silently swapped.
  */
 export function routeDocks(
   route: readonly LngLat[],
   stations: readonly Station[],
-  opts: { excludeIds?: ReadonlySet<string>; destination: LngLat; destStationId?: string; partySize?: number; electric?: boolean; maxRideMinutes?: number; secondsPerMeter?: number },
+  opts: {
+    excludeIds?: ReadonlySet<string>
+    keepIds?: readonly string[]
+    destination: LngLat
+    destStationId?: string
+    partySize?: number
+    electric?: boolean
+    maxRideMinutes?: number
+    secondsPerMeter?: number
+  },
 ): RouteDock[] {
   if (route.length < 2) return []
   const exclude = opts.excludeIds ?? new Set<string>()
@@ -131,15 +142,28 @@ export function routeDocks(
     prev = pick.along
   }
 
+  // (c) Stops the rider already chose stay listed, whatever their counts are now. Added before (b): a kept dock
+  // near the destination that still has room means no second one is added; one that filled up gets a usable
+  // alternative listed next to it.
+  const keep = (opts.keepIds ?? []).filter((id) => !exclude.has(id) && !has(id))
+  const index = keep.length > 0 ? buildPolylineIndex([...route]) : null
+  for (const id of keep) {
+    const station = stations.find((s) => s.id === id)
+    const snap = station && index ? nearestOnPolyline(index, station.coord) : null
+    if (!station || !snap) continue
+    const reason: DockReason =
+      snap.distanceFromLine <= ON_ROUTE_METERS ? 'onRoute' : haversine(station.coord, opts.destination) <= MAX_FINAL_WALK_METERS ? 'nearDestination' : 'redock'
+    docks.push({ station, along: snap.distanceAlong, offset: snap.distanceFromLine, reason })
+  }
+
   // (b) Don't strand the rider far from the destination.
   const lastUsable = docks.filter((d) => usableDock(d.station, party)).sort((a, b) => b.along - a.along)[0]
   if (!lastUsable || haversine(lastUsable.station.coord, opts.destination) > MAX_FINAL_WALK_METERS) {
-    const index = buildPolylineIndex([...route])
     const near = stations
       .filter((s) => !exclude.has(s.id) && !has(s.id) && usableDock(s, party) && haversine(s.coord, opts.destination) <= MAX_FINAL_WALK_METERS)
       .sort((a, b) => haversine(a.coord, opts.destination) - haversine(b.coord, opts.destination))[0]
     if (near) {
-      const snap = nearestOnPolyline(index, near.coord)
+      const snap = nearestOnPolyline(index ?? buildPolylineIndex([...route]), near.coord)
       docks.push({ station: near, along: snap?.distanceAlong ?? total, offset: snap?.distanceFromLine ?? 0, reason: 'nearDestination' })
     }
   }

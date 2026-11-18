@@ -14,15 +14,8 @@ import type { Station, SystemDetails } from '../../types'
 import { AvailabilityPill } from '../primitives/Availability'
 import { Button, IconButton } from '../primitives/Button'
 import { Icon } from '../primitives/Icon'
+import { platform } from '../platform'
 import { rideTo, startRideAt } from '../ride/rideActions'
-
-export function platform(): 'ios' | 'android' | 'desktop' {
-  if (typeof navigator === 'undefined') return 'desktop'
-  const ua = navigator.userAgent
-  if (/iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)) return 'ios'
-  if (/Android/.test(ua)) return 'android'
-  return 'desktop'
-}
 
 function statusBanner(st: Station, t: Messages): string | null {
   const s = st.status

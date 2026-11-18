@@ -69,7 +69,16 @@ export interface RideState {
 
 let inflight: AbortController | null = null
 
-const planReset = (): Partial<RideState> => ({ routes: [], route: null, stopIds: [], status: 'idle', error: null, openedParts: [], rideStartedAtMs: null, walkToDockOpened: false })
+/** Drops a route request for the previous start/destination, so its late answer can't come back as the plan. */
+function abortRouting(): void {
+  inflight?.abort()
+  inflight = null
+}
+
+const planReset = (): Partial<RideState> => {
+  abortRouting()
+  return { routes: [], route: null, stopIds: [], status: 'idle', error: null, openedParts: [], rideStartedAtMs: null, walkToDockOpened: false }
+}
 
 type RideActions = 'setOrigin' | 'setStart' | 'autoPickup' | 'setDestination' | 'toggleStop' | 'markPartOpened' | 'openWalkToDock' | 'startRideTimer' | 'endRide' | 'finishPlan' | 'reset'
 const empty = (): Omit<RideState, RideActions> => ({
@@ -157,7 +166,8 @@ export const useRideStore = create<RideState>()(
             ? { origin: null, startId: null, pickupPinned: false, ...planReset(), finished: false }
             : { startId, pickupPinned: true, origin: s.origin && !s.origin.stationId ? s.origin : null, ...planReset(), finished: false },
         ),
-      autoPickup: (id) => set((s) => (s.startId === id ? {} : { startId: id, ...planReset(), finished: false })),
+      // Unchanged: the same state object, so nothing re-renders (the planner calls this on every count update).
+      autoPickup: (id) => set((s) => (s.startId === id ? s : { startId: id, ...planReset(), finished: false })),
       setDestination: (destination) => set({ destination, ...planReset(), finished: false }),
       toggleStop: (id, routeOrder) =>
         set((s) => {
@@ -178,7 +188,7 @@ export const useRideStore = create<RideState>()(
       endRide: () => set({ openedParts: [], rideStartedAtMs: null, walkToDockOpened: false }),
       finishPlan: () => set({ finished: true }),
       reset: () => {
-        inflight?.abort()
+        abortRouting()
         set(empty())
       },
     }),
@@ -217,9 +227,12 @@ function dockOpts(route: RouteLeg, snapshot: StationsSnapshot, destination: Plac
   }
 }
 
-/** Docks offered as stops along `route`: on the line, plus re-dock / near-destination exceptions. */
-export function docksAlong(route: RouteLeg, snapshot: StationsSnapshot, startId: string, destination: Place, partySize = 1): RouteDock[] {
-  return routeDocks(route.geometry, snapshot.stations, { excludeIds: new Set([startId]), ...dockOpts(route, snapshot, destination, partySize) })
+/**
+ * Docks offered as stops along `route`: on the line, plus re-dock / near-destination exceptions, plus
+ * `keepIds` (the stops already chosen) whatever their counts are now.
+ */
+export function docksAlong(route: RouteLeg, snapshot: StationsSnapshot, startId: string, destination: Place, partySize = 1, keepIds: readonly string[] = []): RouteDock[] {
+  return routeDocks(route.geometry, snapshot.stations, { excludeIds: new Set([startId]), keepIds, ...dockOpts(route, snapshot, destination, partySize) })
 }
 
 /** The route's own riding pace (seconds per meter), so stop timing matches the route cards. */

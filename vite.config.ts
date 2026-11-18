@@ -19,7 +19,9 @@ export default defineConfig({
     outDir: process.env.BUILD_OUT_DIR ?? join(tmpdir(), 'bcycle-live-dist'),
     emptyOutDir: true,
     // Libraries that rarely change get their own long-cached files, so after a deploy phones re-download
-    // only the app code (maplibre alone is most of the bundle).
+    // only the app code (maplibre alone is most of the bundle). Everything matching the maplibre group lands
+    // in the lazily loaded map chunk: import maplibre-gl only from src/map/maplibre.ts. (Preloading that chunk
+    // from index.html, even at low priority, was measured to delay the first station counts on a slow phone.)
     rolldownOptions: {
       output: {
         codeSplitting: {
@@ -44,7 +46,7 @@ export default defineConfig({
       manifest: {
         name: 'Badger Bikes — live BCycle bikes, docks & ride planning',
         short_name: 'Badger Bikes',
-        description: 'Live BCycle bike and dock availability with bike-share-aware turn-by-turn navigation.',
+        description: 'Live BCycle bike and dock availability with ride planning and Google Maps directions.',
         theme_color: '#0f766e',
         background_color: '#ffffff',
         display: 'standalone',
@@ -61,6 +63,8 @@ export default defineConfig({
         navigateFallbackDenylist: [/^\/api\//],
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
         runtimeCaching: [],
+        // Tapping a ride alert (shown through the service worker) focuses the app.
+        importScripts: ['sw-notifications.js'],
       },
     }),
   ],

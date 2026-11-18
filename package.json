@@ -4,7 +4,7 @@
   "license": "MIT",
   "version": "0.1.0",
   "type": "module",
-  "description": "Live BCycle station availability map with bike-share-aware turn-by-turn navigation",
+  "description": "Live BCycle station availability map with ride planning handed off to Google Maps",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",

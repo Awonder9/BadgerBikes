@@ -40,6 +40,8 @@ export const zhHans: Messages = {
   updateAvailable: '有可用更新',
   newVersion: (app) => `${app} 有新版本。刷新即可更新。`,
   watchReady: (name, n, kind, baseline) => `${name} 现在有 ${count(n, kind)}（之前为 ${baseline}）。`,
+  locationDenied: '此网站的定位权限已关闭。请在浏览器设置中允许定位，然后重试。',
+  locationNotFound: '无法获取你的位置，请稍后重试。',
 
   // Loading screen
   yourCity: '你的城市',

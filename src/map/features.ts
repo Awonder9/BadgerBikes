@@ -75,10 +75,10 @@ export interface EndpointProps {
 }
 
 /** Start (when it isn't a dock) and destination markers; dock ends are shown by the station rings. */
-export function buildEndpointFeatures(destination: LngLat | null, origin: LngLat | null = null): FeatureCollection<EndpointProps> {
+export function buildEndpointFeatures(dest: LngLat | null, origin: LngLat | null = null): FeatureCollection<EndpointProps> {
   const features: FeatureCollection<EndpointProps>['features'] = []
   if (origin) features.push({ type: 'Feature', geometry: { type: 'Point', coordinates: origin }, properties: { kind: 'origin', label: '' } })
-  if (destination) features.push({ type: 'Feature', geometry: { type: 'Point', coordinates: destination }, properties: { kind: 'destination', label: '' } })
+  if (dest) features.push({ type: 'Feature', geometry: { type: 'Point', coordinates: dest }, properties: { kind: 'destination', label: '' } })
   return { type: 'FeatureCollection', features }
 }
 

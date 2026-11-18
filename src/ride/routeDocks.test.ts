@@ -44,6 +44,23 @@ describe('routeDocks (strict)', () => {
     expect(optimizedStops(r, { destination: B, destStationId: 'dest' })).toEqual(['dest'])
   })
 
+  it('keeps the docks the rider chose when their counts change: a full end dock stays the end, with an alternative', () => {
+    // byDest was the end dock near the destination; it filled up mid-ride.
+    const stations = [st('onEarly', 1500, 10), st('byDest', 3000, 300, { docks: 0 }), st('byDest2', 2900, 350)]
+    expect(routeDocks(route, stations, { destination: B }).map((d) => d.station.id)).toEqual(['onEarly', 'byDest2']) // what a new plan offers
+    const kept = routeDocks(route, stations, { destination: B, keepIds: ['byDest'] })
+    expect(kept.map((d) => [d.station.id, d.reason])).toEqual([
+      ['onEarly', 'onRoute'],
+      ['byDest2', 'nearDestination'],
+      ['byDest', 'nearDestination'],
+    ])
+  })
+
+  it('a kept dock near the destination that still has room needs no second one', () => {
+    const stations = [st('onEarly', 1500, 10), st('byDest', 3000, 300), st('byDest2', 2900, 350)]
+    expect(routeDocks(route, stations, { destination: B, keepIds: ['byDest2'] }).map((d) => d.station.id)).toEqual(['onEarly', 'byDest2'])
+  })
+
   it('uses the rider max ride time for re-dock options', () => {
     const C = along(9000)
     const stations = [st('late', 8500, 10), st('offLate', 5500, 200), st('offMid', 3000, 200)]

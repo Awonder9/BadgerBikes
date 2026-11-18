@@ -15,7 +15,8 @@ export function useRideStatus(plan: RidePlan) {
   const { systemId, partySize } = useAppStore(useShallow((s) => ({ systemId: s.systemId, partySize: s.settings.partySize })))
   const { startedAt, destination, active } = useRideStore(useShallow((s) => ({ startedAt: s.rideStartedAtMs, destination: s.destination, active: s.openedParts.length > 0 || s.walkToDockOpened })))
   const { snapshot } = useStationsSnapshot(systemId, { active })
-  const now = useNow(1000)
+  // The clock ticks only while a ride timer runs (this hook is used by always-mounted pieces).
+  const now = useNow(1000, active && startedAt !== null)
   const timer = active && startedAt ? rideTimer(startedAt, now, plan.includedMinutes) : null
   const endStation = plan.end?.station
   const dock = endDockState(endStation, partySize)
@@ -80,13 +81,22 @@ export function useRideAlerts(): void {
 
 function notify(title: string, body: string): void {
   if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') navigator.vibrate([200, 100, 200])
-  try {
-    if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-      const n = new Notification(title, { body, icon: '/icons/icon-192.png', tag: title })
+  if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return
+  const options: NotificationOptions = { body, icon: '/icons/icon-192.png', tag: title }
+  const page = () => {
+    try {
+      const n = new Notification(title, options)
       n.addEventListener('click', () => window.focus())
+    } catch {
+      /* not allowed here either; the in-app card still shows it */
     }
-  } catch {
-    /* some browsers only allow notifications from a service worker; the in-app card still shows it */
   }
+  // Through the service worker first: Android Chrome (and installed iOS web apps) refuse `new Notification()`.
+  // Tapping it brings the app back (public/sw-notifications.js).
+  if (!('serviceWorker' in navigator)) return page()
+  navigator.serviceWorker
+    .getRegistration()
+    .then((reg) => (reg ? reg.showNotification(title, options) : page()))
+    .catch(page)
 }
 

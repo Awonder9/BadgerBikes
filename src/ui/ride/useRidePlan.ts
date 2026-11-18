@@ -12,7 +12,7 @@ import { pickupOptions, type PickupOption } from '../../ride/pickup'
 import { docksAlong, optimizedFor, routePace, useRideStore } from '../../ride/rideStore'
 import { rideSeconds, rideSegments, type RouteDock } from '../../ride/stationsAlongRoute'
 import { useAppStore } from '../../store/appStore'
-import type { Place, Station } from '../../types'
+import type { Place, RouteLeg, Station, StationsSnapshot } from '../../types'
 
 /** Destination farther than this from the end dock gets a separate walking link. */
 const WALK_LINK_MIN_METERS = RIDE.walkLinkMinMeters
@@ -29,11 +29,28 @@ const walkLeg = (from: Place['coord'], to: Place['coord']): WalkLeg => {
   return { seconds: e.duration, meters: e.distance, url: directionsUrl(from, to, 'walking') }
 }
 
-/** Minutes included per ride for the rider's pass (their choice, else the system's default), or null. */
-export function useIncludedMinutes(): number | null {
+/**
+ * Minutes included per ride for the rider's pass (their choice, else the system's default), or null.
+ * `enabled` false: no system-details request just for this (cached details are still used).
+ */
+export function useIncludedMinutes(enabled = true): number | null {
   const { systemId, pass } = useAppStore(useShallow((s) => ({ systemId: s.systemId, pass: s.systemId ? s.settings.passBySystem[s.systemId] : undefined })))
-  const { details } = useSystemDetails(systemId)
+  const { details } = useSystemDetails(systemId, enabled && !pass)
   return pass ? pass.includedMinutes : (details?.defaultIncludedMinutes ?? null)
+}
+
+/**
+ * The docks along the current route, shared by every useRidePlan caller (map, planner, ride banner, alerts):
+ * computed once per change of its inputs instead of once per caller. Inputs are compared by identity.
+ */
+let alongMemo: { args: readonly unknown[]; value: RouteDock[] } | null = null
+function sharedDocksAlong(route: RouteLeg, snapshot: StationsSnapshot, startId: string, dest: Place, partySize: number, maxRideMinutes: number, keepIds: readonly string[]): RouteDock[] {
+  const args = [route, snapshot, startId, dest, partySize, maxRideMinutes, keepIds]
+  if (alongMemo?.args.every((a, i) => a === args[i])) return alongMemo.value
+  // maxRideMinutes is read by docksAlong from the store; it is part of the key so a change recomputes.
+  const value = docksAlong(route, snapshot, startId, dest, partySize, keepIds)
+  alongMemo = { args, value }
+  return value
 }
 
 export interface RidePlan {
@@ -82,33 +99,43 @@ export function useRidePlan(): RidePlan {
   const panelOpen = useAppStore((s) => s.panel === 'ride')
   const riding = useRideStore((s) => s.openedParts.length > 0 || s.walkToDockOpened)
   const { snapshot } = useStationsSnapshot(systemId, { active: panelOpen || riding })
-  const includedMinutes = useIncludedMinutes()
-  const start = ride.startId ? snapshot?.byId.get(ride.startId) : undefined
+  const includedMinutes = useIncludedMinutes(ride.route !== null)
+  const route = ride.route
+  const startId = ride.startId
+  const start = startId ? snapshot?.byId.get(startId) : undefined
   const dest = ride.destination
-  // maxRideMinutes is read inside docksAlong (re-dock options), so it must invalidate this too.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const along = useMemo(() => (ride.route && snapshot && start && dest ? docksAlong(ride.route, snapshot, start.id, dest, partySize) : []), [ride.route, snapshot, start, dest, partySize, maxRideMinutes])
+  // The chosen stops stay listed even when their counts change, so a dock that fills up mid-ride is still
+  // the end of the ride (and is reported as full) instead of silently disappearing from the plan.
+  const along = useMemo(
+    () => (route && snapshot && startId && snapshot.byId.has(startId) && dest ? sharedDocksAlong(route, snapshot, startId, dest, partySize, maxRideMinutes, ride.stopIds) : []),
+    [route, snapshot, startId, dest, partySize, maxRideMinutes, ride.stopIds],
+  )
   // eslint-disable-next-line react-hooks/exhaustive-deps -- maxRideMinutes is read inside optimizedFor
-  const optimizedIds = useMemo(() => new Set(snapshot && dest && ride.route ? optimizedFor(along, ride.route, snapshot, dest, partySize) : []), [along, ride.route, snapshot, dest, partySize, maxRideMinutes])
-  const chosen = along.filter((s) => ride.stopIds.includes(s.station.id))
+  const optimizedIds = useMemo(() => new Set(snapshot && dest && route ? optimizedFor(along, route, snapshot, dest, partySize) : []), [along, route, snapshot, dest, partySize, maxRideMinutes])
+  const chosen = useMemo(() => along.filter((s) => ride.stopIds.includes(s.station.id)), [along, ride.stopIds])
   const end = chosen.at(-1)
-  const electric = snapshot ? fleetComposition(snapshot.stations) === 'electric' : false
-  const pace = ride.route ? routePace(ride.route) : undefined
-  const segments = start ? rideSegments(start.id, chosen, maxRideMinutes > 0 ? maxRideMinutes : null, electric, pace) : []
+  const electric = useMemo(() => (snapshot ? fleetComposition(snapshot.stations) === 'electric' : false), [snapshot])
+  const pace = route ? routePace(route) : undefined
+  const segments = useMemo(() => (startId ? rideSegments(startId, chosen, maxRideMinutes > 0 ? maxRideMinutes : null, electric, pace) : []), [startId, chosen, maxRideMinutes, electric, pace])
   const walkTo = dest && end && haversine(end.station.coord, dest.coord) > WALK_LINK_MIN_METERS ? dest.coord : null
   // Keep Google Maps on the chosen route: docks are sent as points on the line, plus via points so no
   // stretch is long enough for Google to pick its own streets.
-  const routeIndex = ride.route ? buildPolylineIndex(ride.route.geometry) : null
-  const guide =
-    ride.route && routeIndex && end
-      ? guidePoints(
-          chosen.map((s) => ({ coord: s.station.coord, along: s.along, offset: s.offset, name: s.station.name })),
-          (a) => pointAlong(routeIndex, a).point,
-          trailRangesOf(ride.route.maneuvers, routeIndex.cum),
-        )
-      : []
-  const links = start && end ? rideLinks(start.coord, guide, walkTo) : []
-  const rideParts = links.filter((l) => l.kind === 'ride')
+  const routeIndex = useMemo(() => (route ? buildPolylineIndex(route.geometry) : null), [route])
+  const trailRanges = useMemo(() => (route && routeIndex ? trailRangesOf(route.maneuvers, routeIndex.cum) : []), [route, routeIndex])
+  const guide = useMemo(
+    () =>
+      routeIndex && chosen.length > 0
+        ? guidePoints(
+            chosen.map((s) => ({ coord: s.station.coord, along: s.along, offset: s.offset, name: s.station.name })),
+            (a) => pointAlong(routeIndex, a).point,
+            trailRanges,
+          )
+        : [],
+    [routeIndex, chosen, trailRanges],
+  )
+  const startCoord = start?.coord
+  const links = useMemo(() => (startCoord && guide.length > 0 ? rideLinks(startCoord, guide, walkTo) : []), [startCoord, guide, walkTo])
+  const rideParts = useMemo(() => links.filter((l) => l.kind === 'ride'), [links])
   const origin = ride.origin
   const fromPlace = origin && !origin.stationId ? origin : null
   const walkToDock = fromPlace && start && haversine(fromPlace.coord, start.coord) > WALK_LINK_MIN_METERS ? walkLeg(fromPlace.coord, start.coord) : null

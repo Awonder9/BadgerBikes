@@ -78,6 +78,13 @@ export const MAP = {
   labelFontFallback: ['Noto Sans Regular'],
   /** Initial zoom when a system loads without a fit. */
   defaultZoom: 13,
+  /** Station dots are small for a finger: a tap this close (px) to one still hits it (the nearest wins). */
+  tapSlopPx: 12,
+  /** Touch held this long without moving more than longPressMovePx = "choose this point". */
+  longPressMs: 500,
+  longPressMovePx: 10,
+  /** After a long-press pick, the click or contextmenu event the same press may still send is ignored. */
+  afterPickIgnoreMs: 800,
 } as const
 
 /** Station availability classification (src/lib/stationState.ts). */
@@ -173,6 +180,8 @@ export const UI = {
   desktopMinHeightPx: 600,
   minTouchTargetPx: 56,
   trendSnapshots: 20,
+  /** A notice over the map (e.g. "Location is off for this site") hides itself after this long. */
+  noticeMs: 6000,
 } as const
 
 /** Path breakdown / elevation requests (src/data/routeDetails.ts, POST /api/route-details). */

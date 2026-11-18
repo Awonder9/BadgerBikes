@@ -5,7 +5,7 @@ import { APP } from '../../config'
 import { useStationsSnapshot } from '../../data/hooks'
 import { useAppStore } from '../../store/appStore'
 import { useI18n } from '../../i18n/useT'
-import { platform } from '../browse/StationCard'
+import { platform } from '../platform'
 import { Button } from '../primitives/Button'
 import { Icon } from '../primitives/Icon'
 

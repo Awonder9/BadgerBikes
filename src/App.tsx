@@ -1,7 +1,7 @@
 // Composition root: providers, launch parameters (share links), theme, location watcher, shell.
 import { QueryClientProvider } from '@tanstack/react-query'
-import { Component, useEffect, useState, type ReactNode } from 'react'
-import { createQueryClient } from './data/hooks'
+import { Component, useEffect, type ReactNode } from 'react'
+import { createQueryClient, prefetchStations } from './data/hooks'
 import { SYSTEM_IDS } from './data/systems'
 import { parseLaunchParams, stripLaunchParams } from './lib/urlParams'
 import { api } from './api/client'
@@ -13,6 +13,13 @@ import { LANG_TAGS } from './i18n/lang'
 import { currentMessages, useLang } from './i18n/useT'
 import type { Place } from './types'
 import { AppShell } from './ui/layout/AppShell'
+import { changeCity } from './ui/ride/rideActions'
+import { isDarkStyle, usePrefersDark } from './ui/useMediaQuery'
+
+// Created at startup, not on first render, so the launch screen's station request is already on its way
+// while React renders (the stored city, or the city a share link opens).
+const queryClient = createQueryClient()
+prefetchStations(queryClient, parseLaunchParams(window.location.search, SYSTEM_IDS).systemId ?? useAppStore.getState().systemId)
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
   state = { error: null as Error | null }
@@ -42,7 +49,8 @@ function useLaunchParams() {
   useEffect(() => {
     const p = parseLaunchParams(window.location.search, SYSTEM_IDS)
     const app = useAppStore.getState()
-    if (p.systemId) app.setSystem(p.systemId)
+    // Another city than the stored one: like Settings → City (a saved plan belongs to the old city's docks).
+    if (p.systemId) changeCity(p.systemId)
     if (p.stationId) app.selectStation(p.stationId)
     // A shared ride: start dock + destination (+ route option). The planner routes it once stations load.
     if (p.rideStartId && p.to) {
@@ -50,6 +58,8 @@ function useLaunchParams() {
       const destination: Place = p.toStationId
         ? { kind: 'station', name: p.to.name ?? currentMessages().destinationDock, coord: p.to.coord, stationId: p.toStationId }
         : { kind: 'search', name: p.to.name ?? currentMessages().sharedDestination, coord: p.to.coord }
+      // It replaces whatever was planned: no start place or ride progress carries over from an older plan.
+      ride.reset()
       ride.setStart(p.rideStartId)
       ride.setDestination(destination)
       useRideStore.setState({ pendingRouteIndex: p.routeIndex })
@@ -72,14 +82,10 @@ function useDefaultCity() {
 }
 
 function useTheme() {
-  const style = useAppStore((s) => s.settings.mapStyle)
+  const dark = isDarkStyle(useAppStore((s) => s.settings.mapStyle), usePrefersDark())
   useEffect(() => {
-    const mq = window.matchMedia('(prefers-color-scheme: dark)')
-    const apply = () => document.documentElement.classList.toggle('dark', style === 'dark' || (style === 'auto' && mq.matches))
-    apply()
-    mq.addEventListener('change', apply)
-    return () => mq.removeEventListener('change', apply)
-  }, [style])
+    document.documentElement.classList.toggle('dark', dark)
+  }, [dark])
 }
 
 /** <html lang> follows the UI language, so screen readers and fonts pick Chinese glyphs correctly. */
@@ -100,10 +106,9 @@ function Root() {
 }
 
 export default function App() {
-  const [client] = useState(createQueryClient)
   return (
     <ErrorBoundary>
-      <QueryClientProvider client={client}>
+      <QueryClientProvider client={queryClient}>
         <Root />
       </QueryClientProvider>
     </ErrorBoundary>

@@ -10,11 +10,11 @@ import { formatDistance, formatTimeAgo } from '../../lib/format'
 import { haversine } from '../../lib/geo'
 import { classifyStation } from '../../lib/stationState'
 import { findSavedPlace, useAppStore } from '../../store/appStore'
-import type { SavedPlace } from '../../store/types'
+import type { SavedPlace, Settings } from '../../store/types'
 import { LANG_NAMES, LANGS, type LanguageSetting } from '../../i18n/lang'
 import { useI18n } from '../../i18n/useT'
 import { useLocationStore } from '../../location/locationStore'
-import type { Freshness } from '../../data/snapshot'
+import { freshnessOf } from '../../data/snapshot'
 import type { Place } from '../../types'
 import { AvailabilityPill } from '../primitives/Availability'
 import { Button, IconButton } from '../primitives/Button'
@@ -22,9 +22,11 @@ import { Icon } from '../primitives/Icon'
 import { changeCity, planRide, rideTo, startRideFrom } from '../ride/rideActions'
 import { SearchBox } from './SearchBox'
 
-export function FreshnessBadge({ freshness, lastUpdatedMs }: { freshness: Freshness; lastUpdatedMs: number | undefined }) {
+/** "Live · 20 s ago" / "Data may be stale" — ages on its own clock, so its parents don't re-render with it. */
+export function FreshnessBadge({ hasData, isError, lastUpdatedMs }: { hasData: boolean; isError: boolean; lastUpdatedMs: number | undefined }) {
   const now = useNow(10_000)
   const { t, lang } = useI18n()
+  const freshness = freshnessOf({ hasData, isError, lastUpdatedMs, nowMs: now })
   if (freshness === 'loading') return <span className="text-xs text-slate-500">{t.loadingLive}</span>
   if (freshness === 'error') return <span className="text-xs font-medium text-red-700">{t.liveUnavailable}</span>
   const age = lastUpdatedMs ? formatTimeAgo((now - lastUpdatedMs) / 1000, lang) : ''
@@ -69,7 +71,7 @@ const back = () => useAppStore.getState().setPanel('browse')
 
 export function BrowsePanel() {
   const { systemId, saved, starred } = useAppStore(useShallow((s) => ({ systemId: s.systemId, saved: s.savedPlaces, starred: s.starredStations })))
-  const { snapshot, freshness } = useStationsSnapshot(systemId)
+  const { snapshot, error } = useStationsSnapshot(systemId)
   const system = getSystem(systemId)
   const partySize = useAppStore((s) => s.settings.partySize)
   const { t } = useI18n()
@@ -96,7 +98,7 @@ export function BrowsePanel() {
       )}
       <div className="flex items-center justify-between gap-2">
         <span className="flex min-w-0 items-center gap-1">
-          <FreshnessBadge freshness={freshness} lastUpdatedMs={snapshot?.lastUpdatedMs} />
+          <FreshnessBadge hasData={!!snapshot} isError={!!error} lastUpdatedMs={snapshot?.lastUpdatedMs} />
           <RefreshButton />
         </span>
         <button type="button" className="inline-flex min-h-11 items-center gap-1 text-sm font-medium text-brand-700 dark:text-brand-300" onClick={() => useAppStore.getState().setPanel('list')}>
@@ -206,7 +208,7 @@ export function StationList() {
   const { systemId, mapMode, partySize } = useAppStore(useShallow((s) => ({ systemId: s.systemId, mapMode: s.mapMode, partySize: s.settings.partySize })))
   const units = useAppStore((s) => s.settings.units)
   const fix = useLocationStore((s) => s.fix)
-  const { snapshot, freshness } = useStationsSnapshot(systemId)
+  const { snapshot, error } = useStationsSnapshot(systemId)
   const { t, lang } = useI18n()
   const sorted = useMemo(() => {
     if (!snapshot) return []
@@ -219,7 +221,7 @@ export function StationList() {
     <section aria-label={t.stations}>
       <Header title={t.stations} onBack={back} />
       <div className="px-4 py-2">
-        <FreshnessBadge freshness={freshness} lastUpdatedMs={snapshot?.lastUpdatedMs} />
+        <FreshnessBadge hasData={!!snapshot} isError={!!error} lastUpdatedMs={snapshot?.lastUpdatedMs} />
       </div>
       <ul className="divide-y divide-slate-200 dark:divide-slate-800">
         {sorted.map((st) => {
@@ -254,7 +256,7 @@ export function StationList() {
 export function SettingsPanel() {
   const { settings, systemId } = useAppStore(useShallow((s) => ({ settings: s.settings, systemId: s.systemId })))
   const { details } = useSystemDetails(systemId)
-  const update = useAppStore.getState().updateSettings
+  const update = (patch: Partial<Settings>) => useAppStore.getState().updateSettings(patch)
   const pass = systemId ? settings.passBySystem[systemId] : undefined
   const { t } = useI18n()
   // Labels may wrap and selects are capped, so no row is ever wider than the screen (Safari sizes a

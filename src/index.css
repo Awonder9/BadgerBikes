@@ -1,6 +1,5 @@
 @import 'tailwindcss';
-/* Layered so Tailwind utilities can override maplibre's defaults (unlayered CSS would always win). */
-@import 'maplibre-gl/dist/maplibre-gl.css' layer(base);
+/* maplibre-gl's stylesheet loads with the map code (src/map/maplibre.css), in the `base` layer. */
 
 /* Class-based dark mode: <html class="dark"> is set from settings.mapStyle ('auto' follows the OS). */
 @custom-variant dark (&:where(.dark, .dark *));

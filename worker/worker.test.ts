@@ -116,4 +116,22 @@ describe('upstream layer', () => {
     await expect(up2({ ...req, cacheKey: 'other' })).rejects.toMatchObject({ code: 'upstream_unavailable' })
     restore()
   })
+
+  it('answers without waiting for the Cache API write, and keeps gate releases alive past the response', async () => {
+    const restore = setFetchImpl(async () => new Response('{"a":1}', { headers: { 'Content-Type': 'application/json' } }))
+    let finishPut = () => {}
+    const cache = { match: async () => undefined, put: () => new Promise<void>((r) => (finishPut = r)) } as unknown as Cache
+    const released: string[] = []
+    const gate: Gate = { acquire: async () => ({ ok: true, ticket: 't1' }), release: async (ticket, outcome) => void released.push(`${ticket}:${outcome}`) }
+    const background: Array<Promise<unknown>> = []
+    const up = createUpstream({ gateFor: () => gate, cache, waitUntil: (work) => void background.push(work) })
+    const req = { url: 'https://u.test/y', group: 'fossgis' as const, priority: 'interactive' as const, provider: 'valhalla', cacheKey: 'k2', cacheTtlMs: 60_000 }
+    expect(await up(req)).toEqual({ a: 1 }) // resolved while the Cache API write is still pending
+    expect(background).toHaveLength(2) // the release and the cache write
+    expect(await up(req)).toEqual({ a: 1 }) // served from the in-isolate copy meanwhile
+    finishPut()
+    await Promise.all(background)
+    expect(released).toEqual(['t1:ok'])
+    restore()
+  })
 })

@@ -19,11 +19,12 @@ export function LoadingScreen() {
   const [shownAt] = useState(() => Date.now())
   const [dismissed, setDismissed] = useState(false)
   const [gone, setGone] = useState(false)
-  const now = useNow(1000)
   const { t: msg } = useI18n()
   const loaded = !!snapshot
   const failed = !loaded && freshness === 'error'
   const hide = loaded || dismissed
+  // Ticks only while the screen is up: this stays mounted (returning null) for the whole session.
+  const now = useNow(1000, !hide)
 
   useEffect(() => {
     if (!hide) return
@@ -49,11 +50,12 @@ export function LoadingScreen() {
 
       {!failed ? (
         <div role="status" aria-live="polite" className="w-full max-w-xs space-y-3">
-          <p className="text-lg font-medium">{msg.pullingCounts}</p>
+          {/* Two lines tall in every language, like the static launch screen in index.html it replaces. */}
+          <p className="flex min-h-14 items-center justify-center text-lg font-medium">{msg.pullingCounts}</p>
           <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/20" aria-hidden>
             <div className="h-full w-1/3 rounded-full bg-white motion-safe:animate-[loading-bar_1.2s_ease-in-out_infinite]" />
           </div>
-          <p className={`text-sm text-white/75 transition-opacity ${slow ? 'opacity-100' : 'opacity-0'}`}>{msg.stillWorking}</p>
+          <p className={`min-h-10 text-sm text-white/75 transition-opacity ${slow ? 'opacity-100' : 'opacity-0'}`}>{msg.stillWorking}</p>
         </div>
       ) : (
         <div role="alert" className="w-full max-w-xs space-y-3">

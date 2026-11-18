@@ -68,6 +68,11 @@ export function RidePlannerPanel() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- maxRideMinutes is read inside docksAlong
     [ride.routes, snapshot, start, dest, partySize, maxRideMinutes],
   )
+  // For each option, the earlier option it duplicates (the same path), or -1.
+  const sameAsIndex = useMemo(
+    () => ride.routes.map((r, i) => ride.routes.findIndex((o, j) => j < i && sameRoute(o.geometry, r.geometry, BIKE_ROUTING.duplicateRouteMeters))),
+    [ride.routes],
+  )
   const order = along.map((s) => s.station.id)
   const riding = ride.openedParts.length > 0
 
@@ -121,7 +126,7 @@ export function RidePlannerPanel() {
               {ride.routes.map((r, i) => {
                 const opt = BIKE_ROUTING.options[i]
                 const label = opt ? (t.routeOption[opt.key] ?? opt.label) : t.optionN(i + 1)
-                const dup = ride.routes.findIndex((o, j) => j < i && sameRoute(o.geometry, r.geometry, BIKE_ROUTING.duplicateRouteMeters))
+                const dup = sameAsIndex[i] ?? -1
                 const dupOpt = dup >= 0 ? BIKE_ROUTING.options[dup] : undefined
                 const sameAs = dupOpt ? (t.routeOption[dupOpt.key] ?? dupOpt.label) : null
                 return (
@@ -544,14 +549,17 @@ function ExactRouteFile({ plan }: { plan: RidePlan }) {
     })
     const fileName = gpxFileName(destination?.name ?? null)
     const file = new File([gpx], fileName, { type: 'application/gpx+xml' })
-    // The ride starts with this file instead of the Google Maps parts.
-    const ride = useRideStore.getState()
-    rideParts.forEach((l, i) => ride.markPartOpened(i, i === 0 && l.fromDock, !plan.walkToDock))
-    if (!walkLink) ride.finishPlan()
+    // The ride starts with this file instead of the Google Maps parts — once it was actually handed over
+    // (closing the share sheet without choosing an app changes nothing).
+    const started = () => {
+      const ride = useRideStore.getState()
+      rideParts.forEach((l, i) => ride.markPartOpened(i, i === 0 && l.fromDock, !plan.walkToDock))
+      if (!walkLink) ride.finishPlan()
+    }
     try {
       if (typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] })) {
         await navigator.share({ files: [file], title: name })
-        return
+        return started()
       }
     } catch (e) {
       if (e instanceof DOMException && e.name === 'AbortError') return
@@ -562,6 +570,7 @@ function ExactRouteFile({ plan }: { plan: RidePlan }) {
     a.download = fileName
     a.click()
     setTimeout(() => URL.revokeObjectURL(url), 10_000)
+    started()
     setMsg(t.gpxSaved(fileName))
   }
   return (
