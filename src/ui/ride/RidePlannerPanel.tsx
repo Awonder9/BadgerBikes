@@ -187,17 +187,20 @@ export function RidePlannerPanel() {
                 </button>
               </p>
               {(() => {
-                // More than 4 buttons in the row: shrink text, icons and padding so labels still fit.
+                // Up to 6 buttons share one row, shrinking text, icons and padding past 4 so labels still fit.
+                // More than 6: split into balanced rows of at most 4 at full size.
                 const buttons = rideParts.length + (plan.walkToDock ? 1 : 0) + (walkLink ? 1 : 0)
-                const tier = buttons <= 4 ? 0 : buttons === 5 ? 1 : 2
+                const rows = buttons <= 6 ? 1 : Math.ceil(buttons / 4)
+                const perRow = Math.ceil(buttons / rows)
+                const tier = perRow <= 4 ? 0 : perRow === 5 ? 1 : 2
                 const walkCls = ['px-2.5 text-sm gap-1', 'px-1.5 text-xs gap-0.5', 'px-1 text-[11px] gap-0.5'][tier]
                 const walkIcon = [18, 15, 13][tier] ?? 18
                 const bikeCls = ['px-1.5 gap-1', 'px-1 text-sm gap-0.5', 'px-0.5 text-xs gap-0.5'][tier]
                 const bikeIcon = [16, 14, 12][tier] ?? 16
-                return (
-              <div className={`flex ${tier ? 'gap-1' : 'gap-1.5'}`}>
-                {plan.walkToDock && (
+                const items = [
+                plan.walkToDock && (
                   <a
+                    key="walk-to-dock"
                     href={plan.walkToDock.url}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -207,8 +210,8 @@ export function RidePlannerPanel() {
                   >
                     <Icon name={ride.walkToDockOpened ? 'check' : 'walk'} size={walkIcon} className="shrink-0" /> Dock
                   </a>
-                )}
-                {rideParts.map((l, i) => {
+                ),
+                ...rideParts.map((l, i) => {
                   const done = ride.openedParts.includes(i)
                   const isNext = i === nextPart
                   return (
@@ -231,13 +234,22 @@ export function RidePlannerPanel() {
                       <Icon name={done ? 'check' : 'external'} size={bikeIcon} className="shrink-0" /> {rideParts.length === 1 ? 'Open in Google Maps' : `Part ${i + 1}`}
                     </a>
                   )
-                })}
-                {walkLink && (
-                  <a href={walkLink.url} target="_blank" rel="noopener noreferrer" onClick={() => ride.finishPlan()} aria-label="Then walk to your destination in Google Maps" className={`flex min-h-12 shrink-0 items-center justify-center whitespace-nowrap rounded-xl bg-white font-medium ring-1 ring-slate-300 dark:bg-slate-900 dark:ring-slate-600 ${walkCls}`}>
+                }),
+                walkLink && (
+                  <a key="walk-to-destination" href={walkLink.url} target="_blank" rel="noopener noreferrer" onClick={() => ride.finishPlan()} aria-label="Then walk to your destination in Google Maps" className={`flex min-h-12 shrink-0 items-center justify-center whitespace-nowrap rounded-xl bg-white font-medium ring-1 ring-slate-300 dark:bg-slate-900 dark:ring-slate-600 ${walkCls}`}>
                     <Icon name="walk" size={walkIcon} className="shrink-0" /> Walk
                   </a>
-                )}
-              </div>
+                ),
+                ].filter(Boolean)
+                const gap = tier ? 'gap-1' : 'gap-1.5'
+                return (
+                  <div className={`flex flex-col ${gap}`}>
+                    {Array.from({ length: rows }, (_, r) => (
+                      <div key={r} className={`flex ${gap}`}>
+                        {items.slice(r * perRow, (r + 1) * perRow)}
+                      </div>
+                    ))}
+                  </div>
                 )
               })()}
             </div>
