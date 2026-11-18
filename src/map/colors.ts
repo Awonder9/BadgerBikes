@@ -32,3 +32,8 @@ export const PATH_COLORS: Readonly<Record<PathKind, string>> = {
 
 export const BRAND = '#0f766e'
 export const USER_PUCK = { fill: '#2563eb', stroke: '#ffffff', accuracy: 'rgba(37, 99, 235, 0.15)', degraded: '#94a3b8' } as const
+
+/** Gold ring around starred docks, and the favorite-place marker. */
+export const STAR_GOLD = '#f59e0b'
+/** Saved-place markers on the map (white icon on this fill). */
+export const SAVED_MARKER = { home: '#4f46e5', work: '#4f46e5', star: STAR_GOLD, outline: '#ffffff' } as const

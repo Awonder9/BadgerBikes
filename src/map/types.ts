@@ -44,18 +44,21 @@ export const SOURCE_IDS = {
   routeKinds: 'bc-route-kinds',
   endpoints: 'bc-endpoints',
   user: 'bc-user',
+  saved: 'bc-saved',
 } as const
 
 export const LAYER_IDS = {
   stationCircle: 'bc-station-circle',
   stationCount: 'bc-station-count',
   stationSelected: 'bc-station-selected',
+  stationStarred: 'bc-station-starred',
   routeWalk: 'bc-route-walk',
   routeBikeCasing: 'bc-route-bike-casing',
   routeBike: 'bc-route-bike',
   routeKinds: 'bc-route-kinds',
   endpoints: 'bc-endpoints',
   endpointLabels: 'bc-endpoint-labels',
+  savedPlaces: 'bc-saved-places',
   userAccuracy: 'bc-user-accuracy',
   userHeading: 'bc-user-heading',
   userPuck: 'bc-user-puck',

@@ -114,3 +114,19 @@ export function buildUserFeatures(fix: GeoFix | null, quality: UserProps['qualit
     ],
   }
 }
+
+export interface SavedPlaceProps {
+  /** SavedPlace id (a tap looks the place up by it). */
+  id: string
+  icon: 'home' | 'work' | 'star'
+}
+
+/** Home, Work and favorite places of this city as map points (markers drawn by the saved-places layer). */
+export function buildSavedPlaceFeatures(saved: ReadonlyArray<{ id: string; systemId: string; icon: SavedPlaceProps['icon']; place: { coord: LngLat } }>, systemId: string | null): FeatureCollection<SavedPlaceProps> {
+  return {
+    type: 'FeatureCollection',
+    features: saved
+      .filter((p) => p.systemId === systemId)
+      .map((p) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: p.place.coord }, properties: { id: p.id, icon: p.icon } })),
+  }
+}

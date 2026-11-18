@@ -13,10 +13,11 @@ import { useLocationStore } from '../location/locationStore'
 import type { MapMode } from '../types'
 import { useRideStore } from '../ride/rideStore'
 import { useRidePlan } from '../ui/ride/useRidePlan'
-import { AVAILABILITY_COLORS, PATH_COLORS, ROUTE_COLORS, USER_PUCK } from './colors'
+import { AVAILABILITY_COLORS, PATH_COLORS, ROUTE_COLORS, STAR_GOLD, USER_PUCK } from './colors'
+import { addSavedIcons, savedImageId } from './savedIcons'
 import { useRouteDetails } from '../data/routeDetails'
 import type { PathKind } from '../routing/details'
-import { buildEndpointFeatures, buildPathKindFeatures, buildRouteFeatures, buildWalkFeatures, buildStationFeatures, buildUserFeatures, emptyCollection, rideRoles } from './features'
+import { buildEndpointFeatures, buildSavedPlaceFeatures, buildPathKindFeatures, buildRouteFeatures, buildWalkFeatures, buildStationFeatures, buildUserFeatures, emptyCollection, rideRoles } from './features'
 import { LAYER_IDS as L, SOURCE_IDS as S, type MapViewProps } from './types'
 
 setWorkerUrl(workerUrl)
@@ -61,6 +62,8 @@ function ensureLayers(map: MlMap, mode: MapMode, dark: boolean) {
   if (!map.getSource(S.routeKinds)) map.addSource(S.routeKinds, { type: 'geojson', data: emptyCollection() })
   if (!map.getSource(S.endpoints)) map.addSource(S.endpoints, { type: 'geojson', data: emptyCollection() })
   if (!map.getSource(S.user)) map.addSource(S.user, { type: 'geojson', data: emptyCollection() })
+  if (!map.getSource(S.saved)) map.addSource(S.saved, { type: 'geojson', data: emptyCollection() })
+  addSavedIcons(map)
   if (!map.getLayer(L.routeWalk))
     map.addLayer({ id: L.routeWalk, type: 'line', source: S.route, filter: ['==', ['get', 'mode'], 'walk'], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': rc.walk, 'line-width': 4, 'line-dasharray': [0.1, 2], 'line-opacity': ['case', ['==', ['get', 'done'], 1], 0.35, 1] } })
   if (!map.getLayer(L.routeBikeCasing))
@@ -73,17 +76,25 @@ function ensureLayers(map: MlMap, mode: MapMode, dark: boolean) {
     map.addLayer({ id: L.routeKinds, type: 'line', source: S.routeKinds, layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': pathColorExpr(dark), 'line-width': 6 } })
   if (!map.getLayer(L.stationSelected))
     map.addLayer({ id: L.stationSelected, type: 'circle', source: S.stations, paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 11, 9, 15, 20], 'circle-color': 'rgba(0,0,0,0)', 'circle-stroke-width': ['case', ['boolean', ['feature-state', 'selected'], false], 4, ['!=', ['get', 'planRole'], ''], 3, 0], 'circle-stroke-color': ['case', ['==', ['get', 'planRole'], 'backup'], '#94a3b8', '#2563eb'] } })
+  // Starred docks: a gold ring just outside the station circle.
+  if (!map.getLayer(L.stationStarred))
+    map.addLayer({ id: L.stationStarred, type: 'circle', source: S.stations, filter: STARRED_FILTER, paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 6, 13, 11, 16, 17.5], 'circle-color': 'rgba(0,0,0,0)', 'circle-stroke-color': STAR_GOLD, 'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], 10, 2, 14, 3.5] } })
   if (!map.getLayer(L.stationCircle))
     map.addLayer({ id: L.stationCircle, type: 'circle', source: S.stations, paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 4, 13, 8, 16, 14], 'circle-color': colorExpr(mode), 'circle-stroke-color': strokeExpr(mode), 'circle-stroke-width': 2 } })
   if (!map.getLayer(L.stationCount))
     map.addLayer({ id: L.stationCount, type: 'symbol', source: S.stations, minzoom: 12.5, layout: { 'text-field': labelExpr(mode), 'text-font': [...MAP.labelFont], 'text-size': ['interpolate', ['linear'], ['zoom'], 13, 10, 16, 14], 'text-allow-overlap': true, 'text-ignore-placement': true }, paint: { 'text-color': labelColorExpr(mode) } })
   if (!map.getLayer(L.endpoints))
     map.addLayer({ id: L.endpoints, type: 'circle', source: S.endpoints, filter: ['in', ['get', 'kind'], ['literal', ['origin', 'destination']]], paint: { 'circle-radius': 7, 'circle-color': ['match', ['get', 'kind'], 'destination', '#dc2626', '#0f172a'], 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 3 } })
+  // Home, Work and favorite places, above stations and route (but under the rider's own dot).
+  if (!map.getLayer(L.savedPlaces))
+    map.addLayer({ id: L.savedPlaces, type: 'symbol', source: S.saved, layout: { 'icon-image': ['match', ['get', 'icon'], 'home', savedImageId('home'), 'work', savedImageId('work'), savedImageId('star')], 'icon-size': ['interpolate', ['linear'], ['zoom'], 10, 0.7, 14, 1], 'icon-allow-overlap': true, 'icon-ignore-placement': true } })
   if (!map.getLayer(L.userAccuracy))
     map.addLayer({ id: L.userAccuracy, type: 'fill', source: S.user, filter: ['==', ['get', 'part'], 'accuracy'], paint: { 'fill-color': USER_PUCK.accuracy } })
   if (!map.getLayer(L.userPuck))
     map.addLayer({ id: L.userPuck, type: 'circle', source: S.user, filter: ['==', ['get', 'part'], 'puck'], paint: { 'circle-radius': 8, 'circle-color': ['match', ['get', 'quality'], 'good', USER_PUCK.fill, USER_PUCK.degraded], 'circle-stroke-color': USER_PUCK.stroke, 'circle-stroke-width': 3 } })
 }
+
+const STARRED_FILTER = ['==', ['get', 'starred'], true] as never
 
 const source = (map: MlMap, id: string) => map.getSource(id) as GeoJSONSource | undefined
 
@@ -93,8 +104,8 @@ export function MapView({ ref, onStationClick, onBackgroundClick, onMapPick, onE
   const mapRef = useRef<MlMap | null>(null)
   const readyRef = useRef(false)
   const lastRevision = useRef('')
-  const { systemId, mode, selectedStationId, settings, starred } = useAppStore(
-    useShallow((s) => ({ systemId: s.systemId, mode: s.mapMode, selectedStationId: s.selectedStationId, settings: s.settings, starred: s.starredStations })),
+  const { systemId, mode, selectedStationId, settings, starred, saved } = useAppStore(
+    useShallow((s) => ({ systemId: s.systemId, mode: s.mapMode, selectedStationId: s.selectedStationId, settings: s.settings, starred: s.starredStations, saved: s.savedPlaces })),
   )
   const ride = useRideStore(useShallow((s) => ({ route: s.route, routes: s.routes, startId: s.startId, stopIds: s.stopIds, destination: s.destination, origin: s.origin })))
   const roles = rideRoles(ride.startId, ride.stopIds)
@@ -127,6 +138,7 @@ export function MapView({ ref, onStationClick, onBackgroundClick, onMapPick, onE
     if (!map || !readyRef.current) return
     const filter = routeDockIds ? (['in', ['get', 'id'], ['literal', routeDockIds]] as never) : null
     for (const id of [L.stationCircle, L.stationCount, L.stationSelected]) if (map.getLayer(id)) map.setFilter(id, filter)
+    if (map.getLayer(L.stationStarred)) map.setFilter(L.stationStarred, filter ? (['all', STARRED_FILTER, filter] as never) : STARRED_FILTER)
   })
   const redraw = useEffectEvent(() => {
     const map = mapRef.current
@@ -136,13 +148,19 @@ export function MapView({ ref, onStationClick, onBackgroundClick, onMapPick, onE
     lastRevision.current = ''
     syncStations()
     syncRoute()
+    syncSaved()
     drawUser()
+  })
+  const syncSaved = useEffectEvent(() => {
+    const map = mapRef.current
+    if (!map || !readyRef.current) return
+    void source(map, S.saved)?.setData(buildSavedPlaceFeatures(saved, systemId) as never)
   })
   const syncStations = useEffectEvent(() => {
     const map = mapRef.current
     if (!map || !readyRef.current || !snapshot) return
     const sid = snapshot.systemId
-    const key = `${snapshot.revision}|${rolesKey}|${starred.length}`
+    const key = `${snapshot.revision}|${rolesKey}|${starred.join(',')}`
     if (key === lastRevision.current) return
     lastRevision.current = key
     const star = new Set(starred.filter((k) => k.startsWith(`${sid}:`)).map((k) => k.slice(sid.length + 1)))
@@ -190,6 +208,10 @@ export function MapView({ ref, onStationClick, onBackgroundClick, onMapPick, onE
       redraw()
     })
     map.on('click', (e: MapMouseEvent) => {
+      // A saved place (marker drawn on top) opens its place card at the exact saved spot.
+      const savedHit = map.getLayer(L.savedPlaces) ? map.queryRenderedFeatures(e.point, { layers: [L.savedPlaces] })[0] : undefined
+      const savedPlace = savedHit && useAppStore.getState().savedPlaces.find((p) => p.id === savedHit.properties?.id)
+      if (savedPlace) return emitPick(savedPlace.place.coord)
       const hit = map.queryRenderedFeatures(e.point, { layers: [L.stationCircle] })[0]
       const id = hit?.properties?.id
       if (typeof id === 'string') emitStation(id)
@@ -272,6 +294,9 @@ export function MapView({ ref, onStationClick, onBackgroundClick, onMapPick, onE
   useEffect(() => {
     applyDockFilter()
   }, [routeDockIds])
+  useEffect(() => {
+    syncSaved()
+  }, [saved, systemId])
 
   // Selection via feature-state.
   useEffect(() => {
