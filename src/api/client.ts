@@ -10,6 +10,7 @@ import {
   type MetaResponse,
   type ReverseResponse,
   type RoutesApiRequest,
+  type RouteDetailsResponse,
   type RoutesResponse,
   type StationsResponse,
 } from './contract'
@@ -38,6 +39,10 @@ export const api = {
 
   async locate(signal?: AbortSignal): Promise<string | null> {
     return (await fetchJson<LocateResponse>(API_PATHS.locate, { signal, provider: PROVIDER, timeoutMs: SYSTEM_DETECT.timeoutMs })).systemId
+  },
+
+  routeDetails(systemId: string, polyline: string, signal?: AbortSignal): Promise<RouteDetailsResponse> {
+    return postJson<RouteDetailsResponse>(API_PATHS.routeDetails, { systemId, polyline }, { signal, provider: PROVIDER })
   },
 
   async routes(body: RoutesApiRequest, signal?: AbortSignal): Promise<RouteLeg[]> {

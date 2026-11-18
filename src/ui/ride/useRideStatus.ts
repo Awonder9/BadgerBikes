@@ -12,7 +12,7 @@ import { useRidePlan, type RidePlan } from './useRidePlan'
 
 export function useRideStatus(plan: RidePlan) {
   const { systemId, partySize } = useAppStore(useShallow((s) => ({ systemId: s.systemId, partySize: s.settings.partySize })))
-  const { startedAt, destination, active } = useRideStore(useShallow((s) => ({ startedAt: s.rideStartedAtMs, destination: s.destination, active: s.openedParts.length > 0 })))
+  const { startedAt, destination, active } = useRideStore(useShallow((s) => ({ startedAt: s.rideStartedAtMs, destination: s.destination, active: s.openedParts.length > 0 || s.walkToDockOpened })))
   const { snapshot } = useStationsSnapshot(systemId, { active })
   const now = useNow(1000)
   const timer = active && startedAt ? rideTimer(startedAt, now, plan.includedMinutes) : null

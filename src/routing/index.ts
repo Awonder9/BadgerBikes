@@ -7,11 +7,19 @@ import type { LngLat, RouteLeg } from '../types'
 import { mapOsrmError, normalizeOsrmRoute, osrmRouteUrl } from './osrm'
 import { straightLeg } from './straight'
 import type { AltRouter, RequestOpts, RouteRequest } from './types'
+import { normalizeTraceAttributes, type RouteDetails } from './details'
 import { mapValhallaError, normalizeValhallaRoute, routeBody, valhallaUrl } from './valhalla'
 
 export interface RouterDeps {
   upstream: UpstreamFetch
   endpoints?: Pick<typeof ENDPOINTS, 'valhalla' | 'osrmBike' | 'osrmFoot'>
+}
+
+/** FNV-1a, for compact cache keys. */
+function hashString(s: string): string {
+  let h = 0x811c9dc5
+  for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 0x01000193)
+  return (h >>> 0).toString(36)
 }
 
 const r5 = (p: LngLat) => `${p[0].toFixed(5)},${p[1].toFixed(5)}`
@@ -84,7 +92,35 @@ export function createRouter(deps: RouterDeps): AltRouter {
     return out
   }
 
-  return { route, routeLadder }
+  async function routeDetails(polyline6: string, opts: RequestOpts = {}): Promise<RouteDetails> {
+    const body = {
+      encoded_polyline: polyline6,
+      costing: 'bicycle',
+      // walk_or_snap: our geometry has connectors from docks to the street, which an exact edge walk rejects.
+      shape_match: 'walk_or_snap',
+      filters: { attributes: ['shape', 'edge.length', 'edge.use', 'edge.cycle_lane', 'edge.road_class', 'edge.mean_elevation', 'edge.begin_shape_index', 'edge.end_shape_index'], action: 'include' },
+    }
+    try {
+      // POST: a long route doesn't fit in a URL.
+      const json = await up<unknown>({
+        url: `${ep.valhalla}/trace_attributes`,
+        method: 'POST',
+        body,
+        group: 'fossgis',
+        priority: opts.priority ?? 'background',
+        provider: 'valhalla',
+        signal: opts.signal,
+        cacheKey: `valhalla|trace2|${hashString(polyline6)}|${polyline6.length}`, // bump when the requested attributes change
+        cacheTtlMs: CACHE_TTL_MS.route,
+      })
+      return normalizeTraceAttributes(json)
+    } catch (e) {
+      if (isAbort(e) || opts.signal?.aborted) throw aborted()
+      throw new AppError('upstream_unavailable', 'Path details are unavailable right now.', { retryable: true, provider: 'valhalla', cause: e })
+    }
+  }
+
+  return { route, routeLadder, routeDetails }
 }
 
 export type { AltRouter, Router, RouteRequest, RequestOpts } from './types'

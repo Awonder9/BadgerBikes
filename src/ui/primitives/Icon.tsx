@@ -23,6 +23,7 @@ const PATHS = {
   list: 'M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01',
   map: 'M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2Zm0 0v14m6-12v14',
   share: 'M12 15V3m0 0L8 7m4-4 4 4M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6',
+  refresh: 'M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7',
   download: 'M12 3v12m0 0-4-4m4 4 4-4M5 17v2a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2',
   home: 'M3 11 12 4l9 7M5 10v10h5v-6h4v6h5V10',
   work: 'M4 8h16v12H4V8Zm5 0V5h6v3',

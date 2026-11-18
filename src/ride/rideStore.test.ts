@@ -68,3 +68,36 @@ describe('ride progress', () => {
     expect(useRideStore.getState().openedParts).toEqual([])
   })
 })
+
+describe('starting from a place', () => {
+  beforeEach(() => useRideStore.getState().reset())
+  const home = { kind: 'search' as const, name: 'Home', coord: [-89.41, 43.07] as [number, number] }
+
+  it('a place needs a pickup dock (auto until the rider picks one); a dock is its own pickup', () => {
+    const s = useRideStore.getState()
+    s.setOrigin(home)
+    expect(useRideStore.getState()).toMatchObject({ origin: { name: 'Home' }, startId: null, pickupPinned: false })
+    s.autoPickup('auto')
+    expect(useRideStore.getState()).toMatchObject({ startId: 'auto', pickupPinned: false })
+    s.setStart('chosen') // the rider picks another dock: keeps the place, pins the dock
+    expect(useRideStore.getState()).toMatchObject({ origin: { name: 'Home' }, startId: 'chosen', pickupPinned: true })
+    s.setOrigin({ kind: 'station', name: 'Dock', coord: [-89.4, 43.07], stationId: 'dock' })
+    expect(useRideStore.getState()).toMatchObject({ startId: 'dock', pickupPinned: true })
+    s.setStart(null) // "Change" clears the whole start
+    expect(useRideStore.getState()).toMatchObject({ origin: null, startId: null })
+  })
+
+  it('walking to the dock first: opening the first part does not start the timer; unlocking does', () => {
+    const s = useRideStore.getState()
+    s.setOrigin(home)
+    s.openWalkToDock()
+    s.markPartOpened(0, true, false)
+    expect(useRideStore.getState()).toMatchObject({ walkToDockOpened: true, openedParts: [0], rideStartedAtMs: null })
+    s.startRideTimer()
+    const t0 = useRideStore.getState().rideStartedAtMs
+    expect(t0).not.toBeNull()
+    s.markPartOpened(1, true) // a re-dock later still restarts it
+    expect(useRideStore.getState().rideStartedAtMs).toBeGreaterThanOrEqual(t0!)
+  })
+})
+

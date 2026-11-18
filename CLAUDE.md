@@ -15,7 +15,8 @@ turn-by-turn directions, with ride progress tracked in the app.
 - `npm run deploy` — build + `wrangler deploy` to Cloudflare (needs `npx wrangler login` once)
 - `npm run cf-typegen` — regenerate `worker-configuration.d.ts` after changing `wrangler.jsonc`
 - `npm run e2e` — Playwright smoke tests (Chromium, network-free) in `e2e/`
-- Dev-only debugging: `window.__bcycle.app` / `window.__bcycle.ride` expose the Zustand stores
+- Dev-only debugging: `window.__bcycle.app` / `window.__bcycle.ride` expose the Zustand stores,
+  `window.__bcycle.map.current` the map API (getViewport, fitBounds…)
 - `npm run update-systems` — regenerate `src/data/systems.json` from the live BCycle feeds
 
 ## Where code runs

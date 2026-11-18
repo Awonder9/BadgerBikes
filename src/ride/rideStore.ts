@@ -14,12 +14,20 @@ import { safeStorage } from '../lib/storage'
 import { fleetComposition } from '../lib/stationState'
 import { validatePlace } from '../store/validate'
 import type { Place, RouteLeg, StationsSnapshot } from '../types'
-import { preselectRouteDocks, routeDocks, type RouteDock } from './stationsAlongRoute'
+import { useAppStore } from '../store/appStore'
+import { optimizedStops, routeDocks, type RouteDock } from './stationsAlongRoute'
 
 export type RideErrorKind = 'busy' | 'unroutable' | 'other'
 
 export interface RideState {
+  /** Where the rider starts: a place (walk to the pickup dock first) or a dock (origin.stationId). */
+  origin: Place | null
+  /** Pickup dock (the ride starts here). */
   startId: string | null
+  /** The rider chose the pickup dock themselves (otherwise it follows the best one for origin → destination). */
+  pickupPinned: boolean
+  /** The rider opened the walking link to the pickup dock. */
+  walkToDockOpened: boolean
   destination: Place | null
   /** Route options in BIKE_ROUTING.options order (bike-friendly, balanced, fastest) and the one shown/used. */
   routes: RouteLeg[]
@@ -35,13 +43,23 @@ export interface RideState {
   openedParts: number[]
   /** When the current BCycle ride started (the last part opened from a dock), epoch ms; null = not riding. */
   rideStartedAtMs: number | null
+  /** settings.maxRideMinutes the current stops were optimized for (re-optimize only when it changes). */
+  stopsForMaxRide: number | null
   /** The rider opened the last link or arrived: the plan stays usable now but is no longer saved. */
   finished: boolean
+  /** Start from a place or a dock (a dock is also the pickup); null clears the start. */
+  setOrigin(place: Place | null): void
+  /** Pick up at this dock (pins it); null clears the start entirely. */
   setStart(id: string | null): void
+  /** The best pickup for the current origin (not pinned). */
+  autoPickup(id: string): void
   setDestination(place: Place | null): void
   toggleStop(id: string, routeOrder: readonly string[]): void
   /** The rider opened Google Maps part `index`; `fromDock` = it starts where they unlock a bike. */
-  markPartOpened(index: number, fromDock: boolean): void
+  markPartOpened(index: number, fromDock: boolean, startTimer?: boolean): void
+  openWalkToDock(): void
+  /** "I've unlocked a bike": starts the ride timer now. */
+  startRideTimer(): void
   /** "I'm done": clears progress but keeps the plan. */
   endRide(): void
   /** Stop saving this plan on the device (last link opened, or arrived). */
@@ -51,11 +69,15 @@ export interface RideState {
 
 let inflight: AbortController | null = null
 
-const planReset = (): Partial<RideState> => ({ routes: [], route: null, stopIds: [], status: 'idle', error: null, openedParts: [], rideStartedAtMs: null })
+const planReset = (): Partial<RideState> => ({ routes: [], route: null, stopIds: [], status: 'idle', error: null, openedParts: [], rideStartedAtMs: null, walkToDockOpened: false })
 
-type RideActions = 'setStart' | 'setDestination' | 'toggleStop' | 'markPartOpened' | 'endRide' | 'finishPlan' | 'reset'
+type RideActions = 'setOrigin' | 'setStart' | 'autoPickup' | 'setDestination' | 'toggleStop' | 'markPartOpened' | 'openWalkToDock' | 'startRideTimer' | 'endRide' | 'finishPlan' | 'reset'
 const empty = (): Omit<RideState, RideActions> => ({
+  origin: null,
   startId: null,
+  pickupPinned: false,
+  walkToDockOpened: false,
+  stopsForMaxRide: null,
   destination: null,
   routes: [],
   routeIndex: 0,
@@ -69,7 +91,7 @@ const empty = (): Omit<RideState, RideActions> => ({
   finished: false,
 })
 
-type Persisted = Partial<Pick<RideState, 'startId' | 'destination' | 'routes' | 'routeIndex' | 'stopIds' | 'openedParts' | 'rideStartedAtMs'>>
+type Persisted = Partial<Pick<RideState, 'origin' | 'pickupPinned' | 'walkToDockOpened' | 'stopsForMaxRide' | 'startId' | 'destination' | 'routes' | 'routeIndex' | 'stopIds' | 'openedParts' | 'rideStartedAtMs'>>
 
 const ID_RE = /^[A-Za-z0-9_.:-]{1,120}$/
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v)
@@ -101,7 +123,12 @@ export function restoreRide(raw: unknown, nowMs: number): Partial<RideState> {
   const ids = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string' && ID_RE.test(x)).slice(0, 50) : [])
   const parts = Array.isArray(raw.openedParts) ? raw.openedParts.filter((x): x is number => finite(x) && x >= 0 && x < 50) : []
   const started = finite(raw.rideStartedAtMs) && raw.rideStartedAtMs <= nowMs ? raw.rideStartedAtMs : null
+  const origin = validatePlace(raw.origin)
   return {
+    origin,
+    pickupPinned: raw.pickupPinned === true,
+    walkToDockOpened: routes.length > 0 && raw.walkToDockOpened === true,
+    stopsForMaxRide: finite(raw.stopsForMaxRide) ? raw.stopsForMaxRide : null,
     startId,
     destination,
     routes,
@@ -118,7 +145,19 @@ export const useRideStore = create<RideState>()(
   persist(
     (set) => ({
       ...empty(),
-      setStart: (startId) => set({ startId, ...planReset(), finished: false }),
+      setOrigin: (origin) =>
+        set(
+          origin?.stationId
+            ? { origin, startId: origin.stationId, pickupPinned: true, ...planReset(), finished: false }
+            : { origin, startId: null, pickupPinned: false, ...planReset(), finished: false },
+        ),
+      setStart: (startId) =>
+        set((s) =>
+          startId === null
+            ? { origin: null, startId: null, pickupPinned: false, ...planReset(), finished: false }
+            : { startId, pickupPinned: true, origin: s.origin && !s.origin.stationId ? s.origin : null, ...planReset(), finished: false },
+        ),
+      autoPickup: (id) => set((s) => (s.startId === id ? {} : { startId: id, ...planReset(), finished: false })),
       setDestination: (destination) => set({ destination, ...planReset(), finished: false }),
       toggleStop: (id, routeOrder) =>
         set((s) => {
@@ -127,13 +166,16 @@ export const useRideStore = create<RideState>()(
           else chosen.add(id)
           return { stopIds: routeOrder.filter((x) => chosen.has(x)), openedParts: [], rideStartedAtMs: null, finished: false }
         }),
-      markPartOpened: (index, fromDock) =>
+      markPartOpened: (index, fromDock, startTimer = true) =>
         set((s) => ({
           openedParts: s.openedParts.includes(index) ? s.openedParts : [...s.openedParts, index].sort((a, b) => a - b),
           // Opening a part that starts at a dock = unlocking a bike there: a new BCycle ride (timer restarts).
-          rideStartedAtMs: fromDock && !s.openedParts.includes(index) ? Date.now() : (s.rideStartedAtMs ?? Date.now()),
+          // Not when the rider still has to walk to the dock: they start the timer once they've unlocked.
+          rideStartedAtMs: !startTimer ? s.rideStartedAtMs : fromDock && !s.openedParts.includes(index) ? Date.now() : (s.rideStartedAtMs ?? Date.now()),
         })),
-      endRide: () => set({ openedParts: [], rideStartedAtMs: null }),
+      openWalkToDock: () => set({ walkToDockOpened: true }),
+      startRideTimer: () => set({ rideStartedAtMs: Date.now() }),
+      endRide: () => set({ openedParts: [], rideStartedAtMs: null, walkToDockOpened: false }),
       finishPlan: () => set({ finished: true }),
       reset: () => {
         inflight?.abort()
@@ -146,6 +188,10 @@ export const useRideStore = create<RideState>()(
       storage: createJSONStorage(() => safeStorage('local')),
       // A finished plan is not saved: the next visit starts fresh.
       partialize: (s): Persisted => (s.finished ? {} : {
+        origin: s.origin,
+        pickupPinned: s.pickupPinned,
+        walkToDockOpened: s.walkToDockOpened,
+        stopsForMaxRide: s.stopsForMaxRide,
         startId: s.startId,
         destination: s.destination,
         routes: s.routes,
@@ -159,18 +205,32 @@ export const useRideStore = create<RideState>()(
   ),
 )
 
-/** Docks offered as stops along `route`: on the line, plus re-dock / near-destination exceptions. */
-export function docksAlong(route: RouteLeg, snapshot: StationsSnapshot, startId: string, destination: Place, partySize = 1): RouteDock[] {
-  return routeDocks(route.geometry, snapshot.stations, {
-    excludeIds: new Set([startId]),
+/** Options shared by the dock list and the optimized stops (rider's settings, fleet, route pace). */
+function dockOpts(route: RouteLeg, snapshot: StationsSnapshot, destination: Place, partySize: number) {
+  return {
     destination: destination.coord,
     destStationId: destination.stationId,
     partySize,
     electric: fleetComposition(snapshot.stations) === 'electric',
-  })
+    maxRideMinutes: useAppStore.getState().settings.maxRideMinutes,
+    secondsPerMeter: routePace(route),
+  }
 }
 
-/** Shows route option `index` with its default (preselected) stops. */
+/** Docks offered as stops along `route`: on the line, plus re-dock / near-destination exceptions. */
+export function docksAlong(route: RouteLeg, snapshot: StationsSnapshot, startId: string, destination: Place, partySize = 1): RouteDock[] {
+  return routeDocks(route.geometry, snapshot.stations, { excludeIds: new Set([startId]), ...dockOpts(route, snapshot, destination, partySize) })
+}
+
+/** The route's own riding pace (seconds per meter), so stop timing matches the route cards. */
+export const routePace = (route: RouteLeg): number | undefined => (route.distance > 0 && route.duration > 0 ? route.duration / route.distance : undefined)
+
+/** The optimized stops for `docks`: fewest re-docks within the rider's max ride time, ending near the destination. */
+export function optimizedFor(docks: readonly RouteDock[], route: RouteLeg, snapshot: StationsSnapshot, destination: Place, partySize = 1): string[] {
+  return optimizedStops(docks, dockOpts(route, snapshot, destination, partySize))
+}
+
+/** Shows route option `index` with its optimized stops preselected (the rider can add optional ones). */
 export function chooseRoute(index: number, snapshot: StationsSnapshot, partySize: number): void {
   const { routes, startId, destination } = useRideStore.getState()
   const route = routes[index]
@@ -178,10 +238,11 @@ export function chooseRoute(index: number, snapshot: StationsSnapshot, partySize
   useRideStore.setState({
     routeIndex: index,
     route,
-    stopIds: preselectRouteDocks(docksAlong(route, snapshot, startId, destination, partySize), partySize),
+    stopIds: optimizedFor(docksAlong(route, snapshot, startId, destination, partySize), route, snapshot, destination, partySize),
     openedParts: [],
     rideStartedAtMs: null,
     finished: false,
+    stopsForMaxRide: useAppStore.getState().settings.maxRideMinutes,
   })
 }
 

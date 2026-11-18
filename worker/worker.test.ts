@@ -8,7 +8,7 @@ import { createUpstream, resetUpstreamState, type Gate } from './upstream'
 const snapshot = makeSnapshot([makeStation({ id: 's1' })])
 const deps = (o: Partial<AppDeps> = {}): AppDeps => ({
   upstream: (async () => ({})) as never,
-  createRouter: () => ({ route: async () => ({}) as never, routeLadder: async (_r: unknown, levels: readonly number[]) => levels.map((useRoads) => ({ provider: 'valhalla', useRoads })) as never }),
+  createRouter: () => ({ route: async () => ({}) as never, routeLadder: async (_r: unknown, levels: readonly number[]) => levels.map((useRoads) => ({ provider: 'valhalla', useRoads })) as never, routeDetails: async () => ({ breakdown: [{ kind: 'bikePath', meters: 100 }], elevation: null, segments: [] }) }),
   fetchStationsSnapshot: async () => snapshot,
   fetchSystemDetails: async () => ({}) as never,
   searchPlaces: async () => [],
@@ -40,6 +40,16 @@ describe('worker app', () => {
     expect(await (await app.fetch(req({ latitude: '43.0731', longitude: '-89.4012' }))).json()).toEqual({ systemId: 'bcycle_madison' })
     expect(await (await app.fetch(req({ latitude: '61.2', longitude: '-149.9' }))).json()).toEqual({ systemId: null })
     expect(await (await app.fetch(req())).json()).toEqual({ systemId: null })
+  })
+
+  it('returns route details for a valid polyline only', async () => {
+    const app = createApp(deps())
+    const { encodePolyline } = await import('../src/lib/polyline')
+    const polyline = encodePolyline([[-89.38, 43.07], [-89.39, 43.071]], 6)
+    const ok = await call(app, '/api/route-details', { method: 'POST', body: JSON.stringify({ systemId: 'bcycle_madison', polyline }) })
+    expect(await ok.json()).toEqual({ breakdown: [{ kind: 'bikePath', meters: 100 }], elevation: null, segments: [] })
+    const bad = await call(app, '/api/route-details', { method: 'POST', body: JSON.stringify({ systemId: 'bcycle_madison', polyline: '<script>' }) })
+    expect(bad.status).toBe(400)
   })
 
   it('rejects bad input', async () => {

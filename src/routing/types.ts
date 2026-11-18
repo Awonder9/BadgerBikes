@@ -1,5 +1,6 @@
 // Router contract (implemented in src/routing, used by the planner inside the Worker and — via
 // POST /api/route — by the client for reroutes).
+import type { RouteDetails } from './details'
 import type { Priority } from '../config'
 import type { LegRole, LngLat, RouteLeg, TravelMode, Units } from '../types'
 
@@ -55,4 +56,6 @@ export interface AltRouter extends Router {
    * (routing servers busy or down).
    */
   routeLadder(req: RouteRequest, levels: readonly number[], opts?: RequestOpts): Promise<RouteLeg[]>
+  /** Path breakdown + elevation for a bike route (polyline6). Rejects with 'upstream_unavailable' when busy. */
+  routeDetails(polyline6: string, opts?: RequestOpts): Promise<RouteDetails>
 }

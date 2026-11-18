@@ -41,6 +41,7 @@ export interface MapViewProps {
 export const SOURCE_IDS = {
   stations: 'bc-stations',
   route: 'bc-route',
+  routeKinds: 'bc-route-kinds',
   endpoints: 'bc-endpoints',
   user: 'bc-user',
 } as const
@@ -52,6 +53,7 @@ export const LAYER_IDS = {
   routeWalk: 'bc-route-walk',
   routeBikeCasing: 'bc-route-bike-casing',
   routeBike: 'bc-route-bike',
+  routeKinds: 'bc-route-kinds',
   endpoints: 'bc-endpoints',
   endpointLabels: 'bc-endpoint-labels',
   userAccuracy: 'bc-user-accuracy',

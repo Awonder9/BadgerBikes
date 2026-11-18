@@ -1,5 +1,5 @@
 // Layout: the single MapView + overlays. Mobile: bottom sheet (peek/half/full). Desktop: side panel.
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useEffectEvent, useRef, useState, type ReactNode } from 'react'
 import { useRegisterSW } from 'virtual:pwa-register/react'
 import { useShallow } from 'zustand/react/shallow'
 import { UI } from '../../config'
@@ -66,13 +66,22 @@ function BottomSheet({ children, onHeight }: { children: ReactNode; onHeight: (p
   // is open, which used to collapse a "full" sheet to about half on the next re-render.
   const areaHeight = () => ref.current?.parentElement?.clientHeight ?? window.innerHeight
   // Snap heights use svh, which ignores the on-screen keyboard; the map's bottom padding follows the real height.
+  // Observe once, and report only real height changes: re-applying the same map padding would cancel any
+  // camera animation in progress (e.g. zooming to a new route).
+  const report = useEffectEvent((h: number) => onHeight(h))
   useEffect(() => {
     const el = ref.current
     if (!el) return
-    const ro = new ResizeObserver(() => onHeight(el.offsetHeight))
+    let last = -1
+    const ro = new ResizeObserver(() => {
+      const h = el.offsetHeight
+      if (h === last) return
+      last = h
+      report(h)
+    })
     ro.observe(el)
     return () => ro.disconnect()
-  }, [onHeight])
+  }, [])
   const snapTo = (h: number) => {
     const area = areaHeight()
     const best = (['peek', 'half', 'full'] as const).reduce((a, b) => (Math.abs(snapPx(b, area) - h) < Math.abs(snapPx(a, area) - h) ? b : a))
@@ -163,6 +172,10 @@ export function AppShell() {
     }
   }, [])
 
+  // Dev-only: expose the map API next to the stores for debugging and browser checks.
+  useEffect(() => {
+    if (import.meta.env.DEV) Object.assign((window as unknown as { __bcycle?: object }).__bcycle ?? {}, { map: mapRef })
+  }, [])
   const setSheetHeight = (px: number) => mapRef.current?.setPadding({ top: 80, bottom: px, left: 0, right: 0 })
   useEffect(() => {
     if (desktop) mapRef.current?.setPadding({ top: 20, bottom: 20, left: 400, right: 0 })

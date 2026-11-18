@@ -10,15 +10,22 @@ function openRide() {
   if (app.sheet === 'peek') app.setSheet('half')
 }
 
-/** A dock tapped on the map while planning: it becomes the start dock, or (once there is one) the destination. */
+/** A dock tapped on the map while planning: it becomes the start, or (once there is one) the destination. */
 export function rideMapTap(stationId: string, name: string, coord: LngLat): void {
   const ride = useRideStore.getState()
-  if (!ride.startId) ride.setStart(stationId)
+  if (!ride.origin && !ride.startId) ride.setOrigin({ kind: 'station', name, coord, stationId })
   else if (stationId !== ride.startId) ride.setDestination({ kind: 'station', name, coord, stationId })
 }
 
-export function startRideAt(stationId: string): void {
-  useRideStore.getState().setStart(stationId)
+/** Start at a dock ("Start ride here"). */
+export function startRideAt(station: { id: string; name: string; coord: LngLat }): void {
+  useRideStore.getState().setOrigin({ kind: 'station', name: station.name, coord: station.coord, stationId: station.id })
+  openRide()
+}
+
+/** Start from a place: the planner picks the best dock to walk to. */
+export function startRideFrom(place: Place): void {
+  useRideStore.getState().setOrigin(place)
   openRide()
 }
 

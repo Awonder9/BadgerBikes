@@ -31,6 +31,8 @@ export function RideStatusCard({ plan }: { plan: RidePlan }) {
               Riding {clock(timer.elapsedS)}
               {timer.leftS !== null && (timer.leftS > 0 ? ` · ${Math.ceil(timer.leftS / 60)} min left on your pass` : ` · ${Math.ceil(-timer.leftS / 60)} min over your pass`)}
             </>
+          ) : plan.start ? (
+            `Walking to ${plan.start.name}`
           ) : (
             'Ride in progress'
           )}
@@ -39,6 +41,14 @@ export function RideStatusCard({ plan }: { plan: RidePlan }) {
           End ride
         </button>
       </div>
+      {!timer && (
+        <div className="flex items-center gap-2">
+          <p className="min-w-0 flex-1 text-sm">The ride timer starts once you've unlocked a bike.</p>
+          <button type="button" className="min-h-11 shrink-0 rounded-lg bg-brand-700 px-3 text-sm font-semibold text-white" onClick={() => useRideStore.getState().startRideTimer()}>
+            I've unlocked a bike
+          </button>
+        </div>
+      )}
       {timer?.state === 'warn' && <p className="text-sm">Dock soon to stay within your pass. Re-docking starts a new ride.</p>}
       {timer?.state === 'over' && <p className="text-sm">Extra fees may apply until you dock.</p>}
       {endStation && dock !== 'ok' && (
@@ -99,7 +109,7 @@ export function RideBanner() {
     >
       <Icon name="bike" size={20} />
       <span className="min-w-0 flex-1 truncate text-sm font-semibold">
-        {dock === 'full' && endStation ? `${endStation.name} is full — tap for nearby docks` : `Ride in progress${timer ? ` · ${clock(timer.elapsedS)}` : ''}${timer?.leftS != null && timer.leftS > 0 ? ` · ${Math.ceil(timer.leftS / 60)} min left` : ''}${next ? ` · ${next}` : ''}`}
+        {dock === 'full' && endStation ? `${endStation.name} is full — tap for nearby docks` : `${timer || !plan.start ? 'Ride in progress' : `Walking to ${plan.start.name}`}${timer ? ` · ${clock(timer.elapsedS)}` : ''}${timer?.leftS != null && timer.leftS > 0 ? ` · ${Math.ceil(timer.leftS / 60)} min left` : ''}${next ? ` · ${next}` : ''}`}
       </span>
       <Icon name="chevronRight" size={20} />
     </button>

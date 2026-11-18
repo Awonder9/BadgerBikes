@@ -15,6 +15,8 @@ export interface Settings {
   units: Units
   /** 1–4 riders. */
   partySize: number
+  /** Longest ride between docks the planner plans for (re-dock before it), minutes; 0 = unlimited. */
+  maxRideMinutes: number
   mapStyle: 'auto' | 'light' | 'dark'
   /** Rider confirmed "I have the BCycle app and a pass" (removes the first-ride overhead). */
   setupConfirmed: boolean

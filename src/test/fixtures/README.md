@@ -23,6 +23,7 @@ dropoff candidates are the 4 nearest the destination (Madison BCycle).
 | `osrm/table_bike.json` | `routed-bike/table/v1/driving/{4 pickups;4 dropoffs}?sources=0;1;2;3&destinations=4;5;6;7&annotations=duration,distance` |
 | `osrm/error_no_route.json` | HTTP 400 `{"code":"NoRoute"}` (Madison → Honolulu) |
 | `osrm/error_invalid.json` | HTTP 400 `{"code":"InvalidValue"}` (latitude 95) |
+| `valhalla/trace_attributes_bicycle.json` | `/trace_attributes` bicycle, `walk_or_snap`, shape + edge length/use/cycle_lane/road_class/mean_elevation/begin+end_shape_index (the route_bicycle shape) |
 | `photon/search_memorial_union.json` | `/api/?q=memorial union&lat=43.0747&lon=-89.3842&limit=5&lang=en` |
 | `photon/search_partial.json` | `/api/?q=state st&...&bbox=-89.55,42.98,-89.25,43.17` |
 | `photon/reverse.json` | `/reverse?lat=43.07467&lon=-89.38420&limit=1&lang=en` |

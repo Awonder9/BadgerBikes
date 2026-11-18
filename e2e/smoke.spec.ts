@@ -56,6 +56,8 @@ async function mockApi(context: BrowserContext, o: { stations?: 'ok' | 'down' | 
     }
     if (path === '/api/routes') return route.fulfill(o.routes === 'ok' ? { json: { routes: [leg, leg, leg] } } : down)
     if (path === '/api/locate') return route.fulfill({ json: { systemId: 'bcycle_madison' } })
+    if (path === '/api/route-details')
+      return route.fulfill({ json: { breakdown: [{ kind: 'bikePath', meters: 1200 }, { kind: 'sharedLane', meters: 420 }], elevation: { gainM: 18, lossM: 3, minM: 270, maxM: 288, profile: [[100, 270], [800, 280], [1500, 288]] } } })
     return route.fulfill(down)
   })
 }
@@ -175,4 +177,29 @@ test('the exact route downloads as a GPX file for Komoot / OsmAnd and starts the
   expect(gpx).toContain('Destination: Café &amp; Co')
   expect(gpx).toContain('<trkpt ')
   await expect(page.getByRole('region', { name: 'Ride in progress' })).toBeVisible()
+})
+
+test('start from my location: walk to the best dock, trip total, walk-instead, path details; timer waits for unlock', async ({ page, context }) => {
+  await mockApi(context, { routes: 'ok' })
+  await context.grantPermissions(['geolocation'])
+  await context.setGeolocation({ latitude: A[1] + 0.003, longitude: A[0] - 0.002 }) // ~400 m from Alpha & Main
+  await skipInstallTip(page)
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Plan a ride' }).click()
+  await page.getByRole('button', { name: 'Start from my location' }).click()
+  await expect(page.getByText('My location')).toBeVisible()
+  await expect(page.getByText(/walk \(.*\) to pick up at/)).toBeVisible()
+  await page.evaluate(([lon, lat]) => (window as unknown as { __bcycle: { ride: { getState: () => { setDestination: (p: unknown) => void } } } }).__bcycle.ride.getState().setDestination({ kind: 'search', name: 'Coffee Shop', coord: [lon + 0.004, lat] }), C)
+  await expect(page.getByText(/^Total ~/)).toBeVisible()
+  await expect(page.getByText(/Walk straight there: ~/)).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Path details' })).toContainText('74% bike path')
+  await expect(page.getByRole('region', { name: 'Path details' })).toContainText('▲ 59 ft')
+  // Walking first: opening Part 1 shows "Walking to …" and the timer waits for the unlock.
+  const popup = context.waitForEvent('page')
+  await page.getByRole('link', { name: /Open in Google Maps|Part 1/ }).click()
+  await (await popup).close()
+  const card = page.getByRole('region', { name: 'Ride in progress' })
+  await expect(card).toContainText('Walking to')
+  await card.getByRole('button', { name: "I've unlocked a bike" }).click()
+  await expect(card).toContainText('Riding 0:0')
 })

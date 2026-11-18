@@ -1,9 +1,10 @@
 // Request validation for the Worker API. Everything from the client is untrusted.
 import type { RouteApiRequest } from '../src/api/contract'
-import { APP, GEOCODE, HTTP } from '../src/config'
+import { APP, GEOCODE, HTTP, ROUTE_DETAILS } from '../src/config'
 import { SYSTEMS } from '../src/data/systems'
 import { AppError } from '../src/lib/errors'
 import { isValidLngLat } from '../src/lib/geo'
+import { decodePolyline } from '../src/lib/polyline'
 import type { BcycleSystem, LngLat } from '../src/types'
 
 const bad = (msg: string) => new AppError('bad_request', msg)
@@ -53,6 +54,21 @@ export function routeRequest(body: unknown): RouteApiRequest {
   if (body.toIsUserPoint === true) r.toIsUserPoint = true
   if (body.bikeKind === 'electric') r.bikeKind = 'electric'
   return r
+}
+
+/** Route geometry as an encoded polyline6: printable polyline characters only, bounded size. */
+export function routeDetailsRequest(body: unknown): { systemId: string; polyline: string } {
+  if (!isObj(body)) throw bad('Invalid body')
+  const polyline = typeof body.polyline === 'string' ? body.polyline : ''
+  if (polyline.length < 4 || polyline.length > ROUTE_DETAILS.maxPolylineChars || !/^[\x3f-\x7e]+$/.test(polyline)) throw bad('Invalid polyline')
+  let coords: LngLat[]
+  try {
+    coords = decodePolyline(polyline, 6)
+  } catch {
+    throw bad('Invalid polyline')
+  }
+  if (coords.length < 2 || coords.length > ROUTE_DETAILS.maxPoints || !coords.every(isValidLngLat)) throw bad('Invalid polyline')
+  return { systemId: requireSystem(body.systemId).id, polyline }
 }
 
 export function geocodeQuery(raw: string | null): string {

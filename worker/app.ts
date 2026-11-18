@@ -9,7 +9,7 @@ import { AppError, toAppError, type AppErrorCode } from '../src/lib/errors'
 import { bboxContains } from '../src/lib/geo'
 import type { UpstreamFetch } from '../src/lib/upstream'
 import type { AltRouter } from '../src/routing/types'
-import { geocodeQuery, latLonParams, readJsonBody, requireSystem, routeRequest } from './validate'
+import { geocodeQuery, latLonParams, readJsonBody, requireSystem, routeDetailsRequest, routeRequest } from './validate'
 
 export interface AppDeps {
   upstream: UpstreamFetch
@@ -109,6 +109,13 @@ export function createApp(deps: AppDeps) {
     if (p === API_PATHS.reverse && method === 'GET') {
       await limit(deps.limiters?.geocode, request)
       return json({ place: await deps.reversePlace(latLonParams(url.searchParams), deps.upstream, { signal }) })
+    }
+
+    if (p === API_PATHS.routeDetails && method === 'POST') {
+      await limit(deps.limiters?.route, request)
+      const { polyline } = routeDetailsRequest(await readJsonBody(request))
+      const router = deps.createRouter({ upstream: deps.upstream })
+      return json(await router.routeDetails(polyline, { signal, priority: 'background' }))
     }
 
     if (p === API_PATHS.routes && method === 'POST') {

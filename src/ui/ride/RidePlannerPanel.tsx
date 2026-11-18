@@ -5,14 +5,17 @@ import { useShallow } from 'zustand/react/shallow'
 import { BIKE_ROUTING, RIDE } from '../../config'
 import { useNow, useStationsSnapshot } from '../../data/hooks'
 import { bikeMix, formatDistance, formatDuration } from '../../lib/format'
-import { bboxOf, kNearest } from '../../lib/geo'
+import { bboxOf } from '../../lib/geo'
 import { canRent, classifyCount, classifyStation } from '../../lib/stationState'
+import { useRouteDetails } from '../../data/routeDetails'
+import { PATH_COLORS } from '../../map/colors'
 import { buildRideShareUrl } from '../../lib/urlParams'
+import { PATH_LABELS } from '../../routing/details'
 import { gpxFileName, rideGpx } from '../../ride/gpx'
 import { waitForFix } from '../../location/locationStore'
 import { useMapApiGetter } from '../../map/mapApiContext'
 import { chooseRoute, docksAlong, loadRideRoute, useRideStore } from '../../ride/rideStore'
-import { MAX_STRETCH_MINUTES, rideSeconds } from '../../ride/stationsAlongRoute'
+import { rideSeconds, type RouteDock } from '../../ride/stationsAlongRoute'
 import { sameRoute } from '../../routing/sameRoute'
 import { useAppStore } from '../../store/appStore'
 import type { Place, Station } from '../../types'
@@ -28,7 +31,7 @@ export function RidePlannerPanel() {
   const ride = useRideStore()
   const { snapshot } = useStationsSnapshot(systemId, { active: true })
   const plan = useRidePlan()
-  const { start, along, end, rideParts, walkLink, nextPart, segments, electric, includedMinutes } = plan
+  const { start, along, end, rideParts, walkLink, nextPart, optimizedIds, maxRideMinutes } = plan
   const getMap = useMapApiGetter()
 
   // Frame the whole route once it arrives.
@@ -37,15 +40,31 @@ export function RidePlannerPanel() {
     if (b) getMap()?.fitBounds(b, { maxZoom: 16 })
   }, [ride.route, getMap])
 
+  // Starting from a place: use the best pickup dock for this trip until the rider picks one. Only before
+  // routing (new start or destination), so live count changes never re-route a plan on screen.
+  const bestPickup = plan.pickups[0]?.station.id
+  useEffect(() => {
+    const r = useRideStore.getState()
+    if (r.origin && !r.origin.stationId && !r.pickupPinned && bestPickup && r.openedParts.length === 0 && (r.startId === null || r.status === 'idle')) r.autoPickup(bestPickup)
+  }, [bestPickup, ride.status, ride.destination, ride.origin, ride.startId])
+
   // Route whenever both ends are known.
   useEffect(() => {
     if (systemId && snapshot && ride.startId && ride.destination && ride.status === 'idle') void loadRideRoute(systemId, snapshot, units, partySize)
   }, [systemId, snapshot, ride.startId, ride.destination, ride.status, units, partySize])
 
+  // The max-ride setting changed since these stops were picked (e.g. in Settings): re-pick the optimized
+  // stops, unless mid-ride. Reopening the planner without a change keeps the rider's own choices.
+  useEffect(() => {
+    const r = useRideStore.getState()
+    if (snapshot && r.status === 'ready' && r.openedParts.length === 0 && r.stopsForMaxRide !== maxRideMinutes) chooseRoute(r.routeIndex, snapshot, partySize)
+  }, [maxRideMinutes, snapshot, partySize])
+
   const dest = ride.destination
   const dockCounts = useMemo(
     () => (snapshot && start && dest ? ride.routes.map((r) => docksAlong(r, snapshot, start.id, dest, partySize).filter((s) => s.reason === 'onRoute' && (s.station.status?.docks ?? 0) > 0).length) : []),
-    [ride.routes, snapshot, start, dest, partySize],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- maxRideMinutes is read inside docksAlong
+    [ride.routes, snapshot, start, dest, partySize, maxRideMinutes],
   )
   const order = along.map((s) => s.station.id)
   const riding = ride.openedParts.length > 0
@@ -66,8 +85,8 @@ export function RidePlannerPanel() {
       <RideStatusCard plan={plan} />
 
       <div className="space-y-1">
-        <p className="text-sm font-medium text-slate-500">1. Start dock</p>
-        {start ? <StartDock station={start} partySize={partySize} /> : <StartDockPicker partySize={partySize} />}
+        <p className="text-sm font-medium text-slate-500">1. Start</p>
+        {ride.origin && !ride.origin.stationId ? <StartFromPlace plan={plan} partySize={partySize} units={units} /> : start ? <StartDock station={start} partySize={partySize} /> : <StartPicker />}
       </div>
 
       <div className="space-y-1">
@@ -111,38 +130,33 @@ export function RidePlannerPanel() {
               })}
             </div>
           </div>
-          <p className="text-sm font-medium text-slate-500">4. Docks on this route — uncheck any you don't want to stop at</p>
+          <TripSummary plan={plan} units={units} />
+          <RouteDetailsCard systemId={systemId} units={units} />
+
           {along.length === 0 ? (
-            <p className="text-sm text-amber-800 dark:text-amber-300">No BCycle docks on this route. Try another route option or a destination closer to a station.</p>
+            <>
+              <p className="text-sm font-medium text-slate-500">4. Stops</p>
+              <p className="text-sm text-amber-800 dark:text-amber-300">No BCycle docks on this route. Try another route option or a destination closer to a station.</p>
+            </>
           ) : (
-            <ul className="divide-y divide-slate-200 rounded-xl ring-1 ring-slate-200 dark:divide-slate-800 dark:ring-slate-800">
-              {along.map((s) => {
-                const checked = ride.stopIds.includes(s.station.id)
-                const isEnd = end?.station.id === s.station.id
-                const docks = s.station.status?.docks ?? 0
-                const accepts = !!s.station.status?.isReturning && docks > 0
-                const seg = segments.find((g) => g.toId === s.station.id)
-                return (
-                  <li key={s.station.id}>
-                    <label className="flex min-h-14 cursor-pointer items-center gap-3 px-3 py-2">
-                      <input type="checkbox" className="h-5 w-5 shrink-0" checked={checked} onChange={() => ride.toggleStop(s.station.id, order)} />
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate font-medium">{s.station.name}</span>
-                        <span className="block text-sm text-slate-500">
-                          ~{formatDuration(rideSeconds(s.along, electric))} into the ride · {formatDistance(s.offset, units)} off route
-                          {isEnd && <span className="ml-1 font-semibold text-brand-700 dark:text-brand-300">· Ride ends here</span>}
-                        </span>
-                        {s.reason === 'redock' && <span className="block text-sm text-slate-600 dark:text-slate-300">Off route — added so you can re-dock within {MAX_STRETCH_MINUTES} min</span>}
-                        {s.reason === 'nearDestination' && <span className="block text-sm text-slate-600 dark:text-slate-300">Off route — closest dock to your destination</span>}
-                        {checked && seg?.overIncluded && <span className="block text-sm text-amber-800 dark:text-amber-300">This stretch is longer than your {includedMinutes}-min pass — add a stop before it to re-dock.</span>}
-                        {checked && !accepts && <span className="block text-sm text-red-700 dark:text-red-400">No open docks right now.</span>}
-                      </span>
-                      <AvailabilityPill kind="docks" count={docks} state={accepts ? classifyCount(docks, partySize) : 'none'} size="sm" />
-                    </label>
-                  </li>
-                )
-              })}
-            </ul>
+            <>
+              <div>
+                <p className="text-sm font-medium text-slate-500">4. Optimized stops</p>
+                <p className="text-xs text-slate-500">
+                  {maxRideMinutes > 0 ? `The fewest re-docks that keep each ride under ${maxRideMinutes} min, ending near your destination.` : 'No ride-time limit: just the dock closest to your destination.'}
+                </p>
+              </div>
+              <DockList docks={along.filter((d) => optimizedIds.has(d.station.id))} order={order} plan={plan} partySize={partySize} units={units} />
+              {along.some((d) => !optimizedIds.has(d.station.id)) && (
+                <>
+                  <div>
+                    <p className="text-sm font-medium text-slate-500">Optional stops along the way</p>
+                    <p className="text-xs text-slate-500">Check any you'd like to stop at too.</p>
+                  </div>
+                  <DockList docks={along.filter((d) => !optimizedIds.has(d.station.id))} order={order} plan={plan} partySize={partySize} units={units} />
+                </>
+              )}
+            </>
           )}
 
           {rideParts.length > 0 && start && end && ride.route && <ExactRouteFile plan={plan} />}
@@ -155,10 +169,28 @@ export function RidePlannerPanel() {
                     ? 'All parts opened. Tap a part to open it again.'
                     : riding
                       ? `Next: Part ${nextPart + 1}${rideParts[nextPart]?.endLabel ? ` → ${rideParts[nextPart]?.endLabel}` : ''}`
-                      : 'Google Maps allows 3 stops per link — open the next part when you arrive.'}
+                      : 'Google allows 3 stops per link — open the next part on arrival.'}
                 </p>
               )}
+              <p className="text-xs leading-snug text-slate-500">
+                {maxRideMinutes > 0 ? `Max ${maxRideMinutes} min between docks` : 'No time limit between docks'} ·{' '}
+                <button type="button" className="font-medium text-brand-700 underline dark:text-brand-300" onClick={() => useAppStore.getState().setPanel('settings')}>
+                  Change
+                </button>
+              </p>
               <div className="flex gap-1.5">
+                {plan.walkToDock && (
+                  <a
+                    href={plan.walkToDock.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => ride.openWalkToDock()}
+                    aria-label={`Walk to ${start.name} in Google Maps${ride.walkToDockOpened ? ', opened' : ''}`}
+                    className="flex min-h-12 shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-xl bg-white px-2.5 text-sm font-medium ring-1 ring-slate-300 dark:bg-slate-900 dark:ring-slate-600"
+                  >
+                    <Icon name={ride.walkToDockOpened ? 'check' : 'walk'} size={18} /> Dock
+                  </a>
+                )}
                 {rideParts.map((l, i) => {
                   const done = ride.openedParts.includes(i)
                   const isNext = i === nextPart
@@ -170,7 +202,8 @@ export function RidePlannerPanel() {
                       rel="noopener noreferrer"
                       aria-label={`${rideParts.length === 1 ? 'Open in Google Maps' : `Part ${i + 1}`}${l.endLabel ? `, to ${l.endLabel}` : ''}${done ? ', opened' : ''}`}
                       onClick={() => {
-                        ride.markPartOpened(i, l.fromDock)
+                        // Walking to the dock first: the timer waits for "I've unlocked a bike".
+                        ride.markPartOpened(i, l.fromDock, !(i === 0 && plan.walkToDock))
                         // The last link of the trip: stop saving the plan on the device.
                         if (!walkLink && i === rideParts.length - 1) ride.finishPlan()
                       }}
@@ -198,7 +231,7 @@ export function RidePlannerPanel() {
   )
 }
 
-function StartDock({ station, partySize }: { station: Station; partySize: number }) {
+function StartDock({ station, partySize, canChange = true }: { station: Station; partySize: number; canChange?: boolean }) {
   const s = station.status
   const mix = s && s.ebikes !== null && s.classic !== null && s.bikes > 0 ? bikeMix(s.ebikes, s.classic) : null
   return (
@@ -210,51 +243,127 @@ function StartDock({ station, partySize }: { station: Station; partySize: number
           {mix && <span className="block text-sm text-slate-500">{mix}</span>}
         </span>
         <AvailabilityPill kind="bikes" count={s?.bikes ?? 0} state={classifyStation(station, partySize).bikeState} size="sm" />
-        <button type="button" className="min-h-11 px-2 text-sm text-brand-700 dark:text-brand-300" onClick={() => useRideStore.getState().setStart(null)}>
-          Change
-        </button>
+        {canChange && (
+          <button type="button" className="min-h-11 px-2 text-sm text-brand-700 dark:text-brand-300" onClick={() => useRideStore.getState().setStart(null)}>
+            Change
+          </button>
+        )}
       </div>
       {!canRent(station, partySize) && <p className="text-sm text-amber-800 dark:text-amber-300">This dock has no bikes available right now.</p>}
     </>
   )
 }
 
-function StartDockPicker({ partySize }: { partySize: number }) {
+/** No start yet: my location, a searched place or dock, or a dock tapped on the map. */
+function StartPicker() {
   const systemId = useAppStore((s) => s.systemId)
   const { snapshot } = useStationsSnapshot(systemId)
   const [locating, setLocating] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
-  const nearestFrom = (coord: [number, number]) => (snapshot ? kNearest(coord, snapshot.stations.filter((s) => canRent(s, partySize)), (s) => s.coord, 1)[0] : undefined)
-  const choose = (p: Place) => {
-    if (p.stationId) return useRideStore.getState().setStart(p.stationId)
-    // A place: start at the nearest dock with bikes.
-    const near = nearestFrom(p.coord)
-    if (near) useRideStore.getState().setStart(near.item.id)
-  }
-  const nearestToMe = async () => {
+  const fromHere = async () => {
     setMsg(null)
     setLocating(true)
     const here = await waitForFix()
     setLocating(false)
-    if (!here) return setMsg('Your location isn’t available. Search for a dock or tap one on the map instead.')
-    const near = nearestFrom(here)
-    if (near) useRideStore.getState().setStart(near.item.id)
-    else setMsg('No dock with bikes found near you.')
+    if (!here) return setMsg('Your location isn’t available. Search for a place or dock, or tap a dock on the map.')
+    useRideStore.getState().setOrigin({ kind: 'myLocation', name: 'My location', coord: here })
   }
   return (
     <>
       <button
         type="button"
         disabled={locating || !snapshot}
-        onClick={() => void nearestToMe()}
+        onClick={() => void fromHere()}
         className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-brand-700 px-3 font-semibold text-white disabled:opacity-60"
       >
         {locating ? <span className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" aria-hidden /> : <Icon name="locate" size={20} />}
-        {locating ? 'Finding you…' : 'Nearest dock with bikes'}
+        {locating ? 'Finding you…' : 'Start from my location'}
       </button>
       {msg && <p className="text-sm text-amber-800 dark:text-amber-300">{msg}</p>}
-      <SearchBox key="start" label="Start dock" placeholder="Or search a dock (or tap one on the map)" onSelect={choose} />
+      <SearchBox key="start" label="Start" placeholder="Or search a place or dock (or tap a dock)" onSelect={(p) => useRideStore.getState().setOrigin(p)} />
     </>
+  )
+}
+
+/** Starting from a place: where you start, the dock to walk to, and other nearby docks to choose from. */
+function StartFromPlace({ plan, partySize, units }: { plan: RidePlan; partySize: number; units: 'imperial' | 'metric' }) {
+  const { origin, start, walkToDock, pickups } = plan
+  if (!origin) return null
+  const others = pickups.filter((p) => p.station.id !== start?.id)
+  return (
+    <>
+      <div className="flex items-center gap-2 rounded-xl bg-slate-50 p-3 dark:bg-slate-900">
+        <Icon name={origin.kind === 'myLocation' ? 'locate' : 'pin'} size={20} className="shrink-0 text-brand-700" />
+        <span className="line-clamp-2 min-w-0 flex-1 font-medium leading-snug">{origin.name}</span>
+        <button type="button" className="min-h-11 px-2 text-sm text-brand-700 dark:text-brand-300" onClick={() => useRideStore.getState().setStart(null)}>
+          Change
+        </button>
+      </div>
+      {start ? (
+        <>
+          <p className="flex items-center gap-1.5 pt-1 text-sm text-slate-600 dark:text-slate-300">
+            <Icon name="walk" size={16} className="shrink-0" />
+            {walkToDock ? `${formatDuration(walkToDock.seconds)} walk (${formatDistance(walkToDock.meters, units)}) to pick up at` : 'Pick up at'}
+          </p>
+          <StartDock station={start} partySize={partySize} canChange={false} />
+          {others.length > 0 && (
+            <ul className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 pt-1" aria-label="Other docks to start from">
+              {others.map((o) => (
+                <li key={o.station.id} className="shrink-0">
+                  <button
+                    type="button"
+                    className="flex min-h-10 max-w-[15rem] items-center gap-1.5 rounded-full bg-slate-100 px-3 text-sm dark:bg-slate-800"
+                    onClick={() => useRideStore.getState().setStart(o.station.id)}
+                  >
+                    <span className="truncate font-medium">{o.station.name}</span>
+                    <span className="shrink-0 text-slate-500">
+                      · {formatDuration(o.walkS)} · {o.station.status?.bikes ?? 0} bikes
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      ) : (
+        <p className="text-sm text-amber-800 dark:text-amber-300">No dock with bikes near here right now.</p>
+      )}
+    </>
+  )
+}
+
+function DockList({ docks, order, plan, partySize, units }: { docks: readonly RouteDock[]; order: readonly string[]; plan: RidePlan; partySize: number; units: 'imperial' | 'metric' }) {
+  const stopIds = useRideStore((s) => s.stopIds)
+  const { end, segments, electric, pace, maxRideMinutes } = plan
+  return (
+    <ul className="divide-y divide-slate-200 rounded-xl ring-1 ring-slate-200 dark:divide-slate-800 dark:ring-slate-800">
+      {docks.map((s) => {
+        const checked = stopIds.includes(s.station.id)
+        const isEnd = end?.station.id === s.station.id
+        const docksFree = s.station.status?.docks ?? 0
+        const accepts = !!s.station.status?.isReturning && docksFree > 0
+        const seg = segments.find((g) => g.toId === s.station.id)
+        return (
+          <li key={s.station.id}>
+            <label className="flex min-h-14 cursor-pointer items-center gap-3 px-3 py-2">
+              <input type="checkbox" className="h-5 w-5 shrink-0" checked={checked} onChange={() => useRideStore.getState().toggleStop(s.station.id, order)} />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate font-medium">{s.station.name}</span>
+                <span className="block text-sm text-slate-500">
+                  ~{formatDuration(rideSeconds(s.along, electric, pace))} into the ride · {formatDistance(s.offset, units)} off route
+                  {isEnd && <span className="ml-1 font-semibold text-brand-700 dark:text-brand-300">· Ride ends here</span>}
+                </span>
+                {s.reason === 'redock' && <span className="block text-sm text-slate-600 dark:text-slate-300">Off route — added so you can re-dock within {maxRideMinutes} min</span>}
+                {s.reason === 'nearDestination' && <span className="block text-sm text-slate-600 dark:text-slate-300">Off route — closest dock to your destination</span>}
+                {checked && seg?.overIncluded && <span className="block text-sm text-amber-800 dark:text-amber-300">This ride is longer than {maxRideMinutes} min — no dock is in range to re-dock sooner.</span>}
+                {checked && !accepts && <span className="block text-sm text-red-700 dark:text-red-400">No open docks right now.</span>}
+              </span>
+              <AvailabilityPill kind="docks" count={docksFree} state={accepts ? classifyCount(docksFree, partySize) : 'none'} size="sm" />
+            </label>
+          </li>
+        )
+      })}
+    </ul>
   )
 }
 
@@ -365,7 +474,7 @@ function ExactRouteFile({ plan }: { plan: RidePlan }) {
     const file = new File([gpx], fileName, { type: 'application/gpx+xml' })
     // The ride starts with this file instead of the Google Maps parts.
     const ride = useRideStore.getState()
-    rideParts.forEach((l, i) => ride.markPartOpened(i, i === 0 && l.fromDock))
+    rideParts.forEach((l, i) => ride.markPartOpened(i, i === 0 && l.fromDock, !plan.walkToDock))
     if (!walkLink) ride.finishPlan()
     try {
       if (typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] })) {
@@ -408,5 +517,95 @@ function ExactRouteFile({ plan }: { plan: RidePlan }) {
         </p>
       )}
     </div>
+  )
+}
+
+/** Whole trip at a glance (walk → ride → walk), plus walking all the way for comparison. */
+function TripSummary({ plan, units }: { plan: RidePlan; units: 'imperial' | 'metric' }) {
+  const { totalSeconds, walkToDock, rideSeconds: rideS, walkFromDock, walkAll } = plan
+  if (totalSeconds === null || rideS === null) return null
+  const comparable = walkAll && walkAll.seconds <= totalSeconds + RIDE.walkComparableSeconds
+  const leg = (icon: 'walk' | 'bike', s: number, label: string) => (
+    <span className="flex items-center gap-1" aria-label={`${formatDuration(s)} ${label}`}>
+      <Icon name={icon} size={16} className="shrink-0" /> {formatDuration(s)}
+    </span>
+  )
+  return (
+    <div className="space-y-2 rounded-xl bg-slate-50 p-3 dark:bg-slate-900">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+        <span className="font-semibold">Total ~{formatDuration(totalSeconds)}</span>
+        <span className="flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-300">
+          {walkToDock && <>{leg('walk', walkToDock.seconds, 'walk to the dock')}<span aria-hidden>→</span></>}
+          {leg('bike', rideS, 'ride')}
+          {walkFromDock && <><span aria-hidden>→</span>{leg('walk', walkFromDock.seconds, 'walk to your destination')}</>}
+        </span>
+      </div>
+      {walkAll && (
+        <div className="flex items-center gap-2 border-t border-slate-200 pt-2 text-sm dark:border-slate-800">
+          <Icon name="walk" size={18} className="shrink-0 text-slate-500" />
+          <span className="min-w-0 flex-1">
+            Walk straight there: ~{formatDuration(walkAll.seconds)} · {formatDistance(walkAll.meters, units)}
+            {comparable && <span className="block font-medium text-brand-700 dark:text-brand-300">About as fast as biking for this trip.</span>}
+          </span>
+          <a href={walkAll.url} target="_blank" rel="noopener noreferrer" className="shrink-0 rounded-lg px-2 py-1 font-medium text-brand-700 ring-1 ring-slate-300 dark:text-brand-300 dark:ring-slate-600">
+            Walk
+          </a>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** What the chosen route rides on (same colors as the line on the map), and its hills. One request per route. */
+function RouteDetailsCard({ systemId, units }: { systemId: string | null; units: 'imperial' | 'metric' }) {
+  const route = useRideStore((s) => s.route)
+  const { details, pending } = useRouteDetails(systemId, route)
+  if (!route) return null
+  if (pending) return <p className="text-xs text-slate-500" role="status">Loading path details…</p>
+  if (!details) return <p className="text-xs text-slate-500">Path details are unavailable right now.</p>
+  const { breakdown, elevation } = details
+  const total = breakdown.reduce((s, b) => s + b.meters, 0) || 1
+  const pct = (m: number) => Math.round((m / total) * 100)
+  const ft = (m: number) => (units === 'imperial' ? `${Math.round(m * 3.28084)} ft` : `${Math.round(m)} m`)
+  return (
+    <section aria-label="Path details" className="space-y-2 rounded-xl ring-1 ring-slate-200 p-3 dark:ring-slate-800">
+      <div className="flex h-3 w-full overflow-hidden rounded-full" aria-hidden>
+        {breakdown.map((b) => (
+          <span key={b.kind} style={{ width: `${(b.meters / total) * 100}%`, background: PATH_COLORS[b.kind] }} />
+        ))}
+      </div>
+      <ul className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-600 dark:text-slate-300">
+        {breakdown
+          .filter((b) => pct(b.meters) >= 1)
+          .map((b) => (
+            <li key={b.kind} className="flex items-center gap-1">
+              <span className="h-2.5 w-2.5 rounded-full" style={{ background: PATH_COLORS[b.kind] }} aria-hidden />
+              {pct(b.meters)}% {PATH_LABELS[b.kind].toLowerCase()}
+            </li>
+          ))}
+      </ul>
+      {elevation && (
+        <div className="flex items-center gap-3">
+          <span className="shrink-0 text-sm font-medium">
+            ▲ {ft(elevation.gainM)} · ▼ {ft(elevation.lossM)}
+          </span>
+          <ElevationSparkline profile={elevation.profile} min={elevation.minM} max={elevation.maxM} />
+        </div>
+      )}
+    </section>
+  )
+}
+
+function ElevationSparkline({ profile, min, max }: { profile: Array<[number, number]>; min: number; max: number }) {
+  const w = 160
+  const h = 32
+  const total = profile.at(-1)![0] || 1
+  const span = Math.max(max - min, 10) // flat routes stay flat-looking
+  const pts = profile.map(([a, e]) => `${((a / total) * w).toFixed(1)},${(h - 2 - ((e - min) / span) * (h - 4)).toFixed(1)}`)
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} className="h-8 min-w-0 flex-1" preserveAspectRatio="none" role="img" aria-label="Elevation profile">
+      <polyline points={`0,${h} ${pts.join(' ')} ${w},${h}`} fill="currentColor" className="text-brand-700/15 dark:text-brand-300/20" stroke="none" />
+      <polyline points={pts.join(' ')} fill="none" stroke="currentColor" strokeWidth="1.5" className="text-brand-700 dark:text-brand-300" vectorEffect="non-scaling-stroke" />
+    </svg>
   )
 }

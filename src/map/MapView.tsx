@@ -11,8 +11,10 @@ import { useAppStore } from '../store/appStore'
 import { useLocationStore } from '../location/locationStore'
 import type { MapMode } from '../types'
 import { useRideStore } from '../ride/rideStore'
-import { AVAILABILITY_COLORS, ROUTE_COLORS, USER_PUCK } from './colors'
-import { buildEndpointFeatures, buildRouteFeatures, buildStationFeatures, buildUserFeatures, emptyCollection, rideRoles } from './features'
+import { AVAILABILITY_COLORS, PATH_COLORS, ROUTE_COLORS, USER_PUCK } from './colors'
+import { useRouteDetails } from '../data/routeDetails'
+import type { PathKind } from '../routing/details'
+import { buildEndpointFeatures, buildPathKindFeatures, buildRouteFeatures, buildWalkFeatures, buildStationFeatures, buildUserFeatures, emptyCollection, rideRoles } from './features'
 import { LAYER_IDS as L, SOURCE_IDS as S, type MapViewProps } from './types'
 
 setWorkerUrl(workerUrl)
@@ -40,6 +42,11 @@ function labelColorExpr(mode: MapMode) {
   return ['match', ['get', prop], 'none', AVAILABILITY_COLORS.none, '#ffffff'] as never
 }
 
+function pathColorExpr(dark: boolean) {
+  const entries = (Object.entries(PATH_COLORS) as Array<[PathKind, string]>).flatMap(([k, c]) => [k, dark && k === 'quietStreet' ? '#94a3b8' : c])
+  return ['match', ['get', 'kind'], ...entries, '#0f766e'] as never
+}
+
 function isDark(style: 'auto' | 'light' | 'dark'): boolean {
   if (style !== 'auto') return style === 'dark'
   return typeof window !== 'undefined' && window.matchMedia?.('(prefers-color-scheme: dark)').matches === true
@@ -49,6 +56,7 @@ function ensureLayers(map: MlMap, mode: MapMode, dark: boolean) {
   const rc = dark ? ROUTE_COLORS.dark : ROUTE_COLORS.light
   if (!map.getSource(S.route)) map.addSource(S.route, { type: 'geojson', data: emptyCollection() })
   if (!map.getSource(S.stations)) map.addSource(S.stations, { type: 'geojson', data: emptyCollection(), promoteId: 'id' })
+  if (!map.getSource(S.routeKinds)) map.addSource(S.routeKinds, { type: 'geojson', data: emptyCollection() })
   if (!map.getSource(S.endpoints)) map.addSource(S.endpoints, { type: 'geojson', data: emptyCollection() })
   if (!map.getSource(S.user)) map.addSource(S.user, { type: 'geojson', data: emptyCollection() })
   if (!map.getLayer(L.routeWalk))
@@ -57,6 +65,10 @@ function ensureLayers(map: MlMap, mode: MapMode, dark: boolean) {
     map.addLayer({ id: L.routeBikeCasing, type: 'line', source: S.route, filter: ['==', ['get', 'mode'], 'bike'], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': rc.bikeCasing, 'line-width': 9 } })
   if (!map.getLayer(L.routeBike))
     map.addLayer({ id: L.routeBike, type: 'line', source: S.route, filter: ['==', ['get', 'mode'], 'bike'], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': rc.bike, 'line-width': 6, 'line-opacity': ['case', ['==', ['get', 'done'], 1], 0.35, 1] } })
+  // The chosen route colored by kind of way (bike path, lane, shared lane, quiet street, busy road…), drawn
+  // over the plain line once its details have loaded.
+  if (!map.getLayer(L.routeKinds))
+    map.addLayer({ id: L.routeKinds, type: 'line', source: S.routeKinds, layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': pathColorExpr(dark), 'line-width': 6 } })
   if (!map.getLayer(L.stationSelected))
     map.addLayer({ id: L.stationSelected, type: 'circle', source: S.stations, paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 11, 9, 15, 20], 'circle-color': 'rgba(0,0,0,0)', 'circle-stroke-width': ['case', ['boolean', ['feature-state', 'selected'], false], 4, ['!=', ['get', 'planRole'], ''], 3, 0], 'circle-stroke-color': ['case', ['==', ['get', 'planRole'], 'backup'], '#94a3b8', '#2563eb'] } })
   if (!map.getLayer(L.stationCircle))
@@ -81,11 +93,17 @@ export function MapView({ ref, onStationClick, onBackgroundClick, onMapPick, onE
   const { systemId, mode, selectedStationId, settings, starred } = useAppStore(
     useShallow((s) => ({ systemId: s.systemId, mode: s.mapMode, selectedStationId: s.selectedStationId, settings: s.settings, starred: s.starredStations })),
   )
-  const ride = useRideStore(useShallow((s) => ({ route: s.route, routes: s.routes, startId: s.startId, stopIds: s.stopIds, destination: s.destination })))
+  const ride = useRideStore(useShallow((s) => ({ route: s.route, routes: s.routes, startId: s.startId, stopIds: s.stopIds, destination: s.destination, origin: s.origin })))
   const roles = rideRoles(ride.startId, ride.stopIds)
   const rolesKey = `${ride.startId ?? ''}|${ride.stopIds.join(',')}`
   const dark = isDark(settings.mapStyle)
   const { snapshot } = useStationsSnapshot(systemId)
+  const { details } = useRouteDetails(systemId, ride.route)
+  // Walking legs only need the two docks' positions; keyed by value so station polls don't re-upload the route.
+  const endId = ride.stopIds.at(-1)
+  const startCoord = ride.startId ? snapshot?.byId.get(ride.startId)?.coord : undefined
+  const endCoord = endId ? snapshot?.byId.get(endId)?.coord : undefined
+  const walkKey = `${startCoord?.join(',') ?? ''}|${endCoord?.join(',') ?? ''}`
 
   const emitStation = useEffectEvent((id: string) => onStationClick(id))
   const emitBackground = useEffectEvent(() => onBackgroundClick())
@@ -115,8 +133,16 @@ export function MapView({ ref, onStationClick, onBackgroundClick, onMapPick, onE
     if (!map || !readyRef.current) return
     // Other route options faded underneath, the chosen one on top.
     const others = ride.routes.filter((r) => r !== ride.route)
-    void source(map, S.route)?.setData(buildRouteFeatures(ride.route ? [...others, ride.route] : [], others.length) as never)
-    void source(map, S.endpoints)?.setData(buildEndpointFeatures(ride.destination?.coord ?? null) as never)
+    const routes = buildRouteFeatures(ride.route ? [...others, ride.route] : [], others.length)
+    // Walking legs: from a starting place to the pickup dock, and from the end dock to the destination.
+    const origin = ride.origin && !ride.origin.stationId ? ride.origin.coord : null
+    const walks: Array<[[number, number], [number, number]]> = []
+    if (origin && startCoord) walks.push([origin, startCoord])
+    if (ride.route && endCoord && ride.destination) walks.push([endCoord, ride.destination.coord])
+    routes.features.push(...buildWalkFeatures(walks))
+    void source(map, S.route)?.setData(routes as never)
+    void source(map, S.routeKinds)?.setData(buildPathKindFeatures(ride.route ? (details?.segments ?? []) : []) as never)
+    void source(map, S.endpoints)?.setData(buildEndpointFeatures(ride.destination?.coord ?? null, origin) as never)
   })
 
   // Create the map once.
@@ -221,7 +247,7 @@ export function MapView({ ref, onStationClick, onBackgroundClick, onMapPick, onE
   }, [snapshot, rolesKey, starred, settings.partySize])
   useEffect(() => {
     syncRoute()
-  }, [ride.route, ride.routes, ride.destination])
+  }, [ride.route, ride.routes, ride.destination, ride.origin, walkKey, details])
 
   // Selection via feature-state.
   useEffect(() => {

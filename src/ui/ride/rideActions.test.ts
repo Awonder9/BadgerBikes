@@ -19,10 +19,10 @@ describe('ride actions', () => {
   })
 
   it('opening the planner grows a peeking sheet but never shrinks a full one', () => {
-    startRideAt('a')
+    startRideAt({ id: 'a', name: 'Dock A', coord: [-89.4, 43.07] })
     expect(useAppStore.getState().sheet).toBe('half')
     useAppStore.getState().setSheet('full')
-    startRideAt('b')
+    startRideAt({ id: 'b', name: 'Dock B', coord: [-89.38, 43.08] })
     expect(useAppStore.getState()).toMatchObject({ sheet: 'full', panel: 'ride' })
   })
 

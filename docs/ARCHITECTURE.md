@@ -80,7 +80,8 @@ endpoints (the code supports this via env).
 ## 4. Worker (`worker/`)
 
 **Endpoints** (`src/api/contract.ts`): `GET /api/health`, `GET /api/meta`, `GET /api/stations?system=`,
-`GET /api/system?system=`, `GET /api/locate` (nearest city), `POST /api/routes` (three bike route options), `GET /api/geocode?q=&system=[&lat=&lon=]`,
+`GET /api/system?system=`, `GET /api/locate` (nearest city), `POST /api/routes` (three bike route options), `POST /api/route-details`
+(path breakdown + elevation), `GET /api/geocode?q=&system=[&lat=&lon=]`,
 `GET /api/reverse?lat=&lon=`. Errors: `{ error: { code, message, retryable } }` with 4xx/5xx; codes from
 `AppErrorCode`.
 
@@ -154,10 +155,32 @@ straight-line estimate (§4).
 
 ## 7. Ride planning and the Google Maps hand-off (`src/ride`, `src/ui/ride`)
 
-**Docks along the route** (`stationsAlongRoute.ts`): only docks on the route line (≤ 50 m) are offered and
-preselected, in ride order. Two labeled exceptions add an off-route dock: a re-dock option (≤ 300 m off the
-line) when a stretch would exceed 25 min without one, and the dock closest to the destination when the last
-on-route dock is more than a 400 m walk away. The last checked dock ends the ride.
+**Start from anywhere** (`pickup.ts`): the start (`ride.origin`) is a place or a dock. From a place, up to
+`RIDE.pickupCandidates` docks with bikes within `RIDE.pickupWalkMeters` are ranked by estimated walk +
+estimated ride to the destination (+ a penalty for nearly empty docks); the best is used until the rider
+picks one (`pickupPinned`). It is chosen only before routing, so live count changes never re-route a plan
+on screen. Walk legs (to the pickup, from the end dock, and "walk straight there") are straight-line
+estimates (`estimateBetween`), shown with "~", drawn as dashed lines, with Google walking links. Opening the
+first ride part does not start the ride timer when there is a walk to the dock first; the ride card asks
+"I've unlocked a bike".
+
+**Path breakdown + elevation** (`details.ts`, `POST /api/route-details`): one Valhalla `/trace_attributes`
+request for the selected route only (polyline6 of our geometry, `shape_match: walk_or_snap` because of the
+dock connectors, background priority, cached), classifying each edge by `use` / `cycle_lane` /
+`road_class` into bike path → shared-use path → protected lane → bike lane → shared lane → quiet street →
+road with traffic, and summarizing `mean_elevation` (3 m dead band) into climb/descent and a profile.
+With `shape` + `edge.begin/end_shape_index` it also returns the route as same-kind segments, drawn as the
+colored line on the map (`PATH_COLORS` in `src/map/colors.ts`, shared with the breakdown legend). The
+planner card and the map share one cached request (`src/data/routeDetails.ts`).
+
+**Docks along the route** (`stationsAlongRoute.ts`): only docks on the route line (≤ 50 m) are offered, in
+ride order. Two labeled exceptions add an off-route dock: a re-dock option (≤ 300 m off the line) when a
+stretch would exceed the rider's max ride time (`settings.maxRideMinutes`, default
+`RIDE.defaultMaxRideMinutes` = 25, 0 = unlimited) without one, and the dock closest to the destination when
+the last on-route dock is more than a 400 m walk away. `optimizedStops` preselects the fewest docks that keep
+every ride within the limit (greedy: re-dock at the farthest usable dock still in range), ending at the
+usable dock closest to the destination; the rest are shown as optional stops. Ride times use the chosen
+route's pace (duration ÷ distance) so they match the route cards. The last checked dock ends the ride.
 
 **Google Maps links** (`googleMaps.ts`, Maps URLs, no API key): a link carries only an origin, a destination
 and ≤ 3 waypoints (mobile), and Google picks its own path between them. To keep it on the chosen route:
@@ -208,6 +231,8 @@ validated on load, applied to the ride store, then removed from the address bar.
   "My location" search); `waitForFix()` for one-shot needs.
 - **Stores**: `useAppStore` (persisted: settings, saved/starred/recent places — device-only, explained in
   Settings), `useRideStore` (§7), `useLocationStore` (never persisted).
+- **Refresh**: the home panel's *Refresh* button refetches station counts immediately (BCycle itself
+  publishes about once a minute, so that is the freshest possible).
 - **Data hooks**: `useStationsSnapshot` polls `/api/stations` (`cache: 'no-store'`) after the feed's CDN
   expiry, refetches on focus, keeps the last data on error, tracks `revision`/`changedIds`; freshness badge.
 - **Launch screen** (`LoadingScreen.tsx`) until the first snapshot; the install tip waits for it.

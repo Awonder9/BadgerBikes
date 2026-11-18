@@ -2,7 +2,7 @@
 // settings and about.
 import { useMemo } from 'react'
 import { useShallow } from 'zustand/react/shallow'
-import { POLL } from '../../config'
+import { POLL, RIDE } from '../../config'
 import { useMeta, useNow, useStationsSnapshot, useSystemDetails } from '../../data/hooks'
 import { getSystem, SYSTEMS } from '../../data/systems'
 import { useReverseGeocode } from '../../geocode/hooks'
@@ -16,9 +16,7 @@ import type { Place } from '../../types'
 import { AvailabilityPill } from '../primitives/Availability'
 import { Button, IconButton } from '../primitives/Button'
 import { Icon } from '../primitives/Icon'
-import { changeCity, planRide, rideTo, startRideAt } from '../ride/rideActions'
-import { canRent } from '../../lib/stationState'
-import { kNearest } from '../../lib/geo'
+import { changeCity, planRide, rideTo, startRideFrom } from '../ride/rideActions'
 import { SearchBox } from './SearchBox'
 
 export function FreshnessBadge({ freshness, lastUpdatedMs }: { freshness: Freshness; lastUpdatedMs: number | undefined }) {
@@ -31,6 +29,24 @@ export function FreshnessBadge({ freshness, lastUpdatedMs }: { freshness: Freshn
       <span className={`h-2 w-2 rounded-full ${freshness === 'stale' ? 'bg-amber-500' : 'bg-green-600'}`} aria-hidden />
       {freshness === 'stale' ? `Data may be stale (${age})` : `Live · ${age}`}
     </span>
+  )
+}
+
+/** Fetches the latest station counts now instead of waiting for the next automatic refresh (~1 min). */
+function RefreshButton() {
+  const systemId = useAppStore((s) => s.systemId)
+  const { refetch, isFetching } = useStationsSnapshot(systemId)
+  return (
+    <button
+      type="button"
+      onClick={refetch}
+      disabled={isFetching}
+      aria-label={isFetching ? 'Refreshing BCycle data' : 'Refresh BCycle data'}
+      className="inline-flex min-h-11 items-center gap-1 rounded-lg px-2 text-sm font-medium text-brand-700 disabled:opacity-60 dark:text-brand-300"
+    >
+      <Icon name="refresh" size={16} className={isFetching ? 'motion-safe:animate-spin' : ''} />
+      {isFetching ? 'Refreshing…' : 'Refresh'}
+    </button>
   )
 }
 
@@ -71,8 +87,11 @@ export function BrowsePanel() {
           Plan a ride
         </Button>
       )}
-      <div className="flex items-center justify-between">
-        <FreshnessBadge freshness={freshness} lastUpdatedMs={snapshot?.lastUpdatedMs} />
+      <div className="flex items-center justify-between gap-2">
+        <span className="flex min-w-0 items-center gap-1">
+          <FreshnessBadge freshness={freshness} lastUpdatedMs={snapshot?.lastUpdatedMs} />
+          <RefreshButton />
+        </span>
         <button type="button" className="inline-flex min-h-11 items-center gap-1 text-sm font-medium text-brand-700 dark:text-brand-300" onClick={() => useAppStore.getState().setPanel('list')}>
           <Icon name="list" size={18} /> Station list
         </button>
@@ -117,8 +136,6 @@ export function PinCard() {
   const pin = useAppStore((s) => s.pin)
   const systemId = useAppStore((s) => s.systemId)
   const { place, loading } = useReverseGeocode(pin)
-  const { snapshot } = useStationsSnapshot(systemId)
-  const partySize = useAppStore((s) => s.settings.partySize)
   if (!pin) return null
   const p: Place = place ?? { kind: 'mapPick', name: 'Dropped pin', coord: pin }
   const asPlace: Place = { ...p, coord: pin }
@@ -138,14 +155,8 @@ export function PinCard() {
         <Button icon="bike" onClick={() => rideTo(asPlace)}>
           Ride here
         </Button>
-        <Button
-          variant="secondary"
-          onClick={() => {
-            const near = snapshot ? kNearest(pin, snapshot.stations.filter((st) => canRent(st, partySize)), (st) => st.coord, 1)[0] : undefined
-            if (near) startRideAt(near.item.id)
-          }}
-        >
-          Start from nearest dock
+        <Button variant="secondary" onClick={() => startRideFrom(asPlace)}>
+          Start from here
         </Button>
         {systemId && (
           <Button variant="ghost" icon="home" onClick={() => useAppStore.getState().savePlace({ systemId, icon: 'home', label: 'Home', place: { ...asPlace, kind: 'saved' } })}>
@@ -242,6 +253,18 @@ export function SettingsPanel() {
           <select className={select} value={settings.units} onChange={(e) => update({ units: e.target.value === 'metric' ? 'metric' : 'imperial' })}>
             <option value="imperial">Miles / feet</option>
             <option value="metric">Kilometers / meters</option>
+          </select>
+        </label>
+        <label className={row}>
+          <span>Max ride between docks</span>
+          <select className={select} value={settings.maxRideMinutes} onChange={(e) => update({ maxRideMinutes: Number(e.target.value) })}>
+            {[...new Set([...RIDE.maxRideChoices, settings.maxRideMinutes])]
+              .sort((a, b) => (a === 0 ? 1 : b === 0 ? -1 : a - b))
+              .map((m) => (
+                <option key={m} value={m}>
+                  {m === 0 ? 'Unlimited' : `${m} min`}
+                </option>
+              ))}
           </select>
         </label>
         <label className={row}>

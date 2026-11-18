@@ -1,6 +1,7 @@
 // Pure GeoJSON builders for the map layers (no maplibre runtime imports — unit-testable in Node).
 import { destination } from '../lib/geo'
 import { classifyStation } from '../lib/stationState'
+import type { PathKind } from '../routing/details'
 import type { GeoFix, LngLat, RouteLeg, StationsSnapshot } from '../types'
 import type { StationFeatureProps } from './types'
 
@@ -73,10 +74,22 @@ export interface EndpointProps {
   label: string
 }
 
-/** Destination marker (dock ends are shown by the station rings). */
-export function buildEndpointFeatures(destination: LngLat | null): FeatureCollection<EndpointProps> {
-  if (!destination) return emptyCollection()
-  return { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'Point', coordinates: destination }, properties: { kind: 'destination', label: '' } }] }
+/** Start (when it isn't a dock) and destination markers; dock ends are shown by the station rings. */
+export function buildEndpointFeatures(destination: LngLat | null, origin: LngLat | null = null): FeatureCollection<EndpointProps> {
+  const features: FeatureCollection<EndpointProps>['features'] = []
+  if (origin) features.push({ type: 'Feature', geometry: { type: 'Point', coordinates: origin }, properties: { kind: 'origin', label: '' } })
+  if (destination) features.push({ type: 'Feature', geometry: { type: 'Point', coordinates: destination }, properties: { kind: 'destination', label: '' } })
+  return { type: 'FeatureCollection', features }
+}
+
+/** The chosen route split by kind of way (colored on the map). */
+export function buildPathKindFeatures(segments: ReadonlyArray<{ kind: PathKind; coords: LngLat[] }>): FeatureCollection<{ kind: PathKind }> {
+  return { type: 'FeatureCollection', features: segments.map((s) => ({ type: 'Feature', geometry: { type: 'LineString', coordinates: s.coords }, properties: { kind: s.kind } })) }
+}
+
+/** Walking legs as straight dashed lines (start → pickup dock, end dock → destination); estimates, not routes. */
+export function buildWalkFeatures(walks: ReadonlyArray<readonly [LngLat, LngLat]>): FeatureCollection<RouteProps>['features'] {
+  return walks.map(([a, b]) => ({ type: 'Feature', geometry: { type: 'LineString', coordinates: [a, b] }, properties: { mode: 'walk', role: 'toPickup', done: 0 } }))
 }
 
 export interface UserProps {

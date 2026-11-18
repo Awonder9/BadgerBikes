@@ -1,5 +1,5 @@
 // Pure: BCycle stations near a route, in route order.
-import { SPEEDS } from '../config'
+import { RIDE, SPEEDS } from '../config'
 import { buildPolylineIndex, haversine, nearestOnPolyline } from '../lib/geo'
 import type { LngLat, Station } from '../types'
 
@@ -34,8 +34,12 @@ export function stationsAlongRoute(route: readonly LngLat[], stations: readonly 
   return out.sort((a, b) => a.along - b.along)
 }
 
-/** Riding seconds for `meters` along the route (the same speed model as the planner). */
-export const rideSeconds = (meters: number, electric = false) => meters / (SPEEDS.bikeKph[electric ? 'electric' : 'classic'] / 3.6)
+/**
+ * Riding seconds for `meters`. With `secondsPerMeter` (the chosen route's own pace: duration / distance,
+ * so times match the route cards) that pace is used; otherwise the fixed speed model.
+ */
+export const rideSeconds = (meters: number, electric = false, secondsPerMeter?: number) =>
+  secondsPerMeter && Number.isFinite(secondsPerMeter) && secondsPerMeter > 0 ? meters * secondsPerMeter : meters / (SPEEDS.bikeKph[electric ? 'electric' : 'classic'] / 3.6)
 
 export interface RideSegment {
   fromId: string
@@ -45,15 +49,15 @@ export interface RideSegment {
   overIncluded: boolean
 }
 
-/** Ride segments between consecutive stops (start → stop… → end), flagging ones longer than the pass allows. */
-export function rideSegments(startId: string, stops: readonly StationOnRoute[], includedMinutes: number | null, electric = false): RideSegment[] {
+/** Ride segments between consecutive stops (start → stop… → end), flagging ones longer than `maxMinutes`. */
+export function rideSegments(startId: string, stops: readonly StationOnRoute[], maxMinutes: number | null, electric = false, secondsPerMeter?: number): RideSegment[] {
   const segs: RideSegment[] = []
   let prevId = startId
   let prevAlong = 0
   for (const s of stops) {
     const meters = Math.max(0, s.along - prevAlong) + s.offset
-    const seconds = rideSeconds(meters, electric)
-    segs.push({ fromId: prevId, toId: s.station.id, meters, seconds, overIncluded: includedMinutes !== null && seconds > includedMinutes * 60 })
+    const seconds = rideSeconds(meters, electric, secondsPerMeter)
+    segs.push({ fromId: prevId, toId: s.station.id, meters, seconds, overIncluded: maxMinutes !== null && seconds > maxMinutes * 60 })
     prevId = s.station.id
     prevAlong = s.along
   }
@@ -64,8 +68,8 @@ export function rideSegments(startId: string, stops: readonly StationOnRoute[], 
 
 /** Docks this close to the route line count as "on the route" (stations sit ≤ ~40 m from the path). */
 export const ON_ROUTE_METERS = 50
-/** Longest stretch of riding without a dock before an off-route re-dock option is added. */
-export const MAX_STRETCH_MINUTES = 25
+/** Default longest ride between docks (the rider can change it in Settings: settings.maxRideMinutes). */
+export const MAX_STRETCH_MINUTES = RIDE.defaultMaxRideMinutes
 /** Corridor searched for that re-dock option. */
 export const REDOCK_SEARCH_METERS = 300
 /** If the last on-route dock leaves a longer walk than this, the dock closest to the destination is added. */
@@ -81,13 +85,13 @@ const usableDock = (s: Station, partySize: number) => !!s.status?.isInstalled &&
 
 /**
  * Docks to show for a route, in ride order: only docks on the route line, plus (a) an off-route re-dock
- * option wherever riding would exceed MAX_STRETCH_MINUTES without a usable on-route dock, and (b) the
+ * option wherever riding would exceed `maxRideMinutes` without a usable on-route dock, and (b) the
  * dock closest to the destination when the last on-route dock leaves a walk over MAX_FINAL_WALK_METERS.
  */
 export function routeDocks(
   route: readonly LngLat[],
   stations: readonly Station[],
-  opts: { excludeIds?: ReadonlySet<string>; destination: LngLat; destStationId?: string; partySize?: number; electric?: boolean },
+  opts: { excludeIds?: ReadonlySet<string>; destination: LngLat; destStationId?: string; partySize?: number; electric?: boolean; maxRideMinutes?: number; secondsPerMeter?: number },
 ): RouteDock[] {
   if (route.length < 2) return []
   const exclude = opts.excludeIds ?? new Set<string>()
@@ -102,10 +106,11 @@ export function routeDocks(
   const destDock = opts.destStationId ? wide.find((s) => s.station.id === opts.destStationId) : undefined
   if (destDock && !has(destDock.station.id)) docks.push({ ...destDock, reason: 'onRoute' })
 
-  // (a) Re-dock options for stretches longer than MAX_STRETCH_MINUTES.
-  const maxStretch = (MAX_STRETCH_MINUTES * 60 * SPEEDS.bikeKph[opts.electric ? 'electric' : 'classic']) / 3.6
+  // (a) Re-dock options for stretches longer than maxRideMinutes (0 = unlimited: none).
+  const maxRide = opts.maxRideMinutes ?? MAX_STRETCH_MINUTES
+  const maxStretch = maxRide > 0 ? (maxRide * 60) / rideSeconds(1, opts.electric, opts.secondsPerMeter) : Infinity
   let prev = 0
-  for (;;) {
+  for (; Number.isFinite(maxStretch); ) {
     const nextUsable = docks.filter((d) => d.along > prev && usableDock(d.station, party)).sort((a, b) => a.along - b.along)[0]
     const nextAlong = nextUsable?.along ?? total
     if (nextAlong - prev <= maxStretch) {
@@ -141,7 +146,36 @@ export function routeDocks(
   return docks.sort((a, b) => a.along - b.along)
 }
 
-/** Default stops: every usable dock in the list (the rider unchecks what they don't want). */
-export function preselectRouteDocks(docks: readonly RouteDock[], partySize = 1): string[] {
-  return docks.filter((d) => usableDock(d.station, partySize)).map((d) => d.station.id)
+/**
+ * The optimized stops: the fewest docks that keep every ride between docks within `maxRideMinutes`
+ * (0 = unlimited: just the end dock).
+ * The ride ends at the usable dock closest to the destination (the destination dock when the rider chose
+ * one); before it, the greedy pass re-docks at the farthest usable dock still within the limit. A stretch
+ * with no usable dock in range is accepted as is (the UI flags it). Returns ids in ride order.
+ */
+export function optimizedStops(
+  docks: readonly RouteDock[],
+  opts: { destination: LngLat; destStationId?: string; partySize?: number; electric?: boolean; maxRideMinutes?: number; secondsPerMeter?: number },
+): string[] {
+  const party = opts.partySize ?? 1
+  const usable = docks.filter((d) => usableDock(d.station, party))
+  const end =
+    usable.find((d) => d.station.id === opts.destStationId) ??
+    [...usable].sort((a, b) => haversine(a.station.coord, opts.destination) - haversine(b.station.coord, opts.destination) || b.along - a.along)[0]
+  if (!end) return []
+  const maxRide = opts.maxRideMinutes ?? MAX_STRETCH_MINUTES
+  const limitS = maxRide > 0 ? maxRide * 60 : Infinity
+  const secs = (from: number, d: RouteDock) => rideSeconds(Math.max(0, d.along - from) + d.offset, opts.electric, opts.secondsPerMeter)
+  const picks: RouteDock[] = []
+  let prev = 0
+  while (secs(prev, end) > limitS) {
+    const before = usable.filter((d) => d.along > prev && d.along < end.along && d !== end)
+    const inRange = before.filter((d) => secs(prev, d) <= limitS)
+    // Farthest dock still within the limit; if none is in range, the next one (the long stretch is flagged).
+    const next = inRange.length ? inRange.reduce((m, d) => (d.along > m.along ? d : m)) : before.sort((a, b) => a.along - b.along)[0]
+    if (!next) break
+    picks.push(next)
+    prev = next.along
+  }
+  return [...picks, end].map((d) => d.station.id)
 }

@@ -169,8 +169,33 @@ export const UI = {
   trendSnapshots: 20,
 } as const
 
+/** Path breakdown / elevation requests (src/data/routeDetails.ts, POST /api/route-details). */
+export const ROUTE_DETAILS = {
+  /** The route is thinned to points at least this far apart before sending (the server map-matches it). */
+  thinMeters: 8,
+  /** Server-side limits on what a client may send. */
+  maxPolylineChars: 20_000,
+  maxPoints: 5_000,
+  /** How long a fetched result stays in the client cache. */
+  cacheMs: 30 * 60_000,
+} as const
+
 /** Ride plan and ride-in-progress behavior (src/ride/rideStore.ts, src/ui/ride). */
 export const RIDE = {
+  /** Default for settings.maxRideMinutes: the longest ride between docks the planner plans for. */
+  defaultMaxRideMinutes: 25,
+  /** Starting from a place: pickup docks considered (with bikes) within this walk, else the nearest few. */
+  pickupWalkMeters: 1000,
+  pickupCandidates: 3,
+  /** Pickup docks with this many bikes or fewer (beyond the party) rank lower by this many seconds. */
+  pickupLowBikes: 2,
+  pickupLowBikesPenaltyS: 90,
+  /** A start this close to its pickup dock needs no walking link. */
+  walkLinkMinMeters: 60,
+  /** "Walking is about as fast" when walking is within this many seconds of the bike trip. */
+  walkComparableSeconds: 120,
+  /** Choices offered in Settings; 0 = Unlimited (no re-docks just for time). */
+  maxRideChoices: [15, 20, 25, 30, 45, 60, 0],
   /** Within this distance of the destination (with a known location) the ride counts as arrived. */
   arrivedMeters: 100,
   /** Ride timer turns amber this many minutes before the pass's included time runs out. */

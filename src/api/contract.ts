@@ -1,6 +1,7 @@
 // HTTP API contract between the Cloudflare Worker (worker/) and the client (src/api/client.ts).
 // Same origin in dev and prod; JSON everywhere; errors use ApiErrorBody with a 4xx/5xx status.
 import type { Priority } from '../config'
+import type { RouteDetails } from '../routing/details'
 import type { RouteRequest } from '../routing/types'
 import type { Place, RouteLeg, Station, SystemDetails } from '../types'
 
@@ -11,6 +12,7 @@ export const API_PATHS = {
   system: '/api/system',
   routes: '/api/routes',
   locate: '/api/locate',
+  routeDetails: '/api/route-details',
   geocode: '/api/geocode',
   reverse: '/api/reverse',
 } as const
@@ -63,6 +65,13 @@ export interface ReverseResponse {
 
 /** POST /api/routes → 3 route options: bike-friendly, balanced, fastest (BIKE_ROUTING.options order). */
 export type RoutesApiRequest = RouteApiRequest
+
+/** POST /api/route-details → path breakdown + elevation for one route (geometry as polyline6). */
+export interface RouteDetailsRequest {
+  systemId: string
+  polyline: string
+}
+export type RouteDetailsResponse = RouteDetails
 
 export interface RoutesResponse {
   routes: RouteLeg[]

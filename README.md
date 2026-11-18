@@ -8,17 +8,24 @@ location — no location prompt; Madison if none is near), and Settings → City
 
 ## How a ride works
 
-1. **Pick your start dock** — *Nearest dock with bikes*, tap a dock on the map, or search. The card shows
-   its e-bike / classic mix.
+1. **Start anywhere** — *Start from my location*, search a place or dock, or tap a dock on the map. From
+   a place, the app picks the best dock to walk to (nearby docks with bikes, ranked by walking time plus the
+   ride toward your destination) and lists a couple of alternatives. The dock card shows its e-bike /
+   classic mix.
 2. **Pick where you're going** — any place or a dock, or a one-tap chip for a saved or recent place.
 3. **Choose a route** — three options side by side: *Bike-friendly* (as few cars as possible),
    *Balanced*, and *Fastest* (the quickest of the three), each with time and distance. When two
-   options are the same path, the card says so.
-4. **Keep the docks you want** — only docks on the route line (within 50 m) are shown and preselected;
-   uncheck any you don't want. The last checked dock ends the ride. Two labeled exceptions add an
-   off-route dock: if you'd ride more than 25 minutes without passing one (a re-dock option within
-   300 m of the route), or if the last on-route dock is more than a 400 m walk from your destination
-   (the dock closest to it).
+   options are the same path, the card says so. Below them: the **whole trip** (walk → ride → walk),
+   **walking straight there** for comparison, and the chosen route's **path breakdown** (bike path,
+   shared-use path, bike lane, shared lane, quiet street, road with traffic) and **elevation** (▲ climb ·
+   ▼ descent with a small profile). On the map, the chosen route is colored by type of road in the same
+   colors as the breakdown (greens = away from cars, blue/teal = bike lanes, amber = shared lane, gray =
+   quiet street, red = road with traffic).
+4. **Stops** — *Optimized stops* are preselected: the fewest docks that keep every ride between docks
+   under your max ride time (Settings → *Max ride between docks*: 25 min by default, up to 60, or
+   Unlimited), ending at the dock closest to your destination. Other docks on the route line are listed
+   as *Optional stops* you can check. Timing uses the chosen route's own pace, so it matches the route
+   cards.
 5. **Open in Google Maps** — bicycling directions through your chosen docks, plus a walking link to the
    destination. A Maps link can't carry the route line, so Google plans its own path between points. To
    keep it on the chosen route: docks are sent as the point on the route line (a dock on a side street
@@ -30,7 +37,8 @@ location — no location prompt; Madison if none is near), and Settings → City
 6. **Ride** — after you open a part, the app tracks which parts you've opened ("Next: Part 2 → dock"),
    times the ride against your pass, and watches your end dock (with nearby docks if it fills up). The
    plan is saved on the device until you open the last link (the walk, or the last ride part) or arrive,
-   so coming back from Google Maps finds it intact. *Share* sends a link to
+   so coming back from Google Maps finds it intact. When you start from a place, the timer waits until you
+   tap *I've unlocked a bike*. *Share* sends a link to
    the same ride.
 
 If the free routing server is busy, the app says so and asks you to try again in a few seconds.

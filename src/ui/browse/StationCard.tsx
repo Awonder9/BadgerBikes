@@ -134,7 +134,7 @@ export function StationCard() {
       {/* All action rows share one 8 px rhythm. */}
       <div className="space-y-2">
       <div className="grid grid-cols-2 gap-2">
-        <Button icon="bike" className="whitespace-nowrap px-2" onClick={() => startRideAt(st.id)} disabled={a.bikeState === 'unavailable' || a.bikeState === 'none'}>
+        <Button icon="bike" className="whitespace-nowrap px-2" onClick={() => startRideAt(st)} disabled={a.bikeState === 'unavailable' || a.bikeState === 'none'}>
           Start ride here
         </Button>
         <Button variant="secondary" icon="dock" className="whitespace-nowrap px-2" onClick={() => rideTo({ kind: 'station', name: st.name, coord: st.coord, stationId: st.id })}>
