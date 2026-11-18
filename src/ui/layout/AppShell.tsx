@@ -2,7 +2,7 @@
 import { useEffect, useEffectEvent, useRef, useState, type ReactNode } from 'react'
 import { useRegisterSW } from 'virtual:pwa-register/react'
 import { useShallow } from 'zustand/react/shallow'
-import { UI } from '../../config'
+import { APP, UI } from '../../config'
 import { useStationsSnapshot } from '../../data/hooks'
 import { MapApiContext } from '../../map/mapApiContext'
 import { MapView } from '../../map/MapView'
@@ -122,20 +122,28 @@ function BottomSheet({ children, onHeight }: { children: ReactNode; onHeight: (p
   )
 }
 
+/**
+ * A new version was deployed: stays on screen until the rider refreshes (no "Later"), so nobody keeps
+ * running an old version against a changed API.
+ */
 function UpdatePrompt() {
   const {
-    needRefresh: [needRefresh, setNeedRefresh],
+    needRefresh: [needRefresh],
     updateServiceWorker,
   } = useRegisterSW()
+  const [refreshing, setRefreshing] = useState(false)
   if (!needRefresh) return null
+  const refresh = () => {
+    setRefreshing(true)
+    void updateServiceWorker(true)
+    // If the new service worker doesn't take over and reload on its own, reload anyway.
+    setTimeout(() => window.location.reload(), 3_000)
+  }
   return (
-    <div role="status" className="absolute inset-x-3 top-20 z-40 flex items-center gap-2 rounded-2xl bg-slate-900 p-3 text-white shadow-xl">
-      <span className="flex-1">An update is available.</span>
-      <Button size="sm" onClick={() => void updateServiceWorker(true)}>
-        Reload
-      </Button>
-      <Button size="sm" variant="ghost" className="text-white" onClick={() => setNeedRefresh(false)}>
-        Later
+    <div role="alertdialog" aria-live="assertive" aria-label="Update available" className="absolute inset-x-3 top-20 z-[60] flex items-center gap-3 rounded-2xl bg-slate-900 p-3 text-white shadow-xl">
+      <span className="flex-1 text-sm font-medium">A new version of {APP.name} is ready. Refresh to update.</span>
+      <Button size="sm" disabled={refreshing} onClick={refresh}>
+        {refreshing ? 'Refreshing…' : 'Refresh'}
       </Button>
     </div>
   )

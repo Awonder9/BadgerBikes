@@ -278,5 +278,6 @@ validated on load, applied to the ride store, then removed from the address bar.
 Cloudflare Workers + static assets (`wrangler.jsonc`, custom domain badgerbikes.app). `npm run deploy`
 builds and runs `wrangler deploy`; `npm run cf-typegen` after changing bindings. Free plan limits are ample
 (I/O-bound requests). For heavier traffic than FOSSGIS allows, point `VITE_VALHALLA_URL` / `VITE_OSRM_*` at a
-self-hosted or commercial Valhalla-compatible service. PWA: `registerType: 'prompt'`, no runtime caching of
-live data.
+self-hosted or commercial Valhalla-compatible service. PWA: `registerType: 'prompt'`, no runtime caching of live data. When a new version is deployed, a
+"Refresh" prompt stays on screen until the rider taps it (no "Later"), so nobody keeps running an old
+version against a changed API.
