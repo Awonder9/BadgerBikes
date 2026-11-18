@@ -4,7 +4,7 @@ import { useNow, useStationsSnapshot, useSystemDetails } from '../../data/hooks'
 import { getTrend, trendDelta } from '../../data/trend'
 import { formatDuration, formatTimeAgo } from '../../lib/format'
 import { classifyStation, fleetComposition } from '../../lib/stationState'
-import { appLaunchUrl, safeAppDiscoveryUri, safeExternalUrl, LINK_HOSTS } from '../../lib/urlParams'
+import { appLaunchUrl, safeExternalUrl, LINK_HOSTS } from '../../lib/urlParams'
 import { estimateBetween } from '../../routing/estimates'
 import { useAppStore } from '../../store/appStore'
 import { useLocationStore } from '../../location/locationStore'
@@ -31,29 +31,27 @@ function statusBanner(st: Station): string | null {
   return null
 }
 
+/**
+ * One "BCycle" button. iPhone: BCycle's App Store page (shows Open when installed, Get when not) — the
+ * app answers no web link, so it can't be opened directly. Android: launches the app, or its Play Store
+ * page when it isn't installed.
+ */
 export function AppHandoff({ details }: { details: SystemDetails | undefined }) {
-  const setupConfirmed = useAppStore((s) => s.settings.setupConfirmed)
   const p = platform()
   if (p === 'desktop') return <p className="text-sm text-slate-500">Unlock bikes with the BCycle app on your phone.</p>
   const link = details?.rentalApps[p]
-  const discovery = safeAppDiscoveryUri(link?.discoveryUri)
   const store = safeExternalUrl(link?.storeUri, LINK_HOSTS.appStores)
-  if (!discovery && !store) return null
-  const launch = appLaunchUrl(p, link?.discoveryUri ?? null, store)
+  const href = appLaunchUrl(p, link?.discoveryUri ?? null, store) ?? store
+  if (!href) return null
+  const external = href.startsWith('https:')
   return (
-    <div className="grid grid-cols-2 gap-2">
-      {/* A real link (not a script redirect): the most reliable way to hand off to an installed app. */}
-      {launch && (
-        <a className={`flex min-h-11 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl px-2 font-medium ${setupConfirmed ? 'bg-brand-700 text-white' : 'ring-1 ring-slate-300 dark:ring-slate-600'}`} href={launch}>
-          <Icon name="external" size={20} className="shrink-0" /> Open BCycle
-        </a>
-      )}
-      {store && (
-        <a className={`flex min-h-11 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl px-2 font-medium ring-1 ring-slate-300 dark:ring-slate-600 ${launch ? '' : 'col-span-2'}`} href={store} target="_blank" rel="noopener noreferrer">
-          <Icon name="external" size={20} className="shrink-0" /> Get BCycle
-        </a>
-      )}
-    </div>
+    <a
+      className="flex min-h-11 w-full items-center justify-center gap-1.5 whitespace-nowrap rounded-xl px-2 font-medium ring-1 ring-slate-300 dark:ring-slate-600"
+      href={href}
+      {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+    >
+      <Icon name="external" size={20} className="shrink-0" /> BCycle
+    </a>
   )
 }
 

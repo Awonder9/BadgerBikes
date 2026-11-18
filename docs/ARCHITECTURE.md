@@ -19,7 +19,7 @@ City switches it (the current ride plan is cleared, since it belongs to the old 
    accessible station list (also the fallback without WebGL2). A launch screen covers the app until the
    first live snapshot arrives (Retry / Continue if BCycle is unreachable).
 2. **Station card**: status banner, live counts with trend, ~walk estimate, *Start ride here* / *Ride to
-   here*, BCycle app hand-off, *Watch this station*, star.
+   here*, a *BCycle* button (app hand-off), *Watch this station*, star.
 3. **Ride planner** (§7): start dock (search, map tap, or *Nearest dock with bikes*) with its e-bike/classic
    mix → destination (search, map tap, quick chips for saved and recent places) → three route options
    (*Bike-friendly*, *Balanced*, *Fastest*) → docks along the route (preselected, uncheck to skip) →
@@ -221,7 +221,7 @@ validated on load, applied to the ride store, then removed from the address bar.
 - Persisted state (app and ride stores) is validated piece by piece; failures fall back to defaults.
   Storage only through `src/lib/storage.ts` (never throws).
 - Untrusted strings rendered only as React text / maplibre text-field; no `innerHTML`. External links through
-  `safeExternalUrl` with host allow-lists. App hand-off (`appLaunchUrl`): iOS opens BCycle's App Store page
+  `safeExternalUrl` with host allow-lists. App hand-off (one "BCycle" button, `appLaunchUrl`): iOS opens BCycle's App Store page
   in the App Store app (`itms-apps://`, shows Open/Get) because the BCycle app no longer answers
   `bcycle://`; Android launches the app by package (`intent://` launcher intent) with the Play Store as fallback.
 
