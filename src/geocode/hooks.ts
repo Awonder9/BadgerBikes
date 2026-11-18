@@ -1,4 +1,5 @@
-// Debounced place search and reverse geocoding via the Worker (/api/geocode, /api/reverse).
+// Debounced place search (Photon directly, falling back to /api/geocode; see api.geocode) and reverse
+// geocoding via the Worker (/api/reverse).
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { api } from '../api/client'
@@ -34,7 +35,8 @@ export function useGeocodeSearch(query: string, systemId: string | null, near: L
     enabled,
     staleTime: 10 * 60_000,
     placeholderData: keepPreviousData,
-    retry: (n, err) => err instanceof AppError && err.retryable && err.code !== 'rate_limited' && n < 2,
+    // api.geocode already falls back from Photon to the Worker; retrying on top only makes a miss slower.
+    retry: false,
   })
   return {
     places: enabled ? (q.data ?? []) : [],

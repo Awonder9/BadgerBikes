@@ -28,6 +28,8 @@ dropoff candidates are the 4 nearest the destination (Madison BCycle).
 | `photon/search_partial.json` | `/api/?q=state st&...&bbox=-89.55,42.98,-89.25,43.17` |
 | `photon/reverse.json` | `/reverse?lat=43.07467&lon=-89.38420&limit=1&lang=en` |
 
+| `api/geocode_apex_grill.json` | our Worker's `GET /api/geocode?q=apex grill&system=bcycle_madison` (captured from `npm run dev`) |
+
 ## Sources and attribution
 
 These are real responses captured from public services, kept small for tests:

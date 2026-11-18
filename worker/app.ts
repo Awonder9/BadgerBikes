@@ -4,9 +4,9 @@ import { API_PATHS, type LocateResponse, type MetaResponse, type StationsRespons
 import { nearestSystem } from '../src/data/systems'
 import { isValidLngLat } from '../src/lib/geo'
 import type { fetchStationsSnapshot as FetchStations, fetchSystemDetails as FetchSystem } from '../src/data/gbfs'
-import type { reversePlace as Reverse, searchPlaces as Search } from '../src/geocode/photon'
+import { searchBias, type reversePlace as Reverse, type searchPlaces as Search } from '../src/geocode/photon'
 import { AppError, toAppError, type AppErrorCode } from '../src/lib/errors'
-import { bboxContains } from '../src/lib/geo'
+
 import type { UpstreamFetch } from '../src/lib/upstream'
 import type { AltRouter } from '../src/routing/types'
 import { geocodeQuery, latLonParams, readJsonBody, requireSystem, routeDetailsRequest, routeRequest } from './validate'
@@ -98,12 +98,8 @@ export function createApp(deps: AppDeps) {
       await limit(deps.limiters?.geocode, request)
       const sys = requireSystem(url.searchParams.get('system'))
       const q = geocodeQuery(url.searchParams.get('q'))
-      let center = sys.center
-      if (url.searchParams.has('lat')) {
-        const user = latLonParams(url.searchParams)
-        if (bboxContains(sys.bbox, user, 2000)) center = user
-      }
-      return json({ places: await deps.searchPlaces(q, { center, bbox: sys.bbox }, deps.upstream, { signal }) })
+      const near = url.searchParams.has('lat') ? latLonParams(url.searchParams) : null
+      return json({ places: await deps.searchPlaces(q, searchBias(sys, near), deps.upstream, { signal }) })
     }
 
     if (p === API_PATHS.reverse && method === 'GET') {

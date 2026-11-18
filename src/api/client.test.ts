@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { AppError } from '../lib/errors'
 import { resetHttpState, setFetchImpl } from '../lib/http'
+import workerGeocode from '../test/fixtures/api/geocode_apex_grill.json'
+import photonSearch from '../test/fixtures/photon/search_memorial_union.json'
 import { api } from './client'
 
 describe('api client', () => {
@@ -11,17 +13,31 @@ describe('api client', () => {
     resetHttpState()
   })
 
-  it('builds GET URLs with encoded params and no-store for stations', async () => {
+  it('searches Photon directly from the browser (biased to the system), and builds no-store station URLs', async () => {
     const seen: Array<{ url: string; init?: RequestInit }> = []
     restore = setFetchImpl(async (url, init) => {
       seen.push({ url, init })
-      return new Response(JSON.stringify({ places: [] }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+      return new Response(JSON.stringify(photonSearch), { status: 200, headers: { 'Content-Type': 'application/json' } })
     })
-    await api.geocode('state & main', 'bcycle_madison', [-89.401234, 43.071234])
-    expect(seen[0]!.url).toBe('/api/geocode?q=state+%26+main&system=bcycle_madison&lat=43.07123&lon=-89.40123')
+    const places = await api.geocode('memorial union', 'bcycle_madison', [-89.401234, 43.071234])
+    // Position rounded to ~1 km before it leaves the device.
+    expect(seen[0]!.url).toMatch(/^https:\/\/photon\.komoot\.io\/api\/\?q=memorial\+union&lat=43\.07000&lon=-89\.40000/)
+    expect(places.length).toBeGreaterThan(0)
     await api.stations('bcycle_madison').catch(() => {})
     expect(seen[1]!.url).toBe('/api/stations?system=bcycle_madison')
     expect(seen[1]!.init?.cache).toBe('no-store')
+  })
+
+  it('falls back to the Worker when Photon fails', async () => {
+    const seen: string[] = []
+    restore = setFetchImpl(async (url) => {
+      seen.push(url)
+      if (url.startsWith('https://photon')) return new Response('down', { status: 521 })
+      return new Response(JSON.stringify(workerGeocode), { status: 200, headers: { 'Content-Type': 'application/json' } })
+    })
+    const places = await api.geocode('apex grill', 'bcycle_madison', null)
+    expect(seen[1]).toBe('/api/geocode?q=apex+grill&system=bcycle_madison')
+    expect(places.map((p) => p.name)).toEqual(['Apex Grill'])
   })
 
   it('rejects with the server AppError for a failed route request', async () => {

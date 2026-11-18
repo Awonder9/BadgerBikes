@@ -21,7 +21,9 @@ turn-by-turn directions, with ride progress tracked in the app.
 
 ## Where code runs
 - `worker/` — Cloudflare Worker: `/api/*` (stations, route options, geocoding). All upstream API
-  calls happen here, never from the browser.
+  calls happen here, never from the browser — with one deliberate exception: place search asks Photon
+  directly from the browser (`api.geocode` in `src/api/client.ts`), because Photon throttles by IP and the
+  Worker's shared Cloudflare IPs made a third of searches fail; it falls back to `/api/geocode`.
 - `src/` — the React client; docks-along-route, Google Maps links and ride progress run on the device.
 - Pure modules in `src/` that the Worker imports must be runtime-agnostic: no DOM, no Node APIs.
   `tsconfig.worker.json` (no DOM lib) enforces this for everything the Worker imports.

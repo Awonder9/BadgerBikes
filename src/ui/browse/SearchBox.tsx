@@ -3,11 +3,13 @@ import { useId, useMemo, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useStationsSnapshot } from '../../data/hooks'
 import { searchStations } from '../../data/stationSearch'
-import { useGeocodeSearch } from '../../geocode/hooks'
+import { normalizeQuery, useGeocodeSearch } from '../../geocode/hooks'
+import { GEOCODE } from '../../config'
 import { useAppStore } from '../../store/appStore'
 import { useLocationStore, waitForFix } from '../../location/locationStore'
 import type { Place } from '../../types'
 import { Icon, type IconName } from '../primitives/Icon'
+import { Spinner } from '../primitives/Spinner'
 
 export interface SearchBoxProps {
   label: string
@@ -35,7 +37,7 @@ export function SearchBox({ label, placeholder, initialValue = '', autoFocus, in
   const { systemId, recent, saved } = useAppStore(useShallow((s) => ({ systemId: s.systemId, recent: s.recentPlaces, saved: s.savedPlaces })))
   const fix = useLocationStore((s) => s.fix)
   const { snapshot } = useStationsSnapshot(systemId)
-  const { places, loading } = useGeocodeSearch(q, systemId, fix?.coord ?? null)
+  const { places, loading, error } = useGeocodeSearch(q, systemId, fix?.coord ?? null)
 
   const options = useMemo<Option[]>(() => {
     const out: Option[] = []
@@ -105,13 +107,18 @@ export function SearchBox({ label, placeholder, initialValue = '', autoFocus, in
             }
           }}
         />
-        {loading && <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-400 border-t-transparent" aria-label="Searching" />}
+        {loading && <Spinner size={18} className="text-slate-400" label="Searching" />}
         {q && (
           <button type="button" aria-label="Clear search" className="p-2 text-slate-500" onClick={() => setQ('')}>
             <Icon name="close" size={18} />
           </button>
         )}
       </label>
+      {open && systemId && options.length === 0 && normalizeQuery(q).length >= GEOCODE.minChars && (
+        <p role="status" className="absolute z-30 mt-1 w-full rounded-xl bg-white px-3 py-3 text-sm text-slate-500 shadow-xl ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-700">
+          {loading ? 'Searching…' : error ? 'Search isn’t available right now. Check your connection and try again.' : 'No places found. Try the name of a place, a street address, or a dock.'}
+        </p>
+      )}
       {open && options.length > 0 && (
         <ul id={listId} role="listbox" className="absolute z-30 mt-1 max-h-80 w-full overflow-auto rounded-xl bg-white py-1 shadow-xl ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-700">
           {options.map((o, i) => (

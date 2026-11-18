@@ -1,7 +1,7 @@
 // The single map (mounted once at the app root). Only this file imports the maplibre runtime.
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import { GPUInitializationError, Map as MlMap, setWorkerUrl, type GeoJSONSource, type MapMouseEvent } from 'maplibre-gl'
-import { useEffect, useEffectEvent, useImperativeHandle, useRef } from 'react'
+import { useEffect, useEffectEvent, useImperativeHandle, useMemo, useRef } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { MAP } from '../config'
 import { getSystem } from '../data/systems'
@@ -11,6 +11,7 @@ import { useAppStore } from '../store/appStore'
 import { useLocationStore } from '../location/locationStore'
 import type { MapMode } from '../types'
 import { useRideStore } from '../ride/rideStore'
+import { useRidePlan } from '../ui/ride/useRidePlan'
 import { AVAILABILITY_COLORS, PATH_COLORS, ROUTE_COLORS, USER_PUCK } from './colors'
 import { useRouteDetails } from '../data/routeDetails'
 import type { PathKind } from '../routing/details'
@@ -99,6 +100,16 @@ export function MapView({ ref, onStationClick, onBackgroundClick, onMapPick, onE
   const dark = isDark(settings.mapStyle)
   const { snapshot } = useStationsSnapshot(systemId)
   const { details } = useRouteDetails(systemId, ride.route)
+  // While planning (route shown, ride not started), only the docks that matter stay on the map: the start
+  // dock, the chosen stops and the other docks offered along the route. During the ride every dock shows
+  // again (the rider may need another one). Uses the planner's own list, so the two never disagree.
+  const panel = useAppStore((s) => s.panel)
+  const riding = useRideStore((s) => s.openedParts.length > 0 || s.walkToDockOpened)
+  const plan = useRidePlan()
+  const routeDockIds = useMemo(
+    () => (panel === 'ride' && !riding && ride.route && ride.startId ? [...new Set([ride.startId, ...ride.stopIds, ...plan.along.map((d) => d.station.id)])] : null),
+    [panel, riding, ride.route, ride.startId, ride.stopIds, plan.along],
+  )
   // Walking legs only need the two docks' positions; keyed by value so station polls don't re-upload the route.
   const endId = ride.stopIds.at(-1)
   const startCoord = ride.startId ? snapshot?.byId.get(ride.startId)?.coord : undefined
@@ -109,10 +120,17 @@ export function MapView({ ref, onStationClick, onBackgroundClick, onMapPick, onE
   const emitBackground = useEffectEvent(() => onBackgroundClick())
   const emitPick = useEffectEvent((c: [number, number]) => onMapPick(c))
   const emitError = useEffectEvent((e: AppError) => onError(e))
+  const applyDockFilter = useEffectEvent(() => {
+    const map = mapRef.current
+    if (!map || !readyRef.current) return
+    const filter = routeDockIds ? (['in', ['get', 'id'], ['literal', routeDockIds]] as never) : null
+    for (const id of [L.stationCircle, L.stationCount, L.stationSelected]) if (map.getLayer(id)) map.setFilter(id, filter)
+  })
   const redraw = useEffectEvent(() => {
     const map = mapRef.current
     if (!map || !readyRef.current) return
     ensureLayers(map, mode, dark)
+    applyDockFilter()
     lastRevision.current = ''
     syncStations()
     syncRoute()
@@ -248,6 +266,10 @@ export function MapView({ ref, onStationClick, onBackgroundClick, onMapPick, onE
   useEffect(() => {
     syncRoute()
   }, [ride.route, ride.routes, ride.destination, ride.origin, walkKey, details])
+
+  useEffect(() => {
+    applyDockFilter()
+  }, [routeDockIds])
 
   // Selection via feature-state.
   useEffect(() => {

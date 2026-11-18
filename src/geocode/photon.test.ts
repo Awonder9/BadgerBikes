@@ -27,3 +27,14 @@ describe('photon', () => {
     expect(await searchPlaces('memorial union', { center: [-75, 40], bbox: [-75.1, 39.9, -75.0, 40.0] }, up)).toEqual([])
   })
 })
+
+describe('searchBias', () => {
+  const sys = { bbox: [-89.5, 43.0, -89.3, 43.15] as [number, number, number, number], center: [-89.4, 43.07] as [number, number] }
+  it('uses the rider position rounded to ~1 km inside the area, else the system center', async () => {
+    const { searchBias } = await import('./photon')
+    expect(searchBias(sys, [-89.401234, 43.071234]).center).toEqual([-89.4, 43.07])
+    expect(searchBias(sys, [-80, 40]).center).toEqual(sys.center)
+    expect(searchBias(sys, null).center).toEqual(sys.center)
+  })
+})
+

@@ -49,7 +49,12 @@ Browser (React app, static assets on Cloudflare)       Cloudflare Worker (/api/*
  └─ Google Maps links (built on device, no API key) ─────────────────────────────────────────────────▶ google.com/maps (rider's app)
 ```
 
-- **Worker**: all upstream access, caching, global rate limiting, GBFS normalization, routing, geocoding.
+- **Worker**: upstream access, caching, global rate limiting, GBFS normalization, routing, reverse geocoding.
+- **Place search** is the one exception: the browser asks Photon directly (`api.geocode`). Photon throttles by
+  IP and Cloudflare Workers share outgoing IPs, so through the Worker about a third of searches failed (HTTP
+  521/502) or stalled in the gate queue. The rider's own IP is fast (~0.3–0.6 s) and reliable; on failure or
+  after `GEOCODE.directTimeoutMs` the client falls back to `/api/geocode`. CSP `connect-src` allows
+  photon.komoot.io.
 - **Device**: map, UI, docks-along-route selection, Google Maps link building, ride progress.
 - **Shared pure modules** (`src/lib`, `src/data/gbfs.ts`, `src/geocode/photon.ts`, `src/routing`, `src/ride`
   except `rideStore.ts`) are runtime-agnostic: no DOM, no Node APIs, injected clocks. `tsconfig.worker.json`
@@ -235,6 +240,8 @@ validated on load, applied to the ride store, then removed from the address bar.
   publishes about once a minute, so that is the freshest possible).
 - **Data hooks**: `useStationsSnapshot` polls `/api/stations` (`cache: 'no-store'`) after the feed's CDN
   expiry, refetches on focus, keeps the last data on error, tracks `revision`/`changedIds`; freshness badge.
+- **Map while planning**: once a route is shown, only the start dock and the docks along the route (the
+  selectable stops) stay on the map; other docks are filtered out until you leave the planner.
 - **Launch screen** (`LoadingScreen.tsx`) until the first snapshot; the install tip waits for it.
 
 ---

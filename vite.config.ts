@@ -15,7 +15,22 @@ export default defineConfig({
   cacheDir: process.env.VITE_CACHE_DIR ?? join(tmpdir(), 'bcycle-live-vite-cache'),
   // Same reason for build output (OneDrive renames folders it is syncing mid-build, e.g. "assets 2").
   // `wrangler deploy` finds the output through .wrangler/deploy/config.json. Set BUILD_OUT_DIR=dist in CI.
-  build: { outDir: process.env.BUILD_OUT_DIR ?? join(tmpdir(), 'bcycle-live-dist'), emptyOutDir: true },
+  build: {
+    outDir: process.env.BUILD_OUT_DIR ?? join(tmpdir(), 'bcycle-live-dist'),
+    emptyOutDir: true,
+    // Libraries that rarely change get their own long-cached files, so after a deploy phones re-download
+    // only the app code (maplibre alone is most of the bundle).
+    rolldownOptions: {
+      output: {
+        codeSplitting: {
+          groups: [
+            { name: 'maplibre', test: /node_modules[\\/]maplibre-gl/ },
+            { name: 'vendor', test: /node_modules[\\/](react|react-dom|scheduler|@tanstack|zustand)[\\/]/ },
+          ],
+        },
+      },
+    },
+  },
   plugins: [
     react(),
     tailwindcss(),

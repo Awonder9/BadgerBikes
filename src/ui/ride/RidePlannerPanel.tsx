@@ -23,6 +23,7 @@ import { SearchBox } from '../browse/SearchBox'
 import { AvailabilityPill } from '../primitives/Availability'
 import { IconButton } from '../primitives/Button'
 import { Icon } from '../primitives/Icon'
+import { Spinner } from '../primitives/Spinner'
 import { RideStatusCard } from './RideProgress'
 import { useRidePlan, type RidePlan } from './useRidePlan'
 
@@ -97,7 +98,7 @@ export function RidePlannerPanel() {
 
       {ride.status === 'routing' && (
         <p className="flex items-center gap-2 text-slate-600 dark:text-slate-300" role="status">
-          <span className="h-5 w-5 animate-spin rounded-full border-2 border-brand-600 border-t-transparent" aria-hidden />
+          <Spinner className="text-brand-600" />
           Finding the best route and docks along it…
         </p>
       )}
@@ -276,7 +277,7 @@ function StartPicker() {
         onClick={() => void fromHere()}
         className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-brand-700 px-3 font-semibold text-white disabled:opacity-60"
       >
-        {locating ? <span className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" aria-hidden /> : <Icon name="locate" size={20} />}
+        {locating ? <Spinner /> : <Icon name="locate" size={20} />}
         {locating ? 'Finding you…' : 'Start from my location'}
       </button>
       {msg && <p className="text-sm text-amber-800 dark:text-amber-300">{msg}</p>}

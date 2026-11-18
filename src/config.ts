@@ -149,6 +149,12 @@ export const LOCATION = {
 
 export const GEOCODE = {
   debounceMs: 300,
+  /** Direct browser → Photon requests start at least this far apart (politeness on shared campus IPs). */
+  directMinIntervalMs: 350,
+  /** The rider's position sent to Photon is rounded to this many decimals (~1 km): enough to bias results. */
+  biasDecimals: 2,
+  /** The browser asks Photon directly (its own IP: fast and not throttled like shared Worker IPs); give up after this and use /api/geocode. */
+  directTimeoutMs: 3_500,
   minChars: 3,
   /** Requested from Photon, then de-duplicated down to `keep`. */
   limit: 8,

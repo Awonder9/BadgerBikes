@@ -77,7 +77,11 @@ export interface RidePlan {
 export function useRidePlan(): RidePlan {
   const { systemId, partySize, maxRideMinutes } = useAppStore(useShallow((s) => ({ systemId: s.systemId, partySize: s.settings.partySize, maxRideMinutes: s.settings.maxRideMinutes })))
   const ride = useRideStore(useShallow((s) => ({ origin: s.origin, startId: s.startId, destination: s.destination, route: s.route, stopIds: s.stopIds, openedParts: s.openedParts })))
-  const { snapshot } = useStationsSnapshot(systemId, { active: true })
+  // Faster polling only while it matters (planner open or a ride under way); this hook is also used by
+  // always-mounted pieces (ride banner, alerts, map), which must not keep the app polling fast.
+  const panelOpen = useAppStore((s) => s.panel === 'ride')
+  const riding = useRideStore((s) => s.openedParts.length > 0 || s.walkToDockOpened)
+  const { snapshot } = useStationsSnapshot(systemId, { active: panelOpen || riding })
   const includedMinutes = useIncludedMinutes()
   const start = ride.startId ? snapshot?.byId.get(ride.startId) : undefined
   const dest = ride.destination

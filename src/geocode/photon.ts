@@ -1,4 +1,5 @@
-// Photon geocoding (runs in the Worker): search + reverse, normalized to Place.
+// Photon geocoding: search (from the browser, falling back to the Worker) and reverse (Worker), normalized
+// to Place. Runtime-agnostic: callers pass the UpstreamFetch.
 import { CACHE_TTL_MS, ENDPOINTS, GEOCODE } from '../config'
 import { bboxContains, haversine, isValidLngLat } from '../lib/geo'
 import type { UpstreamFetch } from '../lib/upstream'
@@ -74,6 +75,16 @@ export function normalizePhotonReverse(json: unknown, coord: LngLat): Place | nu
   const l = label(f.props)
   if (!l) return null
   return { kind: 'mapPick', name: l.name, ...(l.detail ? { detail: l.detail } : {}), coord }
+}
+
+/**
+ * Where to bias a search: the rider's position (rounded to ~1 km — enough to rank nearby places, without
+ * sending their exact location) when it is inside the system's area, else the system's center.
+ */
+export function searchBias(system: { bbox: BBox; center: LngLat }, near: LngLat | null): GeocodeBias {
+  const round = (n: number) => Number(n.toFixed(GEOCODE.biasDecimals))
+  const center: LngLat = near && bboxContains(system.bbox, near, GEOCODE.bboxPadMeters) ? [round(near[0]), round(near[1])] : system.center
+  return { center, bbox: system.bbox }
 }
 
 export async function searchPlaces(query: string, bias: GeocodeBias, upstream: UpstreamFetch, opts: { signal?: AbortSignal } = {}): Promise<Place[]> {
