@@ -195,43 +195,47 @@ export function AppShell() {
           }}
         />
 
-        <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start gap-2 p-3 pt-[max(0.75rem,env(safe-area-inset-top))]" style={desktop ? { left: 400 } : undefined}>
-          <div className="flex-1" />
-          <div className="pointer-events-auto flex rounded-full bg-white p-1 shadow-md dark:bg-slate-900" role="group" aria-label="Map shows">
+        {/* Locate left · Bikes/Docks centered · Settings right (equal side columns keep the toggle centered). */}
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-10 grid grid-cols-[1fr_auto_1fr] items-center gap-2 p-3 pt-[max(0.75rem,env(safe-area-inset-top))]" style={desktop ? { left: 400 } : undefined}>
+          <div className="flex justify-start">
+            <IconButton
+              icon="locate"
+              label="Show my location"
+              className="pointer-events-auto shadow-md"
+              onClick={() => {
+                useLocationStore.getState().requestLocation()
+                const f = useLocationStore.getState().fix
+                if (f) mapRef.current?.flyTo(f.coord, { zoom: 16 })
+                else {
+                  const unsub = useLocationStore.subscribe(
+                    (s) => s.fix,
+                    (fix) => {
+                      if (fix) {
+                        unsub()
+                        mapRef.current?.flyTo(fix.coord, { zoom: 16 })
+                      }
+                    },
+                  )
+                }
+              }}
+            />
+          </div>
+          <div className="pointer-events-auto flex h-11 items-center rounded-full bg-white p-1 shadow-md dark:bg-slate-900" role="group" aria-label="Map shows">
             {(['bikes', 'docks'] as const).map((m) => (
               <button
                 key={m}
                 type="button"
                 aria-pressed={mode === m}
-                className={`min-h-9 rounded-full px-3 text-sm font-semibold ${mode === m ? 'bg-brand-700 text-white' : ''}`}
+                className={`flex h-9 min-w-[4.5rem] items-center justify-center rounded-full px-4 text-sm font-semibold ${mode === m ? 'bg-brand-700 text-white' : 'text-slate-700 dark:text-slate-200'}`}
                 onClick={() => useAppStore.getState().setMapMode(m)}
               >
                 {m === 'bikes' ? 'Bikes' : 'Docks'}
               </button>
             ))}
           </div>
-          <IconButton
-            icon="locate"
-            label="Show my location"
-            className="pointer-events-auto"
-            onClick={() => {
-              useLocationStore.getState().requestLocation()
-              const f = useLocationStore.getState().fix
-              if (f) mapRef.current?.flyTo(f.coord, { zoom: 16 })
-              else {
-                const unsub = useLocationStore.subscribe(
-                  (s) => s.fix,
-                  (fix) => {
-                    if (fix) {
-                      unsub()
-                      mapRef.current?.flyTo(fix.coord, { zoom: 16 })
-                    }
-                  },
-                )
-              }
-            }}
-          />
-          <IconButton icon="settings" label="Settings" className="pointer-events-auto" onClick={() => useAppStore.getState().setPanel('settings')} />
+          <div className="flex justify-end">
+            <IconButton icon="settings" label="Settings" className="pointer-events-auto shadow-md" onClick={() => useAppStore.getState().setPanel('settings')} />
+          </div>
         </div>
 
         {desktop ? (
