@@ -76,9 +76,14 @@ export function RidePlannerPanel() {
         <IconButton icon="back" label="Back" variant="ghost" onClick={() => useAppStore.getState().setPanel('browse')} />
         <h2 className="flex-1 text-xl font-semibold">{riding ? 'Your ride' : 'Plan a ride'}</h2>
         {systemId && start && dest && ride.status === 'ready' && <ShareButton systemId={systemId} startId={start.id} destination={dest} routeIndex={ride.routeIndex} />}
-        {(ride.startId || ride.destination) && (
-          <button type="button" className="min-h-11 px-2 text-sm text-slate-500 underline" onClick={ride.reset}>
-            Clear
+        {(ride.origin || ride.startId || ride.destination) && (
+          <button
+            type="button"
+            aria-label="Clear this plan"
+            className="ml-1 inline-flex min-h-11 items-center gap-1 rounded-full bg-white px-3 text-sm font-semibold text-slate-700 ring-1 ring-slate-300 active:bg-slate-100 dark:bg-slate-900 dark:text-slate-200 dark:ring-slate-600 dark:active:bg-slate-800"
+            onClick={ride.reset}
+          >
+            <Icon name="close" size={16} className="shrink-0" /> Clear
           </button>
         )}
       </header>
@@ -163,7 +168,9 @@ export function RidePlannerPanel() {
           {rideParts.length > 0 && start && end && ride.route && <ExactRouteFile plan={plan} />}
 
           {rideParts.length > 0 ? (
-            <div className="sticky bottom-0 -mx-4 space-y-1 border-t border-slate-200 bg-white px-4 pb-2 pt-2 dark:border-slate-800 dark:bg-slate-950">
+            <div className="sticky bottom-0 -mx-4 -mb-[calc(1rem+env(safe-area-inset-bottom))] space-y-1 border-t border-slate-200 bg-white px-4 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-2 dark:border-slate-800 dark:bg-slate-950">
+              {/* Reaches the bottom edge of the screen: the negative margin covers the panel's bottom padding and the
+                  home-bar spacer after it; the footer pads itself so the buttons stay clear of the home bar. */}
               {rideParts.length > 1 && (
                 <p className="text-xs leading-snug text-slate-500">
                   {nextPart === null

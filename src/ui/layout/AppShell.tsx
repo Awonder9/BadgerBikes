@@ -112,7 +112,12 @@ function BottomSheet({ children, onHeight }: { children: ReactNode; onHeight: (p
         <span className="h-1.5 w-10 rounded-full bg-slate-300 dark:bg-slate-600" />
       </button>
       {/* Vertical scrolling only: the panel never moves sideways (overflow-x hidden + no horizontal bounce). */}
-      <div className="min-h-0 w-full flex-1 overflow-y-auto overflow-x-hidden overscroll-contain [overscroll-behavior-x:none] pb-[env(safe-area-inset-bottom)]">{children}</div>
+      {/* No bottom padding on the scroller itself: a sticky footer (ride planner) must reach the screen's bottom
+          edge. The home-bar space is a spacer after the content instead (a sticky footer pads itself). */}
+      <div className="min-h-0 w-full flex-1 overflow-y-auto overflow-x-hidden overscroll-contain [overscroll-behavior-x:none]">
+        {children}
+        <div aria-hidden className="h-[env(safe-area-inset-bottom)]" />
+      </div>
     </div>
   )
 }
