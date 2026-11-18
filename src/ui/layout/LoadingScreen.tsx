@@ -5,6 +5,7 @@ import { APP } from '../../config'
 import { useNow, useStationsSnapshot } from '../../data/hooks'
 import { getSystem } from '../../data/systems'
 import { useAppStore } from '../../store/appStore'
+import { useI18n } from '../../i18n/useT'
 import { Icon } from '../primitives/Icon'
 
 /** After this long the screen adds a "still working" line. */
@@ -19,6 +20,7 @@ export function LoadingScreen() {
   const [dismissed, setDismissed] = useState(false)
   const [gone, setGone] = useState(false)
   const now = useNow(1000)
+  const { t: msg } = useI18n()
   const loaded = !!snapshot
   const failed = !loaded && freshness === 'error'
   const hide = loaded || dismissed
@@ -30,7 +32,7 @@ export function LoadingScreen() {
   }, [hide])
   if (gone) return null
 
-  const city = getSystem(systemId)?.city ?? 'your city'
+  const city = getSystem(systemId)?.city ?? msg.yourCity
   const slow = now - shownAt > SLOW_MS
   return (
     <div
@@ -47,22 +49,22 @@ export function LoadingScreen() {
 
       {!failed ? (
         <div role="status" aria-live="polite" className="w-full max-w-xs space-y-3">
-          <p className="text-lg font-medium">Pulling the latest bike and dock counts…</p>
+          <p className="text-lg font-medium">{msg.pullingCounts}</p>
           <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/20" aria-hidden>
             <div className="h-full w-1/3 rounded-full bg-white motion-safe:animate-[loading-bar_1.2s_ease-in-out_infinite]" />
           </div>
-          <p className={`text-sm text-white/75 transition-opacity ${slow ? 'opacity-100' : 'opacity-0'}`}>Still working — BCycle’s live feed can take a few seconds.</p>
+          <p className={`text-sm text-white/75 transition-opacity ${slow ? 'opacity-100' : 'opacity-0'}`}>{msg.stillWorking}</p>
         </div>
       ) : (
         <div role="alert" className="w-full max-w-xs space-y-3">
-          <p className="text-lg font-semibold">Couldn’t reach BCycle’s live data</p>
-          <p className="text-sm text-white/80">Check your connection, then try again. Station counts on the map may be missing until it loads.</p>
+          <p className="text-lg font-semibold">{msg.couldntReach}</p>
+          <p className="text-sm text-white/80">{msg.checkConnection}</p>
           <div className="flex gap-2">
             <button type="button" className="min-h-12 flex-1 rounded-xl bg-white font-semibold text-brand-800" onClick={refetch}>
-              Try again
+              {msg.tryAgain}
             </button>
             <button type="button" className="min-h-12 flex-1 rounded-xl font-semibold ring-1 ring-white/60" onClick={() => setDismissed(true)}>
-              Continue
+              {msg.continue}
             </button>
           </div>
         </div>

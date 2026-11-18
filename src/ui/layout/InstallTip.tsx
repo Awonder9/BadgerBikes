@@ -4,36 +4,12 @@ import { useEffect, useRef, useState } from 'react'
 import { APP } from '../../config'
 import { useStationsSnapshot } from '../../data/hooks'
 import { useAppStore } from '../../store/appStore'
+import { useI18n } from '../../i18n/useT'
 import { platform } from '../browse/StationCard'
 import { Button } from '../primitives/Button'
 import { Icon } from '../primitives/Icon'
 
 type Os = 'ios' | 'android'
-
-const STEPS: Record<Os, { title: string; steps: string[]; note: string }> = {
-  ios: {
-    title: 'Add to your iPhone home screen',
-    steps: [
-      'Open this page in Safari.',
-      'Tap the Share button (the square with an arrow). If you don’t see it, tap ••• first.',
-      'Scroll down and tap “Add to Home Screen”.',
-      'Make sure “Open as Web App” is on, then tap Add.',
-      `Open ${APP.name} from your home screen.`,
-    ],
-    note: 'It opens full screen like a regular app, no App Store needed.',
-  },
-  android: {
-    title: 'Add to your Android home screen',
-    steps: [
-      'Open this page in Chrome.',
-      'Tap the ⋮ menu at the top right.',
-      'Tap “Add to home screen” (it may say “Install app”).',
-      'Tap Install, then Add.',
-      `Open ${APP.name} from your home screen or app drawer.`,
-    ],
-    note: 'It opens full screen like a regular app, no Play Store needed.',
-  },
-}
 
 /** Running as an installed home-screen app already. */
 function isStandalone(): boolean {
@@ -48,6 +24,7 @@ export function InstallTip() {
   const { snapshot } = useStationsSnapshot(systemId)
   const [os, setOs] = useState<Os | null>(null)
   const ref = useRef<HTMLDialogElement>(null)
+  const { t } = useI18n()
   const show = !seen && !isStandalone() && !!snapshot
 
   useEffect(() => {
@@ -61,7 +38,7 @@ export function InstallTip() {
     useAppStore.getState().updateSettings({ installTipSeen: true })
   }
   const detected = platform()
-  const info = os ? STEPS[os] : null
+  const info = os ? { ...t.install[os], steps: t.install[os].steps(APP.name) } : null
 
   return (
     <dialog
@@ -73,16 +50,16 @@ export function InstallTip() {
       <div className="space-y-4 p-5">
         <div className="flex items-start gap-2">
           <h2 id="install-tip-title" className="flex-1 text-lg font-semibold">
-            {info ? info.title : `Get ${APP.name} on your phone`}
+            {info ? info.title : t.getOnPhone(APP.name)}
           </h2>
-          <button type="button" aria-label="Close" className="-m-2 grid h-11 w-11 place-items-center rounded-full text-slate-500" onClick={close}>
+          <button type="button" aria-label={t.close} className="-m-2 grid h-11 w-11 place-items-center rounded-full text-slate-500" onClick={close}>
             <Icon name="close" size={20} />
           </button>
         </div>
 
         {!info ? (
           <>
-            <p className="text-slate-600 dark:text-slate-300">Add it to your home screen so it opens like an app. What phone do you have?</p>
+            <p className="text-slate-600 dark:text-slate-300">{t.installIntro}</p>
             <div className="grid grid-cols-2 gap-3">
               {(['ios', 'android'] as const).map((o) => (
                 <button
@@ -93,12 +70,12 @@ export function InstallTip() {
                   onClick={() => setOs(o)}
                   className={`min-h-16 rounded-xl px-3 text-lg font-semibold ring-1 ${detected === o ? 'bg-brand-50 ring-2 ring-brand-700 dark:bg-brand-900' : 'ring-slate-300 dark:ring-slate-600'}`}
                 >
-                  {o === 'ios' ? 'iPhone (iOS)' : 'Android'}
+                  {o === 'ios' ? t.iphone : t.android}
                 </button>
               ))}
             </div>
             <Button variant="ghost" block onClick={close}>
-              Maybe later
+              {t.maybeLater}
             </Button>
           </>
         ) : (
@@ -111,10 +88,10 @@ export function InstallTip() {
             <p className="text-sm text-slate-500">{info.note}</p>
             <div className="flex gap-2">
               <Button variant="ghost" icon="back" onClick={() => setOs(null)}>
-                Back
+                {t.back}
               </Button>
               <Button className="flex-1" onClick={close}>
-                Got it
+                {t.gotIt}
               </Button>
             </div>
           </>

@@ -8,6 +8,7 @@ import { MapApiContext } from '../../map/mapApiContext'
 import { MapView } from '../../map/MapView'
 import type { MapApi } from '../../map/types'
 import { useAppStore } from '../../store/appStore'
+import { currentMessages, useI18n } from '../../i18n/useT'
 import { useLocationStore } from '../../location/locationStore'
 import type { Panel } from '../../store/types'
 import { InstallTip } from './InstallTip'
@@ -59,6 +60,7 @@ const snapPx = (snap: Snap, area: number) => (snap === 'peek' ? area * 0.37 : sn
 
 function BottomSheet({ children, onHeight }: { children: ReactNode; onHeight: (px: number) => void }) {
   const sheet = useAppStore((s) => s.sheet)
+  const { t } = useI18n()
   const ref = useRef<HTMLDivElement>(null)
   const drag = useRef<{ y: number; h: number } | null>(null)
   const [dragH, setDragH] = useState<number | null>(null)
@@ -91,7 +93,7 @@ function BottomSheet({ children, onHeight }: { children: ReactNode; onHeight: (p
     <div ref={ref} className="absolute inset-x-0 bottom-0 z-20 flex flex-col rounded-t-3xl bg-white shadow-[0_-8px_30px_rgba(0,0,0,0.15)] dark:bg-slate-950" style={{ height: dragH ?? SNAP_CSS[sheet] }}>
       <button
         type="button"
-        aria-label={`Panel size: ${sheet}. Tap to resize`}
+        aria-label={t.panelSize(sheet)}
         className="flex h-8 w-full shrink-0 touch-none items-center justify-center"
         onClick={() => useAppStore.getState().setSheet(sheet === 'peek' ? 'half' : sheet === 'half' ? 'full' : 'peek')}
         onPointerDown={(e) => {
@@ -132,6 +134,7 @@ function UpdatePrompt() {
     updateServiceWorker,
   } = useRegisterSW()
   const [refreshing, setRefreshing] = useState(false)
+  const { t } = useI18n()
   if (!needRefresh) return null
   const refresh = () => {
     setRefreshing(true)
@@ -140,10 +143,10 @@ function UpdatePrompt() {
     setTimeout(() => window.location.reload(), 3_000)
   }
   return (
-    <div role="alertdialog" aria-live="assertive" aria-label="Update available" className="absolute inset-x-3 top-20 z-[60] flex items-center gap-3 rounded-2xl bg-slate-900 p-3 text-white shadow-xl">
-      <span className="flex-1 text-sm font-medium">A new version of {APP.name} is ready. Refresh to update.</span>
+    <div role="alertdialog" aria-live="assertive" aria-label={t.updateAvailable} className="absolute inset-x-3 top-20 z-[60] flex items-center gap-3 rounded-2xl bg-slate-900 p-3 text-white shadow-xl">
+      <span className="flex-1 text-sm font-medium">{t.newVersion(APP.name)}</span>
       <Button size="sm" disabled={refreshing} onClick={refresh}>
-        {refreshing ? 'Refreshing…' : 'Refresh'}
+        {refreshing ? t.refreshing : t.refresh}
       </Button>
     </div>
   )
@@ -160,10 +163,10 @@ function useStationWatcher() {
   const ready = !!(watched && st && n !== undefined && n > watched.baseline)
   useEffect(() => {
     if (!ready || !watched || !st || n === undefined) return
-    const noun = watched.want === 'bikes' ? (n === 1 ? 'bike' : 'bikes') : n === 1 ? 'dock' : 'docks'
+    const text = currentMessages().watchReady(st.name, n, watched.want, watched.baseline)
     if (typeof navigator.vibrate === 'function') navigator.vibrate([200, 100, 200])
     useAppStore.getState().watchStation(null)
-    queueMicrotask(() => setMessage(`${st.name} now has ${n} ${noun} (up from ${watched.baseline}).`))
+    queueMicrotask(() => setMessage(text))
   }, [ready, watched, st, n])
   return [message, () => setMessage(null)] as const
 }
@@ -173,6 +176,7 @@ export function AppShell() {
   const desktop = useIsDesktop()
   const { systemId, panel, mode } = useAppStore(useShallow((s) => ({ systemId: s.systemId, panel: s.panel, mode: s.mapMode })))
   const [webglFailed, setWebglFailed] = useState(false)
+  const { t } = useI18n()
   const [watchMsg, clearWatchMsg] = useStationWatcher()
   const { snapshot } = useStationsSnapshot(systemId)
   useRideAlerts()
@@ -226,7 +230,7 @@ export function AppShell() {
           <div className="flex justify-start">
             <IconButton
               icon="locate"
-              label="Show my location"
+              label={t.showMyLocation}
               className="pointer-events-auto shadow-md"
               onClick={() => {
                 useLocationStore.getState().requestLocation()
@@ -246,7 +250,7 @@ export function AppShell() {
               }}
             />
           </div>
-          <div className="pointer-events-auto flex h-11 items-center rounded-full bg-white p-1 shadow-md dark:bg-slate-900" role="group" aria-label="Map shows">
+          <div className="pointer-events-auto flex h-11 items-center rounded-full bg-white p-1 shadow-md dark:bg-slate-900" role="group" aria-label={t.mapShows}>
             {(['bikes', 'docks'] as const).map((m) => (
               <button
                 key={m}
@@ -255,12 +259,12 @@ export function AppShell() {
                 className={`flex h-9 min-w-[4.5rem] items-center justify-center rounded-full px-4 text-sm font-semibold ${mode === m ? 'bg-brand-700 text-white' : 'text-slate-700 dark:text-slate-200'}`}
                 onClick={() => useAppStore.getState().setMapMode(m)}
               >
-                {m === 'bikes' ? 'Bikes' : 'Docks'}
+                {m === 'bikes' ? t.bikesMode : t.docksMode}
               </button>
             ))}
           </div>
           <div className="flex justify-end">
-            <IconButton icon="settings" label="Settings" className="pointer-events-auto shadow-md" onClick={() => useAppStore.getState().setPanel('settings')} />
+            <IconButton icon="settings" label={t.settings} className="pointer-events-auto shadow-md" onClick={() => useAppStore.getState().setPanel('settings')} />
           </div>
         </div>
 
@@ -277,7 +281,7 @@ export function AppShell() {
         {watchMsg && (
           <div role="alert" className="absolute inset-x-3 top-20 z-40 flex items-center gap-2 rounded-2xl bg-brand-700 p-3 text-white shadow-xl">
             <span className="flex-1">{watchMsg}</span>
-            <IconButton icon="close" label="Dismiss" variant="ghost" className="text-white" onClick={clearWatchMsg} />
+            <IconButton icon="close" label={t.dismiss} variant="ghost" className="text-white" onClick={clearWatchMsg} />
           </div>
         )}
       </div>

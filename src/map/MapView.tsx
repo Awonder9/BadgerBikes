@@ -8,6 +8,7 @@ import { getSystem } from '../data/systems'
 import { useStationsSnapshot } from '../data/hooks'
 import { AppError } from '../lib/errors'
 import { useAppStore } from '../store/appStore'
+import { useT } from '../i18n/useT'
 import { useLocationStore } from '../location/locationStore'
 import type { MapMode } from '../types'
 import { useRideStore } from '../ride/rideStore'
@@ -88,6 +89,7 @@ const source = (map: MlMap, id: string) => map.getSource(id) as GeoJSONSource | 
 
 export function MapView({ ref, onStationClick, onBackgroundClick, onMapPick, onError }: MapViewProps) {
   const container = useRef<HTMLDivElement>(null)
+  const msg = useT()
   const mapRef = useRef<MlMap | null>(null)
   const readyRef = useRef(false)
   const lastRevision = useRef('')
@@ -301,7 +303,7 @@ export function MapView({ ref, onStationClick, onBackgroundClick, onMapPick, onE
   // Wrapper owns positioning: maplibre's CSS sets .maplibregl-map { position: relative } on the inner div.
   return (
     <div className="absolute inset-0">
-      <div ref={container} className="h-full w-full" role="application" aria-label="Map of bike-share stations" />
+      <div ref={container} className="h-full w-full" role="application" aria-label={msg.mapAria} />
     </div>
   )
 }

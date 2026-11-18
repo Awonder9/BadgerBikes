@@ -55,3 +55,25 @@ describe('bikeMix', () => {
     expect(bikeMix(0, 2)).toBe('2 classic')
   })
 })
+
+describe('Chinese formatting', () => {
+  it('uses Simplified unit words', () => {
+    expect(formatDuration(65 * 60, 'zh-Hans')).toBe('1 小时 5 分钟')
+    expect(formatTimeAgo(200, 'zh-Hans')).toBe('3 分钟前')
+    expect(formatTimeAgo(3, 'zh-Hans')).toBe('刚刚')
+    expect(formatDistance(2500, 'metric', 'zh-Hans')).toBe('2.5 公里')
+    expect(formatDistance(450, 'metric', 'zh-Hans')).toBe('450 米')
+    expect(bikeMix(3, 5, 'zh-Hans')).toBe('3 辆电动单车 · 5 辆普通单车')
+  })
+
+  it('uses Traditional (Taiwan) unit words', () => {
+    expect(formatDuration(12 * 60, 'zh-Hant')).toBe('12 分鐘')
+    expect(formatTimeAgo(7300, 'zh-Hant')).toBe('2 小時前')
+    expect(formatDistance(450, 'metric', 'zh-Hant')).toBe('450 公尺')
+    expect(formatDistance(3218.7, 'imperial', 'zh-Hant')).toBe('2.0 英里')
+  })
+
+  it('formats clock times with a Chinese locale', () => {
+    expect(formatClockTime(Date.UTC(2026, 10, 17, 21, 45), 'America/Chicago', 'zh-Hans')).toBe('15:45')
+  })
+})

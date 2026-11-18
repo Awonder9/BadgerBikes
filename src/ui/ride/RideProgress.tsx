@@ -10,6 +10,7 @@ import { directionsFromHereUrl } from '../../ride/googleMaps'
 import { clock } from '../../ride/rideProgress'
 import { useRideStore } from '../../ride/rideStore'
 import { useAppStore } from '../../store/appStore'
+import { useI18n } from '../../i18n/useT'
 import { Icon } from '../primitives/Icon'
 import { useRidePlan, type RidePlan } from './useRidePlan'
 import { useRideStatus } from './useRideStatus'
@@ -18,59 +19,60 @@ import { useRideStatus } from './useRideStatus'
 export function RideStatusCard({ plan }: { plan: RidePlan }) {
   const { active, timer, endStation, dock, replacements } = useRideStatus(plan)
   const units = useAppStore((s) => s.settings.units)
+  const { t, lang } = useI18n()
   const [perm, setPerm] = useState(() => (typeof Notification === 'undefined' ? 'unsupported' : Notification.permission))
   if (!active) return null
   const tone = timer?.state === 'over' ? 'bg-red-50 text-red-900 dark:bg-red-950 dark:text-red-100' : timer?.state === 'warn' ? 'bg-amber-50 text-amber-900 dark:bg-amber-950 dark:text-amber-100' : 'bg-brand-50 dark:bg-brand-900'
   return (
-    <section aria-label="Ride in progress" className={`space-y-2 rounded-xl p-3 ${tone}`}>
+    <section aria-label={t.rideInProgress} className={`space-y-2 rounded-xl p-3 ${tone}`}>
       <div className="flex items-center gap-2">
         <Icon name="clock" size={20} />
         <p className="flex-1 font-semibold">
           {timer ? (
             <>
-              Riding {clock(timer.elapsedS)}
-              {timer.leftS !== null && (timer.leftS > 0 ? ` · ${Math.ceil(timer.leftS / 60)} min left on your pass` : ` · ${Math.ceil(-timer.leftS / 60)} min over your pass`)}
+              {t.ridingFor(clock(timer.elapsedS))}
+              {timer.leftS !== null && (timer.leftS > 0 ? t.leftOnPass(Math.ceil(timer.leftS / 60)) : t.overPass(Math.ceil(-timer.leftS / 60)))}
             </>
           ) : plan.start ? (
-            `Walking to ${plan.start.name}`
+            t.walkingTo(plan.start.name)
           ) : (
-            'Ride in progress'
+            t.rideInProgress
           )}
         </p>
         <button type="button" className="min-h-11 px-2 text-sm underline" onClick={() => useRideStore.getState().endRide()}>
-          End ride
+          {t.endRide}
         </button>
       </div>
       {!timer && (
         <div className="flex items-center gap-2">
-          <p className="min-w-0 flex-1 text-sm">The ride timer starts once you've unlocked a bike.</p>
+          <p className="min-w-0 flex-1 text-sm">{t.timerStartsNote}</p>
           <button type="button" className="min-h-11 shrink-0 rounded-lg bg-brand-700 px-3 text-sm font-semibold text-white" onClick={() => useRideStore.getState().startRideTimer()}>
-            I've unlocked a bike
+            {t.unlockedBike}
           </button>
         </div>
       )}
-      {timer?.state === 'warn' && <p className="text-sm">Dock soon to stay within your pass. Re-docking starts a new ride.</p>}
-      {timer?.state === 'over' && <p className="text-sm">Extra fees may apply until you dock.</p>}
+      {timer?.state === 'warn' && <p className="text-sm">{t.dockSoon}</p>}
+      {timer?.state === 'over' && <p className="text-sm">{t.extraFees}</p>}
       {endStation && dock !== 'ok' && (
         <div role="alert" className="space-y-1 rounded-lg bg-white/70 p-2 text-sm text-slate-900 dark:bg-slate-950/60 dark:text-slate-100">
           <p className="font-semibold">
-            {dock === 'full' ? `${endStation.name} is full right now.` : `${endStation.name} has only ${endStation.status?.docks ?? 0} open ${endStation.status?.docks === 1 ? 'dock' : 'docks'}.`}
+            {dock === 'full' ? t.endDockFull(endStation.name) : t.endDockLow(endStation.name, endStation.status?.docks ?? 0)}
           </p>
           {replacements.length > 0 ? (
             <ul className="space-y-1">
               {replacements.map(({ station, meters }) => (
                 <li key={station.id} className="flex items-center gap-2">
                   <span className="min-w-0 flex-1 truncate">
-                    {station.name} · {station.status?.docks ?? 0} open · {formatDistance(meters, units)} from your destination
+                    {t.replacement(station.name, station.status?.docks ?? 0, formatDistance(meters, units, lang))}
                   </span>
                   <a className="shrink-0 rounded-lg bg-brand-700 px-2 py-1 font-semibold text-white" href={directionsFromHereUrl(station.coord, 'bicycling')} target="_blank" rel="noopener noreferrer">
-                    Ride there
+                    {t.rideThere}
                   </a>
                 </li>
               ))}
             </ul>
           ) : (
-            <p>No other docks with space close to your destination right now.</p>
+            <p>{t.noOtherDocks}</p>
           )}
         </div>
       )}
@@ -82,10 +84,10 @@ export function RideStatusCard({ plan }: { plan: RidePlan }) {
             void Notification.requestPermission().then((p) => setPerm(p))
           }}
         >
-          Turn on alerts (time running low, end dock full)
+          {t.turnOnAlerts}
         </button>
       )}
-      <p className="text-xs opacity-80">Alerts and counts update while this app is open — check back between parts.</p>
+      <p className="text-xs opacity-80">{t.alertsNote}</p>
     </section>
   )
 }
@@ -95,9 +97,10 @@ export function RideBanner() {
   const panel = useAppStore((s) => s.panel)
   const plan = useRidePlan()
   const { active, timer, dock, endStation } = useRideStatus(plan)
+  const { t } = useI18n()
   if (!active || panel === 'ride') return null
   const alert = dock !== 'ok' || timer?.state === 'over'
-  const next = plan.nextPart !== null && plan.rideParts.length > 1 ? `Next: Part ${plan.nextPart + 1}` : null
+  const next = plan.nextPart !== null && plan.rideParts.length > 1 ? t.nextShort(plan.nextPart + 1) : null
   return (
     <button
       type="button"
@@ -109,7 +112,7 @@ export function RideBanner() {
     >
       <Icon name="bike" size={20} />
       <span className="min-w-0 flex-1 truncate text-sm font-semibold">
-        {dock === 'full' && endStation ? `${endStation.name} is full — tap for nearby docks` : `${timer || !plan.start ? 'Ride in progress' : `Walking to ${plan.start.name}`}${timer ? ` · ${clock(timer.elapsedS)}` : ''}${timer?.leftS != null && timer.leftS > 0 ? ` · ${Math.ceil(timer.leftS / 60)} min left` : ''}${next ? ` · ${next}` : ''}`}
+        {dock === 'full' && endStation ? t.bannerFull(endStation.name) : `${timer || !plan.start ? t.rideInProgress : t.walkingTo(plan.start.name)}${timer ? ` · ${clock(timer.elapsedS)}` : ''}${timer?.leftS != null && timer.leftS > 0 ? t.minLeft(Math.ceil(timer.leftS / 60)) : ''}${next ? ` · ${next}` : ''}`}
       </span>
       <Icon name="chevronRight" size={20} />
     </button>

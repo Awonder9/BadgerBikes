@@ -3,6 +3,7 @@
 //   • useAppStore (persisted subset) owns ids, UI state and settings; useRideStore owns the ride plan;
 //     useLocationStore owns the rider's position.
 //   • Selectors returning objects/arrays must use zustand's useShallow.
+import type { LanguageSetting } from '../i18n/lang'
 import type { LngLat, MapMode, Place, Units } from '../types'
 
 export interface PassChoice {
@@ -18,6 +19,8 @@ export interface Settings {
   /** Longest ride between docks the planner plans for (re-dock before it), minutes; 0 = unlimited. */
   maxRideMinutes: number
   mapStyle: 'auto' | 'light' | 'dark'
+  /** UI language; 'auto' follows the system/browser language. */
+  language: LanguageSetting
   /** Rider confirmed "I have the BCycle app and a pass" (removes the first-ride overhead). */
   setupConfirmed: boolean
   /** The first-visit "add to home screen" pop-up was shown and dismissed. */

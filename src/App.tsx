@@ -9,6 +9,8 @@ import { APP } from './config'
 import { useLocationWatcher } from './location/locationStore'
 import { useRideStore } from './ride/rideStore'
 import { useAppStore } from './store/appStore'
+import { LANG_TAGS } from './i18n/lang'
+import { currentMessages, useLang } from './i18n/useT'
 import type { Place } from './types'
 import { AppShell } from './ui/layout/AppShell'
 
@@ -19,12 +21,13 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
   }
   render() {
     if (!this.state.error) return this.props.children
+    const t = currentMessages()
     return (
       <div className="grid h-dvh place-items-center p-6 text-center">
         <div className="space-y-3">
-          <p className="text-xl font-semibold">Something went wrong.</p>
+          <p className="text-xl font-semibold">{t.somethingWrong}</p>
           <button type="button" className="rounded-xl bg-brand-700 px-4 py-2 font-medium text-white" onClick={() => window.location.reload()}>
-            Reload
+            {t.reload}
           </button>
         </div>
       </div>
@@ -45,8 +48,8 @@ function useLaunchParams() {
     if (p.rideStartId && p.to) {
       const ride = useRideStore.getState()
       const destination: Place = p.toStationId
-        ? { kind: 'station', name: p.to.name ?? 'Destination dock', coord: p.to.coord, stationId: p.toStationId }
-        : { kind: 'search', name: p.to.name ?? 'Shared destination', coord: p.to.coord }
+        ? { kind: 'station', name: p.to.name ?? currentMessages().destinationDock, coord: p.to.coord, stationId: p.toStationId }
+        : { kind: 'search', name: p.to.name ?? currentMessages().sharedDestination, coord: p.to.coord }
       ride.setStart(p.rideStartId)
       ride.setDestination(destination)
       useRideStore.setState({ pendingRouteIndex: p.routeIndex })
@@ -79,10 +82,19 @@ function useTheme() {
   }, [style])
 }
 
+/** <html lang> follows the UI language, so screen readers and fonts pick Chinese glyphs correctly. */
+function useDocumentLang() {
+  const lang = useLang()
+  useEffect(() => {
+    document.documentElement.lang = LANG_TAGS[lang]
+  }, [lang])
+}
+
 function Root() {
   useLaunchParams()
   useDefaultCity()
   useTheme()
+  useDocumentLang()
   useLocationWatcher()
   return <AppShell />
 }

@@ -7,6 +7,8 @@ import { classifyStation, fleetComposition } from '../../lib/stationState'
 import { appLaunchUrl, safeExternalUrl, LINK_HOSTS } from '../../lib/urlParams'
 import { estimateBetween } from '../../routing/estimates'
 import { useAppStore } from '../../store/appStore'
+import { useI18n } from '../../i18n/useT'
+import type { Messages } from '../../i18n'
 import { useLocationStore } from '../../location/locationStore'
 import type { Station, SystemDetails } from '../../types'
 import { AvailabilityPill } from '../primitives/Availability'
@@ -22,12 +24,12 @@ export function platform(): 'ios' | 'android' | 'desktop' {
   return 'desktop'
 }
 
-function statusBanner(st: Station): string | null {
+function statusBanner(st: Station, t: Messages): string | null {
   const s = st.status
-  if (!s || !s.isInstalled) return 'Out of service: this station is offline.'
-  if (!s.isRenting && !s.isReturning) return 'Not renting or accepting returns right now.'
-  if (!s.isRenting) return "Not renting: bikes can't be unlocked here right now."
-  if (!s.isReturning) return 'Not accepting returns right now.'
+  if (!s || !s.isInstalled) return t.statusOffline
+  if (!s.isRenting && !s.isReturning) return t.statusClosed
+  if (!s.isRenting) return t.statusNotRenting
+  if (!s.isReturning) return t.statusNotReturning
   return null
 }
 
@@ -38,7 +40,8 @@ function statusBanner(st: Station): string | null {
  */
 export function AppHandoff({ details }: { details: SystemDetails | undefined }) {
   const p = platform()
-  if (p === 'desktop') return <p className="text-sm text-slate-500">Unlock bikes with the BCycle app on your phone.</p>
+  const { t } = useI18n()
+  if (p === 'desktop') return <p className="text-sm text-slate-500">{t.unlockOnPhone}</p>
   const link = details?.rentalApps[p]
   const store = safeExternalUrl(link?.storeUri, LINK_HOSTS.appStores)
   const href = appLaunchUrl(p, link?.discoveryUri ?? null, store) ?? store
@@ -63,6 +66,7 @@ export function StationCard() {
   const { details } = useSystemDetails(systemId)
   const fix = useLocationStore((s) => s.fix)
   const now = useNow(10_000)
+  const { t, lang } = useI18n()
   const st = selectedId ? snapshot?.byId.get(selectedId) : undefined
   const close = () => {
     useAppStore.getState().selectStation(null)
@@ -71,16 +75,16 @@ export function StationCard() {
   if (!st || !systemId || !snapshot) {
     return (
       <div className="p-4 text-slate-500">
-        Station not found.{' '}
+        {t.stationNotFound}{' '}
         <button type="button" className="underline" onClick={close}>
-          Back
+          {t.back}
         </button>
       </div>
     )
   }
   const a = classifyStation(st, partySize)
   const mixed = fleetComposition(snapshot.stations) === 'mixed'
-  const banner = statusBanner(st)
+  const banner = statusBanner(st, t)
   const trendKind = mapMode
   const trend = trendDelta(getTrend(systemId, st.id), trendKind, 10 * 60_000)
   const walk = fix ? estimateBetween(fix.coord, st.coord, 'walk') : null
@@ -92,14 +96,14 @@ export function StationCard() {
   const docks = <AvailabilityPill kind="docks" count={st.status?.docks ?? 0} state={a.dockState} size={mapMode === 'docks' ? 'lg' : 'md'} />
 
   return (
-    <section aria-label={`Station ${st.name}`} className="space-y-3 p-4">
+    <section aria-label={t.stationAria(st.name)} className="space-y-3 p-4">
       <header className="flex items-start gap-2">
         <div className="min-w-0 flex-1">
           <h2 className="text-xl font-semibold leading-tight">{st.name}</h2>
           {st.address && st.address !== st.name && <p className="truncate text-sm text-slate-500">{st.address}</p>}
         </div>
-        <IconButton icon="star" label={isStarred ? 'Unstar station' : 'Star station'} pressed={isStarred} variant={isStarred ? 'primary' : 'secondary'} onClick={() => useAppStore.getState().toggleStar(systemId, st.id)} />
-        <IconButton icon="close" label="Close" onClick={close} />
+        <IconButton icon="star" label={isStarred ? t.unstar : t.star} pressed={isStarred} variant={isStarred ? 'primary' : 'secondary'} onClick={() => useAppStore.getState().toggleStar(systemId, st.id)} />
+        <IconButton icon="close" label={t.close} onClick={close} />
       </header>
       {banner && (
         <p role="status" className="rounded-lg bg-amber-50 px-3 py-2 text-sm font-medium text-amber-900 dark:bg-amber-950 dark:text-amber-200">
@@ -119,26 +123,26 @@ export function StationCard() {
             {bikes}
           </>
         )}
-        {st.hasKiosk && <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">Kiosk</span>}
+        {st.hasKiosk && <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">{t.kiosk}</span>}
       </div>
       <p className="text-sm text-slate-500">
-        Updated {formatTimeAgo((now - snapshot.lastUpdatedMs) / 1000)}
+        {t.updated(formatTimeAgo((now - snapshot.lastUpdatedMs) / 1000, lang))}
         {trend && trend.delta !== 0 && (
           <span className="ml-2 font-medium text-slate-700 dark:text-slate-300">
             {trend.delta < 0 ? '▼' : '▲'}
-            {Math.abs(trend.delta)} {trendKind} in {Math.round(trend.spanMs / 60_000)} min
+            {t.trend(Math.abs(trend.delta), trendKind, Math.round(trend.spanMs / 60_000))}
           </span>
         )}
-        {walk && <span className="ml-2">· ~{formatDuration(walk.duration)} walk</span>}
+        {walk && <span className="ml-2">{t.walkAbout(formatDuration(walk.duration, lang))}</span>}
       </p>
       {/* All action rows share one 8 px rhythm. */}
       <div className="space-y-2">
       <div className="grid grid-cols-2 gap-2">
         <Button icon="bike" className="whitespace-nowrap px-2" onClick={() => startRideAt(st)} disabled={a.bikeState === 'unavailable' || a.bikeState === 'none'}>
-          Start ride here
+          {t.startRideHere}
         </Button>
         <Button variant="secondary" icon="dock" className="whitespace-nowrap px-2" onClick={() => rideTo({ kind: 'station', name: st.name, coord: st.coord, stationId: st.id })}>
-          Ride to here
+          {t.rideToHere}
         </Button>
         {/* Alerts when more free up than right now, so it never fires the moment it's tapped. */}
         <Button
@@ -148,7 +152,7 @@ export function StationCard() {
           onClick={() => useAppStore.getState().watchStation(watching ? null : { stationId: st.id, want, baseline: want === 'bikes' ? (st.status?.bikes ?? 0) : (st.status?.docks ?? 0) })}
           aria-pressed={watching}
         >
-          {watching ? 'Watching — tap to stop' : `Tell me when a ${want === 'bikes' ? 'bike' : 'dock'} frees up`}
+          {watching ? t.watching : t.tellMeWhen(want)}
         </Button>
       </div>
       <AppHandoff details={details} />

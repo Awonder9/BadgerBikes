@@ -1,6 +1,7 @@
 // Validation for anything that comes back from storage or the URL. Invalid pieces fall back to
 // defaults individually, so one corrupt value never takes the whole app down.
 import { RIDE } from '../config'
+import { LANGS } from '../i18n/lang'
 import { isValidLngLat } from '../lib/geo'
 import type { Place, PlaceKind } from '../types'
 import type { PassChoice, SavedPlace, Settings } from './types'
@@ -10,6 +11,7 @@ export const DEFAULT_SETTINGS: Settings = {
   partySize: 1,
   maxRideMinutes: RIDE.defaultMaxRideMinutes,
   mapStyle: 'auto',
+  language: 'auto',
   setupConfirmed: false,
   installTipSeen: false,
   passBySystem: {},
@@ -58,6 +60,7 @@ export function validateSettings(v: unknown): Settings {
     partySize: clampInt(v.partySize, 1, 4, DEFAULT_SETTINGS.partySize),
     maxRideMinutes: v.maxRideMinutes === 0 ? 0 : clampInt(v.maxRideMinutes, 5, 120, DEFAULT_SETTINGS.maxRideMinutes),
     mapStyle: oneOf(v.mapStyle, ['auto', 'light', 'dark'] as const, DEFAULT_SETTINGS.mapStyle),
+    language: oneOf(v.language, ['auto', ...LANGS], DEFAULT_SETTINGS.language),
     setupConfirmed: typeof v.setupConfirmed === 'boolean' ? v.setupConfirmed : DEFAULT_SETTINGS.setupConfirmed,
     installTipSeen: typeof v.installTipSeen === 'boolean' ? v.installTipSeen : DEFAULT_SETTINGS.installTipSeen,
     passBySystem,

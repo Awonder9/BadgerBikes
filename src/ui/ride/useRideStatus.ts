@@ -8,6 +8,7 @@ import { useLocationStore } from '../../location/locationStore'
 import { endDockState, replacementDocks, rideTimer } from '../../ride/rideProgress'
 import { useRideStore } from '../../ride/rideStore'
 import { useAppStore } from '../../store/appStore'
+import { currentMessages } from '../../i18n/useT'
 import { useRidePlan, type RidePlan } from './useRidePlan'
 
 export function useRideStatus(plan: RidePlan) {
@@ -63,11 +64,12 @@ export function useRideAlerts(): void {
       fired.current.clear()
       return
     }
+    const t = currentMessages()
     const alerts: Array<[string, string, string]> = []
-    if (timer?.state === 'warn') alerts.push(['warn', 'Ride time almost up', `${Math.ceil((timer.leftS ?? 0) / 60)} min left on your pass. Dock soon to avoid extra fees.`])
-    if (timer?.state === 'over') alerts.push(['over', 'Past your included ride time', 'Extra fees may apply until you dock.'])
-    if (endStation && dock === 'full') alerts.push([`full:${endStation.id}`, 'Your end dock is full', `${endStation.name} has no open docks. Open the app for nearby docks.`])
-    else if (endStation && dock === 'low') alerts.push([`low:${endStation.id}`, 'Your end dock is filling up', `${endStation.name} has only ${endStation.status?.docks ?? 0} open.`])
+    if (timer?.state === 'warn') alerts.push(['warn', t.notifyWarnTitle, t.notifyWarnBody(Math.ceil((timer.leftS ?? 0) / 60))])
+    if (timer?.state === 'over') alerts.push(['over', t.notifyOverTitle, t.extraFees])
+    if (endStation && dock === 'full') alerts.push([`full:${endStation.id}`, t.notifyFullTitle, t.notifyFullBody(endStation.name)])
+    else if (endStation && dock === 'low') alerts.push([`low:${endStation.id}`, t.notifyLowTitle, t.notifyLowBody(endStation.name, endStation.status?.docks ?? 0)])
     for (const [key, title, body] of alerts) {
       if (fired.current.has(key)) continue
       fired.current.add(key)

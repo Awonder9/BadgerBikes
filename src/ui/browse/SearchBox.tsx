@@ -6,6 +6,7 @@ import { searchStations } from '../../data/stationSearch'
 import { normalizeQuery, useGeocodeSearch } from '../../geocode/hooks'
 import { GEOCODE } from '../../config'
 import { useAppStore } from '../../store/appStore'
+import { useI18n } from '../../i18n/useT'
 import { useLocationStore, waitForFix } from '../../location/locationStore'
 import type { Place } from '../../types'
 import { Icon, type IconName } from '../primitives/Icon'
@@ -38,33 +39,34 @@ export function SearchBox({ label, placeholder, initialValue = '', autoFocus, in
   const fix = useLocationStore((s) => s.fix)
   const { snapshot } = useStationsSnapshot(systemId)
   const { places, loading, error } = useGeocodeSearch(q, systemId, fix?.coord ?? null)
+  const { t } = useI18n()
 
   const options = useMemo<Option[]>(() => {
     const out: Option[] = []
     const query = q.trim()
-    if (includeMyLocation && !query) out.push({ key: 'me', icon: 'locate', title: 'My location', place: 'myLocation' })
+    if (includeMyLocation && !query) out.push({ key: 'me', icon: 'locate', title: t.myLocation, place: 'myLocation' })
     if (!query) {
-      for (const s of saved.filter((p) => p.systemId === systemId)) out.push({ key: `saved:${s.id}`, icon: s.icon, title: s.label, detail: s.place.name, place: { ...s.place, kind: s.place.kind } })
-      for (const [i, r] of recent.entries()) out.push({ key: `recent:${i}`, icon: 'clock', title: r.name, detail: r.detail, place: r })
+      for (const s of saved.filter((p) => p.systemId === systemId)) out.push({ key: `saved:${s.id}`, icon: s.icon, title: s.icon === 'home' ? t.home : s.icon === 'work' ? t.work : s.label, detail: s.place.name, place: { ...s.place, kind: s.place.kind } })
+      for (const [i, r] of recent.entries()) out.push({ key: `recent:${i}`, icon: 'clock', title: r.kind === 'myLocation' ? t.myLocation : r.name, detail: r.detail, place: r })
       return out
     }
     if (snapshot) {
       for (const m of searchStations(snapshot.stations, query, 4)) {
         const st = m.station
-        out.push({ key: `st:${st.id}`, icon: 'bike', title: st.name, detail: st.status ? `${st.status.bikes} bikes · ${st.status.docks} docks` : 'Station', place: { kind: 'station', name: st.name, coord: st.coord, stationId: st.id } })
+        out.push({ key: `st:${st.id}`, icon: 'bike', title: st.name, detail: st.status ? t.stationCounts(st.status.bikes, st.status.docks) : t.station, place: { kind: 'station', name: st.name, coord: st.coord, stationId: st.id } })
       }
     }
     for (const [i, p] of places.entries()) out.push({ key: `pl:${i}`, icon: 'pin', title: p.name, detail: p.detail, place: p })
     return out
-  }, [q, includeMyLocation, saved, recent, systemId, snapshot, places])
+  }, [q, includeMyLocation, saved, recent, systemId, snapshot, places, t])
 
   const choose = (o: Option | undefined) => {
     if (!o) return
     setOpen(false)
     if (o.place === 'myLocation') {
-      setQ('My location')
+      setQ(t.myLocation)
       void waitForFix().then((c) => {
-        if (c) onSelect({ kind: 'myLocation', name: 'My location', coord: c })
+        if (c) onSelect({ kind: 'myLocation', name: t.myLocation, coord: c })
         else setQ('')
       })
       return
@@ -86,7 +88,7 @@ export function SearchBox({ label, placeholder, initialValue = '', autoFocus, in
           aria-autocomplete="list"
           aria-activedescendant={open && options[active] ? `${listId}-${active}` : undefined}
           className="min-h-11 w-full bg-transparent text-base outline-none placeholder:text-slate-500"
-          placeholder={placeholder ?? 'Search stations or places'}
+          placeholder={placeholder ?? t.searchStationsOrPlaces}
           value={q}
           autoFocus={autoFocus}
           enterKeyHint="search"
@@ -107,16 +109,16 @@ export function SearchBox({ label, placeholder, initialValue = '', autoFocus, in
             }
           }}
         />
-        {loading && <Spinner size={18} className="text-slate-400" label="Searching" />}
+        {loading && <Spinner size={18} className="text-slate-400" label={t.searching} />}
         {q && (
-          <button type="button" aria-label="Clear search" className="p-2 text-slate-500" onClick={() => setQ('')}>
+          <button type="button" aria-label={t.clearSearch} className="p-2 text-slate-500" onClick={() => setQ('')}>
             <Icon name="close" size={18} />
           </button>
         )}
       </label>
       {open && systemId && options.length === 0 && normalizeQuery(q).length >= GEOCODE.minChars && (
         <p role="status" className="absolute z-30 mt-1 w-full rounded-xl bg-white px-3 py-3 text-sm text-slate-500 shadow-xl ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-700">
-          {loading ? 'Searching…' : error ? 'Search isn’t available right now. Check your connection and try again.' : 'No places found. Try the name of a place, a street address, or a dock.'}
+          {loading ? t.searchingDots : error ? t.searchUnavailable : t.noPlacesFound}
         </p>
       )}
       {open && options.length > 0 && (

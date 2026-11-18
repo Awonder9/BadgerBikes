@@ -203,3 +203,28 @@ test('start from my location: walk to the best dock, trip total, walk-instead, p
   await card.getByRole('button', { name: "I've unlocked a bike" }).click()
   await expect(card).toContainText('Riding 0:0')
 })
+
+test.describe('on a Taiwanese (zh-TW) browser', () => {
+  test.use({ locale: 'zh-TW' })
+
+  test('the app follows the browser language; Settings switches to Simplified, English, and back to automatic', async ({ page, context }) => {
+    await mockApi(context)
+    await skipInstallTip(page)
+    await page.goto('/')
+    // Traditional Chinese by default; station names stay as BCycle sends them.
+    await expect(page.getByRole('button', { name: '規劃騎乘' })).toBeVisible()
+    await expect(page.locator('html')).toHaveAttribute('lang', 'zh-TW')
+    await page.getByRole('button', { name: '設定' }).click()
+    const language = page.getByRole('combobox', { name: /^語言/ })
+    await expect(language).toHaveValue('auto')
+    await language.selectOption('zh-Hans')
+    await expect(page.getByRole('heading', { name: '设置' })).toBeVisible()
+    await expect(page.locator('html')).toHaveAttribute('lang', 'zh-CN')
+    await page.getByRole('combobox', { name: /^语言/ }).selectOption('en')
+    await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible()
+    await page.reload()
+    await page.getByRole('button', { name: 'Settings' }).click() // remembered
+    await page.getByRole('combobox', { name: /^Language/ }).selectOption('auto')
+    await expect(page.getByRole('heading', { name: '設定' })).toBeVisible()
+  })
+})

@@ -1,5 +1,6 @@
 // One consistent availability display for StationCard, search results, TripSummary and the HUD.
 import type { AvailabilityState } from '../../types'
+import { useT } from '../../i18n/useT'
 import { Icon } from './Icon'
 
 const STATE_CLASSES: Record<AvailabilityState, string> = {
@@ -9,7 +10,6 @@ const STATE_CLASSES: Record<AvailabilityState, string> = {
   unavailable: 'bg-slate-100 text-slate-500 ring-slate-300 dark:bg-slate-800 dark:text-slate-400 dark:ring-slate-600',
 }
 
-const STATE_WORD: Record<AvailabilityState, string> = { ok: '', low: 'low', none: 'none', unavailable: 'unavailable' }
 
 export interface AvailabilityPillProps {
   kind: 'bikes' | 'docks'
@@ -24,11 +24,11 @@ export interface AvailabilityPillProps {
 export function AvailabilityPill({ kind, count, state, ebikes = null, size = 'md' }: AvailabilityPillProps) {
   const text = size === 'lg' ? 'text-2xl px-3 py-1.5' : size === 'sm' ? 'text-sm px-2 py-0.5' : 'text-base px-2.5 py-1'
   const iconSize = size === 'lg' ? 26 : size === 'sm' ? 16 : 20
-  const noun = kind === 'bikes' ? (count === 1 ? 'bike' : 'bikes') : count === 1 ? 'dock' : 'docks'
+  const t = useT()
   const label =
     state === 'unavailable'
-      ? `${kind === 'bikes' ? 'Bikes' : 'Docks'} unavailable`
-      : `${count} ${noun}${ebikes !== null && kind === 'bikes' ? `, ${ebikes} electric` : ''}${STATE_WORD[state] ? ` (${STATE_WORD[state]})` : ''}`
+      ? t.pillUnavailable(kind)
+      : t.pillLabel(kind, count, kind === 'bikes' ? ebikes : null, state === 'low' || state === 'none' ? state : null)
   return (
     <span className={`inline-flex items-center rounded-full font-semibold tabular-nums ring-1 ${STATE_CLASSES[state]} ${text}`}>
       <span className="sr-only">{label}</span>
