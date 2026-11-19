@@ -4,7 +4,8 @@ import { useNow, useStationsSnapshot, useSystemDetails } from '../../data/hooks'
 import { getTrend, trendDelta } from '../../data/trend'
 import { formatDuration, formatTimeAgo } from '../../lib/format'
 import { classifyStation, fleetComposition } from '../../lib/stationState'
-import { appLaunchUrl, safeExternalUrl, LINK_HOSTS } from '../../lib/urlParams'
+import { appLaunchUrl, buildStationShareUrl, safeExternalUrl, LINK_HOSTS } from '../../lib/urlParams'
+import { directionsFromHereUrl } from '../../ride/googleMaps'
 import { estimateBetween } from '../../routing/estimates'
 import { useAppStore } from '../../store/appStore'
 import { useI18n } from '../../i18n/useT'
@@ -14,6 +15,7 @@ import type { Station, SystemDetails } from '../../types'
 import { AvailabilityPill } from '../primitives/Availability'
 import { Button, IconButton } from '../primitives/Button'
 import { Icon } from '../primitives/Icon'
+import { ShareButton } from '../primitives/ShareButton'
 import { platform } from '../platform'
 import { rideTo, startRideAt } from '../ride/rideActions'
 
@@ -147,6 +149,20 @@ export function StationCard() {
         >
           {watching ? t.watching : t.tellMeWhen(want)}
         </Button>
+        <a
+          href={directionsFromHereUrl(st.coord, 'walking')}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={t.directionsAria(st.name)}
+          className="flex min-h-11 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl px-2 font-medium ring-1 ring-slate-300 dark:ring-slate-600"
+        >
+          <Icon name="walk" size={20} className="shrink-0" /> {t.directions}
+        </a>
+        <ShareButton
+          title={t.shareStationTitle(st.name)}
+          url={() => buildStationShareUrl(window.location.origin, systemId, st.id)}
+          className="flex min-h-11 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl px-2 font-medium ring-1 ring-slate-300 dark:ring-slate-600"
+        />
       </div>
       <AppHandoff details={details} />
       </div>

@@ -11,7 +11,7 @@ import { APP } from '../config'
 import { toAppError } from '../lib/errors'
 import { isValidLngLat } from '../lib/geo'
 import { safeStorage } from '../lib/storage'
-import { fleetComposition } from '../lib/stationState'
+import { ridesElectric } from '../lib/stationState'
 import { validatePlace } from '../store/validate'
 import type { Place, RouteLeg, StationsSnapshot } from '../types'
 import { useAppStore } from '../store/appStore'
@@ -217,12 +217,13 @@ export const useRideStore = create<RideState>()(
 
 /** Options shared by the dock list and the optimized stops (rider's settings, fleet, route pace). */
 function dockOpts(route: RouteLeg, snapshot: StationsSnapshot, destination: Place, partySize: number) {
+  const { maxRideMinutes, preferEbikes } = useAppStore.getState().settings
   return {
     destination: destination.coord,
     destStationId: destination.stationId,
     partySize,
-    electric: fleetComposition(snapshot.stations) === 'electric',
-    maxRideMinutes: useAppStore.getState().settings.maxRideMinutes,
+    electric: ridesElectric(snapshot.stations, preferEbikes),
+    maxRideMinutes,
     secondsPerMeter: routePace(route),
   }
 }

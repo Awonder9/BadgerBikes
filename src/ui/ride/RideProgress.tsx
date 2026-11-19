@@ -4,14 +4,17 @@
 //
 // The page cannot run while Google Maps is in front, so alerts fire while this app is open — e.g. when
 // the rider comes back for the next part. Counts refresh as soon as the app is visible again.
-import { useState } from 'react'
 import { formatDistance } from '../../lib/format'
 import { directionsFromHereUrl } from '../../ride/googleMaps'
 import { clock } from '../../ride/rideProgress'
 import { useRideStore } from '../../ride/rideStore'
 import { useAppStore } from '../../store/appStore'
 import { useI18n } from '../../i18n/useT'
+import { useNearestOpenDock } from '../browse/useNearestOpenDock'
+import { requestNotificationAccess, useNotificationAccess } from '../notifications'
+import { isStandalone, platform } from '../platform'
 import { Icon } from '../primitives/Icon'
+import { useBackgroundAlerts } from './backgroundAlerts'
 import { useRidePlan, type RidePlan } from './useRidePlan'
 import { useRideStatus } from './useRideStatus'
 
@@ -20,7 +23,9 @@ export function RideStatusCard({ plan }: { plan: RidePlan }) {
   const { active, timer, endStation, dock, replacements } = useRideStatus(plan)
   const units = useAppStore((s) => s.settings.units)
   const { t, lang } = useI18n()
-  const [perm, setPerm] = useState(() => (typeof Notification === 'undefined' ? 'unsupported' : Notification.permission))
+  const access = useNotificationAccess()
+  const background = useBackgroundAlerts((s) => s.on)
+  const nearest = useNearestOpenDock()
   if (!active) return null
   const tone = timer?.state === 'over' ? 'bg-red-50 text-red-900 dark:bg-red-950 dark:text-red-100' : timer?.state === 'warn' ? 'bg-amber-50 text-amber-900 dark:bg-amber-950 dark:text-amber-100' : 'bg-brand-50 dark:bg-brand-900'
   return (
@@ -76,23 +81,22 @@ export function RideStatusCard({ plan }: { plan: RidePlan }) {
           )}
         </div>
       )}
-      {perm === 'default' && (
-        <button
-          type="button"
-          className="text-sm underline"
-          onClick={() => {
-            void Notification.requestPermission().then((p) => setPerm(p))
-          }}
-        >
+      <button type="button" className="flex min-h-11 items-center gap-1.5 text-sm font-medium underline disabled:opacity-60" disabled={nearest.finding} onClick={nearest.find}>
+        <Icon name="dock" size={16} className="shrink-0" />
+        {nearest.finding ? t.findingYou : t.nearestOpenDock}
+      </button>
+      {nearest.message && <p className="text-sm">{nearest.message}</p>}
+      {access === 'default' && (
+        <button type="button" className="text-sm underline" onClick={() => void requestNotificationAccess()}>
           {t.turnOnAlerts}
         </button>
       )}
-      <p className="text-xs opacity-80">{t.alertsNote}</p>
+      <p className="text-xs opacity-80">{background ? t.alertsBackground : platform() === 'ios' && !isStandalone() ? t.alertsIosInstall : t.alertsNote}</p>
     </section>
   )
 }
 
-/** Shown over the map when a ride is in progress and the planner is closed. */
+/** Shown over the map when a ride is in progress and the planner is closed (placed by AppShell's banner stack). */
 export function RideBanner() {
   const panel = useAppStore((s) => s.panel)
   const plan = useRidePlan()
@@ -108,7 +112,7 @@ export function RideBanner() {
         useAppStore.getState().setPanel('ride')
         if (useAppStore.getState().sheet === 'peek') useAppStore.getState().setSheet('half')
       }}
-      className={`absolute inset-x-3 top-[calc(max(0.75rem,env(safe-area-inset-top))+3.25rem)] z-30 flex min-h-12 items-center gap-2 rounded-2xl px-3 py-2 text-left text-white shadow-xl ${alert ? 'bg-red-700' : timer?.state === 'warn' ? 'bg-amber-700' : 'bg-brand-700'}`}
+      className={`pointer-events-auto flex min-h-12 w-full items-center gap-2 rounded-2xl px-3 py-2 text-left text-white shadow-xl ${alert ? 'bg-red-700' : timer?.state === 'warn' ? 'bg-amber-700' : 'bg-brand-700'}`}
     >
       <Icon name="bike" size={20} />
       <span className="min-w-0 flex-1 truncate text-sm font-semibold">

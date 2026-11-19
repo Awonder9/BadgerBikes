@@ -21,6 +21,8 @@ export interface Settings {
   mapStyle: 'auto' | 'light' | 'dark'
   /** UI language; 'auto' follows the system/browser language. */
   language: LanguageSetting
+  /** Fleets with both kinds: the map counts e-bikes and pickups favor docks that have them (e-bike speeds). */
+  preferEbikes: boolean
   /** Rider confirmed "I have the BCycle app and a pass" (removes the first-ride overhead). */
   setupConfirmed: boolean
   /** The first-visit "add to home screen" pop-up was shown and dismissed. */
@@ -71,5 +73,6 @@ export interface AppActions {
   removeSavedPlace(id: string): void
   toggleStar(systemId: string, stationId: string): void
   pushRecent(place: Place): void
+  clearRecent(): void
   watchStation(watch: AppState['watchedStation']): void
 }

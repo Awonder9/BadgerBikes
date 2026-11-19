@@ -1,5 +1,6 @@
-// The single gateway for network access (client → /api, Worker → upstreams): JSON over fetch with a
-// timeout, AbortSignal support, typed AppErrors, and de-duplication of identical in-flight GETs.
+// The single gateway for network access (client → /api, Worker → upstreams and push services): JSON over
+// fetch (and raw bytes for Web Push) with a timeout, AbortSignal support, typed AppErrors, and de-duplication
+// of identical in-flight GETs.
 // Upstream rate limiting is NOT done here — the Worker acquires a slot from the UpstreamGate first.
 import { HTTP } from '../config'
 import { AppError, isAbort, isApiErrorBody } from './errors'
@@ -44,7 +45,8 @@ function redact(url: string): string {
 interface RawRequest {
   url: string
   method: 'GET' | 'POST'
-  body?: string
+  /** A string is sent as JSON; bytes as given (with their own Content-Type header). */
+  body?: string | Uint8Array<ArrayBuffer>
   headers?: Record<string, string>
   cache?: RequestInit['cache']
   provider?: string
@@ -75,7 +77,7 @@ async function send(req: RawRequest, signal: AbortSignal, timeoutMs: number): Pr
   const init: RequestInit = {
     method: req.method,
     signal: controller.signal,
-    headers: { Accept: 'application/json', ...(req.body !== undefined ? { 'Content-Type': 'application/json' } : {}), ...req.headers },
+    headers: { Accept: 'application/json', ...(typeof req.body === 'string' ? { 'Content-Type': 'application/json' } : {}), ...req.headers },
   }
   if (req.body !== undefined) init.body = req.body
   if (req.cache) init.cache = req.cache
@@ -196,4 +198,26 @@ export function postJson<T>(url: string, body: unknown, opts: RequestOptions = {
   if (signal?.aborted) return Promise.reject(new AppError('aborted', 'Aborted', { provider: opts.provider }))
   const req: RawRequest = { url, method: 'POST', body: JSON.stringify(body), headers: opts.headers, cache: opts.cache, provider: opts.provider }
   return requestJson<T>(req, signal ?? neverAborted(), timeoutMs)
+}
+
+/**
+ * POST raw bytes (e.g. an encrypted Web Push message, with its own headers) and resolve with the HTTP status:
+ * the caller decides what each status means. The response body is read and discarded. Rejects only with
+ * AppError 'aborted' | 'network' | 'timeout'. Never de-duplicated.
+ */
+export async function postBytes(url: string, body: Uint8Array<ArrayBuffer>, opts: Pick<RequestOptions, 'signal' | 'timeoutMs' | 'headers' | 'provider'> = {}): Promise<{ status: number }> {
+  const { signal, timeoutMs = HTTP.timeoutMs } = opts
+  if (signal?.aborted) throw new AppError('aborted', 'Aborted', { provider: opts.provider })
+  const req: RawRequest = { url, method: 'POST', body, headers: opts.headers, provider: opts.provider }
+  const { res, done, timedOut } = await send(req, signal ?? neverAborted(), timeoutMs)
+  try {
+    await res.arrayBuffer()
+  } catch (err) {
+    if (timedOut()) throw new AppError('timeout', `Request timed out after ${timeoutMs} ms: ${redact(url)}`, { provider: opts.provider })
+    if (signal?.aborted) throw new AppError('aborted', 'Aborted', { provider: opts.provider })
+    throw new AppError('network', `Failed reading response: ${redact(url)}`, { provider: opts.provider, cause: err })
+  } finally {
+    done()
+  }
+  return { status: res.status }
 }

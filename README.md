@@ -35,11 +35,16 @@ location — no location prompt; Madison if none is near), and Settings → City
    **Or use Komoot / OsmAnd** — *Exact route for Komoot / OsmAnd* saves the ride as one GPX file. Those
    apps follow the exact line turn by turn: no 3-stop limit, no parts, no detours.
 6. **Ride** — after you open a part, the app tracks which parts you've opened ("Next: Part 2 → dock"),
-   times the ride against your pass, and watches your end dock (with nearby docks if it fills up). The
-   plan is saved on the device until you open the last link (the walk, or the last ride part) or arrive,
-   so coming back from Google Maps finds it intact. When you start from a place, the timer waits until you
-   tap *I've unlocked a bike*. *Share* sends a link to
-   the same ride.
+   times the ride against your pass (it asks which pass you have on your first ride), and watches your end
+   dock (with nearby docks if it fills up). With alerts on, "ride time almost up" and "end dock full" reach
+   you even while Google Maps is in front (on iPhone, once the app is on your Home Screen). The plan is
+   saved on the device until you open the last link (the walk, or the last ride part) or arrive, so coming
+   back from Google Maps finds it intact. When you start from a place, the timer waits until you tap
+   *I've unlocked a bike*. *Share* sends a link to the same ride.
+
+Also: **Nearest open dock** (where can I return this bike?) finds the closest dock with room from your
+location; each station card has walking **Directions** and **Share**; **Prefer e-bikes** (in cities with
+both kinds) makes the map count e-bikes; and an offline banner says when the counts can't update.
 
 If the free routing server is busy, the app says so and asks you to try again in a few seconds.
 Saved places, recents and the current ride live in the browser on that device only.
@@ -67,6 +72,13 @@ npm run deploy                          # builds, then wrangler deploy
 For local development, copy `.dev.vars.example` to `.dev.vars` and put your email there (it is never
 committed).
 
+**Background ride alerts (optional):** they need a VAPID key pair of your own. `npm run vapid-keys`
+prints one; set both with `npx wrangler secret put VAPID_PUBLIC_KEY` and `npx wrangler secret put
+VAPID_PRIVATE_KEY` (and paste both lines into `.dev.vars` to try them locally — they need the production
+build: `npm run preview`). Without the keys everything else works the same, and ride alerts show only
+while the app is open. During a ride with alerts on, the Worker keeps that ride's timer, end dock and push
+subscription (no location) until the ride ends, at most 4 hours.
+
 **Why the contact email:** the free FOSSGIS routing servers and Photon search ask every app to identify
 itself so their operators can reach you before blocking it. The email is sent with each request and
 shown on the About page. For heavy traffic, point `VITE_VALHALLA_URL` / `VITE_OSRM_*` at a self-hosted or
@@ -92,7 +104,8 @@ npm run e2e          # Playwright smoke tests (phone + desktop, network-free)
 
 - **Cloudflare Worker** (`worker/`): fetches and caches BCycle GBFS feeds, computes the three route
   options (Valhalla, OSRM fallback), geocodes (Photon), and enforces the public servers' 1 request/second
-  policy globally with a Durable Object.
+  policy globally with a Durable Object. Another Durable Object per device sends background ride alerts
+  (Web Push, encrypted with WebCrypto; no push library).
 - **Browser** (`src/`): MapLibre map and UI; `src/ride/` finds docks along the route, builds the Google
   Maps links (no API key needed) and keeps the ride plan and progress.
 - Design and rationale: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).

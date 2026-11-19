@@ -205,6 +205,8 @@ export const RIDE = {
   /** Pickup docks with this many bikes or fewer (beyond the party) rank lower by this many seconds. */
   pickupLowBikes: 2,
   pickupLowBikesPenaltyS: 90,
+  /** With "Prefer e-bikes", a pickup dock without enough e-bikes for the party ranks lower by this much. */
+  pickupNoEbikePenaltyS: 300,
   /** A start this close to its pickup dock needs no walking link. */
   walkLinkMinMeters: 60,
   /** "Walking is about as fast" when walking is within this many seconds of the bike trip. */
@@ -221,6 +223,29 @@ export const RIDE = {
   replacementRadiusMeters: 800,
   /** "Try again" stays disabled this long after the route server reported it was busy. */
   busyRetrySeconds: 3,
+} as const
+
+/**
+ * Background ride alerts (Web Push): the Worker's RideAlerts Durable Object sends "time almost up", "past your
+ * included time" and "end dock full" while Google Maps is in front (worker/rideAlerts.ts).
+ */
+export const PUSH = {
+  /**
+   * Push services the Worker sends to (Chrome/Android, Firefox, Safari, Edge on Windows). A subscription whose
+   * endpoint is anywhere else is refused, so the Worker can never be pointed at an arbitrary URL.
+   */
+  endpointHosts: ['fcm.googleapis.com', 'android.googleapis.com', 'updates.push.services.mozilla.com', 'push.services.mozilla.com', 'web.push.apple.com', 'notify.windows.com'],
+  maxEndpointLength: 1024,
+  /** How often the end dock is checked during a ride. */
+  dockCheckMs: 60_000,
+  /** A failed push is retried after this long. */
+  retryMs: 30_000,
+  /** A ride's alerts stop this long after it was scheduled (or started), whatever happens. */
+  maxRideMs: 4 * 60 * 60_000,
+  /** The push service drops an alert it couldn't deliver within this long (a stale alert is worse than none). */
+  ttlSeconds: 300,
+  /** Lifetime of the VAPID token sent to the push service (RFC 8292 allows at most 24 h). */
+  vapidTokenSeconds: 12 * 60 * 60,
 } as const
 
 /** Google Maps hand-off (src/ride/googleMaps.ts). */

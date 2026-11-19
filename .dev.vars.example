@@ -1,3 +1,7 @@
 # Copy to .dev.vars for local development (never committed).
 # Operator contact sent to the public routing/search servers and shown in the app's About page.
 CONTACT_EMAIL=you@example.com
+
+# Optional: background ride alerts (Web Push). Make your own pair with `npm run vapid-keys` and paste both lines.
+# VAPID_PUBLIC_KEY=
+# VAPID_PRIVATE_KEY=

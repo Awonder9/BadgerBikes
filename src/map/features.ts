@@ -46,6 +46,7 @@ export function buildStationFeatures(s: StationsSnapshot, opts: { partySize: num
           docks: st.status?.docks ?? 0,
           ebikes: st.status?.ebikes ?? -1,
           bikeState: a.bikeState,
+          ebikeState: a.ebikeState ?? a.bikeState,
           dockState: a.dockState,
           starred: opts.starred.has(st.id),
           planRole: role(st.id),

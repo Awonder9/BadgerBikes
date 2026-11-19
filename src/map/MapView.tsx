@@ -8,6 +8,7 @@ import { MAP } from '../config'
 import { getSystem } from '../data/systems'
 import { useStationsSnapshot } from '../data/hooks'
 import { AppError } from '../lib/errors'
+import { fleetComposition } from '../lib/stationState'
 import { useAppStore } from '../store/appStore'
 import { useT } from '../i18n/useT'
 import { useLocationStore } from '../location/locationStore'
@@ -20,7 +21,7 @@ import { addSavedIcons, savedImageId } from './savedIcons'
 import { useRouteDetails } from '../data/routeDetails'
 import type { PathKind } from '../routing/details'
 import { buildEndpointFeatures, buildSavedPlaceFeatures, buildPathKindFeatures, buildRouteFeatures, buildWalkFeatures, buildStationFeatures, buildUserFeatures, emptyCollection, rideRoles } from './features'
-import { LAYER_IDS as L, SOURCE_IDS as S, type MapViewProps, type Padding } from './types'
+import { LAYER_IDS as L, SOURCE_IDS as S, type MapViewProps, type Padding, type StationFeatureProps } from './types'
 
 // Starts downloading the map runtime as soon as the app starts. A failure is reported when the map is created.
 const runtime = import('./maplibre')
@@ -32,21 +33,23 @@ const ATTRIBUTION = [
   '<a href="https://www.openstreetmap.org/fixthemap">Report a map problem</a>',
 ]
 
-function colorExpr(mode: MapMode) {
-  const prop = mode === 'bikes' ? 'bikeState' : 'dockState'
-  return ['match', ['get', prop], 'ok', AVAILABILITY_COLORS.ok, 'low', AVAILABILITY_COLORS.low, 'none', '#ffffff', AVAILABILITY_COLORS.unavailable] as never
+/** What the station dots count: bikes, open docks, or — "Prefer e-bikes" in a mixed fleet — e-bikes only. */
+type StationView = MapMode | 'ebikes'
+const STATE_PROP: Record<StationView, keyof StationFeatureProps> = { bikes: 'bikeState', docks: 'dockState', ebikes: 'ebikeState' }
+
+function colorExpr(view: StationView) {
+  return ['match', ['get', STATE_PROP[view]], 'ok', AVAILABILITY_COLORS.ok, 'low', AVAILABILITY_COLORS.low, 'none', '#ffffff', AVAILABILITY_COLORS.unavailable] as never
 }
-function strokeExpr(mode: MapMode) {
-  const prop = mode === 'bikes' ? 'bikeState' : 'dockState'
-  return ['match', ['get', prop], 'none', AVAILABILITY_COLORS.none, '#ffffff'] as never
+function strokeExpr(view: StationView) {
+  return ['match', ['get', STATE_PROP[view]], 'none', AVAILABILITY_COLORS.none, '#ffffff'] as never
 }
-function labelExpr(mode: MapMode) {
-  const prop = mode === 'bikes' ? 'bikeState' : 'dockState'
-  return ['case', ['==', ['get', prop], 'unavailable'], '✕', ['to-string', ['get', mode]]] as never
+function labelExpr(view: StationView) {
+  // A station without a bike-type breakdown (ebikes −1) shows its total.
+  const count = view === 'ebikes' ? ['case', ['<', ['get', 'ebikes'], 0], ['get', 'bikes'], ['get', 'ebikes']] : ['get', view]
+  return ['case', ['==', ['get', STATE_PROP[view]], 'unavailable'], '✕', ['to-string', count]] as never
 }
-function labelColorExpr(mode: MapMode) {
-  const prop = mode === 'bikes' ? 'bikeState' : 'dockState'
-  return ['match', ['get', prop], 'none', AVAILABILITY_COLORS.none, '#ffffff'] as never
+function labelColorExpr(view: StationView) {
+  return ['match', ['get', STATE_PROP[view]], 'none', AVAILABILITY_COLORS.none, '#ffffff'] as never
 }
 
 function pathColorExpr(dark: boolean) {
@@ -54,7 +57,7 @@ function pathColorExpr(dark: boolean) {
   return ['match', ['get', 'kind'], ...entries, '#0f766e'] as never
 }
 
-function ensureLayers(map: MlMap, mode: MapMode, dark: boolean) {
+function ensureLayers(map: MlMap, view: StationView, dark: boolean) {
   const rc = dark ? ROUTE_COLORS.dark : ROUTE_COLORS.light
   if (!map.getSource(S.route)) map.addSource(S.route, { type: 'geojson', data: emptyCollection() })
   if (!map.getSource(S.stations)) map.addSource(S.stations, { type: 'geojson', data: emptyCollection(), promoteId: 'id' })
@@ -79,9 +82,9 @@ function ensureLayers(map: MlMap, mode: MapMode, dark: boolean) {
   if (!map.getLayer(L.stationStarred))
     map.addLayer({ id: L.stationStarred, type: 'circle', source: S.stations, filter: STARRED_FILTER, paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 6, 13, 11, 16, 17.5], 'circle-color': 'rgba(0,0,0,0)', 'circle-stroke-color': STAR_GOLD, 'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], 10, 2, 14, 3.5] } })
   if (!map.getLayer(L.stationCircle))
-    map.addLayer({ id: L.stationCircle, type: 'circle', source: S.stations, paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 4, 13, 8, 16, 14], 'circle-color': colorExpr(mode), 'circle-stroke-color': strokeExpr(mode), 'circle-stroke-width': 2 } })
+    map.addLayer({ id: L.stationCircle, type: 'circle', source: S.stations, paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 4, 13, 8, 16, 14], 'circle-color': colorExpr(view), 'circle-stroke-color': strokeExpr(view), 'circle-stroke-width': 2 } })
   if (!map.getLayer(L.stationCount))
-    map.addLayer({ id: L.stationCount, type: 'symbol', source: S.stations, minzoom: 12.5, layout: { 'text-field': labelExpr(mode), 'text-font': [...MAP.labelFont], 'text-size': ['interpolate', ['linear'], ['zoom'], 13, 10, 16, 14], 'text-allow-overlap': true, 'text-ignore-placement': true }, paint: { 'text-color': labelColorExpr(mode) } })
+    map.addLayer({ id: L.stationCount, type: 'symbol', source: S.stations, minzoom: 12.5, layout: { 'text-field': labelExpr(view), 'text-font': [...MAP.labelFont], 'text-size': ['interpolate', ['linear'], ['zoom'], 13, 10, 16, 14], 'text-allow-overlap': true, 'text-ignore-placement': true }, paint: { 'text-color': labelColorExpr(view) } })
   if (!map.getLayer(L.endpoints))
     map.addLayer({ id: L.endpoints, type: 'circle', source: S.endpoints, filter: ['in', ['get', 'kind'], ['literal', ['origin', 'destination']]], paint: { 'circle-radius': 7, 'circle-color': ['match', ['get', 'kind'], 'destination', '#dc2626', '#0f172a'], 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 3 } })
   // Home, Work and favorite places, above stations and route (but under the rider's own dot).
@@ -138,6 +141,8 @@ export function MapView({ ref, onStationClick, onBackgroundClick, onMapPick, onE
   const dark = isDarkStyle(settings.mapStyle, usePrefersDark())
   const styleUrl = dark ? MAP.styles.dark : MAP.styles.light
   const { snapshot } = useStationsSnapshot(systemId)
+  const mixedFleet = useMemo(() => !!snapshot && fleetComposition(snapshot.stations) === 'mixed', [snapshot])
+  const view: StationView = mode === 'bikes' && settings.preferEbikes && mixedFleet ? 'ebikes' : mode
   const { details } = useRouteDetails(systemId, ride.route)
   // While planning (route shown, ride not started), only the docks that matter stay on the map: the start
   // dock, the chosen stops and the other docks offered along the route. During the ride every dock shows
@@ -223,7 +228,7 @@ export function MapView({ ref, onStationClick, onBackgroundClick, onMapPick, onE
   const redraw = useEffectEvent(() => {
     const map = mapRef.current
     if (!map || !readyRef.current) return
-    ensureLayers(map, mode, dark)
+    ensureLayers(map, view, dark)
     applyDockFilter(routeDockIds)
     // A (re)loaded style starts with empty sources and no feature-state.
     lastStationsKey.current = ''
@@ -392,15 +397,15 @@ export function MapView({ ref, onStationClick, onBackgroundClick, onMapPick, onE
     map.setStyle(styleUrl)
   }, [styleUrl])
 
-  // Mode → paint/layout only (data unchanged).
+  // Bikes / Docks / e-bikes → paint/layout only (data unchanged).
   useEffect(() => {
     const map = mapRef.current
     if (!map || !readyRef.current || !map.getLayer(L.stationCircle)) return
-    map.setPaintProperty(L.stationCircle, 'circle-color', colorExpr(mode))
-    map.setPaintProperty(L.stationCircle, 'circle-stroke-color', strokeExpr(mode))
-    map.setLayoutProperty(L.stationCount, 'text-field', labelExpr(mode))
-    map.setPaintProperty(L.stationCount, 'text-color', labelColorExpr(mode))
-  }, [mode])
+    map.setPaintProperty(L.stationCircle, 'circle-color', colorExpr(view))
+    map.setPaintProperty(L.stationCircle, 'circle-stroke-color', strokeExpr(view))
+    map.setLayoutProperty(L.stationCount, 'text-field', labelExpr(view))
+    map.setPaintProperty(L.stationCount, 'text-color', labelColorExpr(view))
+  }, [view])
 
   useEffect(() => {
     syncStations(stationsKey)

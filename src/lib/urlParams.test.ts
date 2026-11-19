@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { appLaunchUrl, buildRideShareUrl, parseLatLon, parseLaunchParams, safeAppDiscoveryUri, safeExternalUrl, stripLaunchParams } from './urlParams'
+import { appLaunchUrl, buildRideShareUrl, buildStationShareUrl, parseLatLon, parseLaunchParams, safeAppDiscoveryUri, safeExternalUrl, stripLaunchParams } from './urlParams'
 
 const KNOWN = new Set(['bcycle_madison', 'bcycle_indego'])
 
@@ -38,6 +38,12 @@ describe('parseLaunchParams', () => {
     expect(parsed).toMatchObject({ systemId: 'bcycle_madison', rideStartId: 'bcycle_madison_1874', toStationId: 'bcycle_madison_1888', routeIndex: 1 })
     expect(parsed.to).toEqual({ coord: [-89.4003, 43.07652], name: 'Memorial Union & Terrace' })
     expect(stripLaunchParams(url + '#x')).toBe('/#x')
+  })
+
+  it('round-trips station share links', () => {
+    const url = buildStationShareUrl('https://bcycle.example', 'bcycle_madison', 'bcycle_madison_1874')
+    expect(url).toBe('https://bcycle.example/?system=bcycle_madison&station=bcycle_madison_1874')
+    expect(parseLaunchParams(new URL(url).search, KNOWN)).toMatchObject({ systemId: 'bcycle_madison', stationId: 'bcycle_madison_1874', rideStartId: null })
   })
 })
 

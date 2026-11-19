@@ -1,7 +1,7 @@
 // Composition root: providers, launch parameters (share links), theme, location watcher, shell.
 import { QueryClientProvider } from '@tanstack/react-query'
 import { Component, useEffect, type ReactNode } from 'react'
-import { createQueryClient, prefetchStations } from './data/hooks'
+import { createQueryClient, prefetchNearestStations, prefetchStations } from './data/hooks'
 import { SYSTEM_IDS } from './data/systems'
 import { parseLaunchParams, stripLaunchParams } from './lib/urlParams'
 import { api } from './api/client'
@@ -17,9 +17,11 @@ import { changeCity } from './ui/ride/rideActions'
 import { isDarkStyle, usePrefersDark } from './ui/useMediaQuery'
 
 // Created at startup, not on first render, so the launch screen's station request is already on its way
-// while React renders (the stored city, or the city a share link opens).
+// while React renders: the stored city, the city a share link opens, or on a first visit the nearest city.
 const queryClient = createQueryClient()
-prefetchStations(queryClient, parseLaunchParams(window.location.search, SYSTEM_IDS).systemId ?? useAppStore.getState().systemId)
+const launchCity = parseLaunchParams(window.location.search, SYSTEM_IDS).systemId ?? useAppStore.getState().systemId
+prefetchStations(queryClient, launchCity)
+const nearestCity = launchCity ? null : prefetchNearestStations(queryClient)
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
   state = { error: null as Error | null }
@@ -70,14 +72,20 @@ function useLaunchParams() {
   }, [])
 }
 
-/** First visit (no stored city, no ?system=): the BCycle city nearest the rider's approximate location. */
+/**
+ * First visit (no stored city, no ?system=): the BCycle city nearest the rider's approximate location, from
+ * the startup stations request (or, if that failed, a city lookup on its own; Madison if none is near).
+ */
 function useDefaultCity() {
   useEffect(() => {
-    if (useAppStore.getState().systemId) return
+    if (!nearestCity) return
+    // A city this copy of the app doesn't know (an older cached app, a newer Worker) falls back to the default,
+    // or the launch screen would wait for a city forever.
     const choose = (id: string | null) => {
-      if (!useAppStore.getState().systemId) useAppStore.getState().setSystem(id ?? APP.defaultSystemId)
+      const app = useAppStore.getState()
+      if (!app.systemId && !(id && app.setSystem(id))) app.setSystem(APP.defaultSystemId)
     }
-    api.locate().then(choose, () => choose(null))
+    void nearestCity.then((id) => id ?? api.locate().catch(() => null)).then(choose)
   }, [])
 }
 

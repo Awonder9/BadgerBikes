@@ -28,6 +28,14 @@ export function useRouteDetails(systemId: string | null, route: RouteLeg | null)
     gcTime: ROUTE_DETAILS.cacheMs,
     retry: false,
   })
-  // A disabled query (no city yet) is not "loading".
-  return { details: q.data, pending: enabled && q.isPending, failed: q.isError }
+  // A disabled query (no city yet) is not "loading". A failure (the routing server was busy) can be retried.
+  return {
+    details: q.data,
+    pending: enabled && q.isPending,
+    failed: q.isError,
+    retrying: q.isError && q.isFetching,
+    retry: () => {
+      void q.refetch()
+    },
+  }
 }

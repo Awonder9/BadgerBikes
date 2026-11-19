@@ -4,12 +4,17 @@ import { fetchStationsSnapshot, fetchSystemDetails } from '../src/data/gbfs'
 import { reversePlace, searchPlaces } from '../src/geocode/photon'
 import { createRouter } from '../src/routing'
 import { createApp } from './app'
+import { endpointKey, type PushSecrets } from './rideAlerts'
 import { createUpstream } from './upstream'
+import { vapidKeysFrom } from './webPush'
 
 export { UpstreamGate } from './gate'
+export { RideAlerts } from './rideAlerts'
 
 export default {
   async fetch(request, env, ctx): Promise<Response> {
+    // Background ride alerts only when this deployment has VAPID keys (`npm run vapid-keys`).
+    const vapid = vapidKeysFrom(env as Env & PushSecrets)
     const upstream = createUpstream({
       // Cache writes and gate releases finish after the response is sent.
       waitUntil: (work) => ctx.waitUntil(work),
@@ -33,7 +38,10 @@ export default {
       now: () => Date.now(),
       contactEmail: env.CONTACT_EMAIL || null,
       version: env.APP_VERSION,
-      limiters: { route: env.ROUTE_LIMITER, geocode: env.GEOCODE_LIMITER },
+      limiters: { route: env.ROUTE_LIMITER, geocode: env.GEOCODE_LIMITER, push: env.PUSH_LIMITER },
+      push: vapid
+        ? { publicKey: vapid.publicKey, rideAlerts: async (endpoint) => env.RIDE_ALERTS.get(env.RIDE_ALERTS.idFromName(await endpointKey(endpoint))) }
+        : null,
     })
     return app.fetch(request)
   },

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { BIKE_ROUTING, RIDE } from '../../config'
-import { useNow, useStationsSnapshot } from '../../data/hooks'
+import { useNow, useStationsSnapshot, useSystemDetails } from '../../data/hooks'
 import { bikeMix, formatDistance, formatDuration, unitWord } from '../../lib/format'
 import { bboxOf } from '../../lib/geo'
 import { canRent, classifyCount, classifyStation } from '../../lib/stationState'
@@ -13,22 +13,25 @@ import { buildRideShareUrl } from '../../lib/urlParams'
 import { gpxFileName, rideGpx } from '../../ride/gpx'
 import { waitForFix } from '../../location/locationStore'
 import { useMapApiGetter } from '../../map/mapApiContext'
+import { passChoiceMatters } from '../../ride/rideProgress'
 import { chooseRoute, docksAlong, loadRideRoute, useRideStore } from '../../ride/rideStore'
 import { rideSeconds, type RouteDock } from '../../ride/stationsAlongRoute'
 import { sameRoute } from '../../routing/sameRoute'
 import { findSavedPlace, useAppStore } from '../../store/appStore'
 import { useI18n } from '../../i18n/useT'
 import type { Place, Station } from '../../types'
+import { PassSelect } from '../browse/PassSelect'
 import { SearchBox } from '../browse/SearchBox'
 import { AvailabilityPill } from '../primitives/Availability'
 import { IconButton } from '../primitives/Button'
 import { Icon } from '../primitives/Icon'
+import { ShareButton } from '../primitives/ShareButton'
 import { Spinner } from '../primitives/Spinner'
 import { RideStatusCard } from './RideProgress'
 import { useRidePlan, type RidePlan } from './useRidePlan'
 
 export function RidePlannerPanel() {
-  const { systemId, units, partySize } = useAppStore(useShallow((s) => ({ systemId: s.systemId, units: s.settings.units, partySize: s.settings.partySize })))
+  const { systemId, units, partySize, preferEbikes } = useAppStore(useShallow((s) => ({ systemId: s.systemId, units: s.settings.units, partySize: s.settings.partySize, preferEbikes: s.settings.preferEbikes })))
   const ride = useRideStore()
   const { snapshot } = useStationsSnapshot(systemId, { active: true })
   const plan = useRidePlan()
@@ -65,8 +68,8 @@ export function RidePlannerPanel() {
   const dest = ride.destination
   const dockCounts = useMemo(
     () => (snapshot && start && dest ? ride.routes.map((r) => docksAlong(r, snapshot, start.id, dest, partySize).filter((s) => s.reason === 'onRoute' && (s.station.status?.docks ?? 0) > 0).length) : []),
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- maxRideMinutes is read inside docksAlong
-    [ride.routes, snapshot, start, dest, partySize, maxRideMinutes],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- maxRideMinutes and preferEbikes are read inside docksAlong
+    [ride.routes, snapshot, start, dest, partySize, maxRideMinutes, preferEbikes],
   )
   // For each option, the earlier option it duplicates (the same path), or -1.
   const sameAsIndex = useMemo(
@@ -81,7 +84,7 @@ export function RidePlannerPanel() {
       <header className="flex items-center gap-1">
         <IconButton icon="back" label={t.back} variant="ghost" onClick={() => useAppStore.getState().setPanel('browse')} />
         <h2 className="flex-1 text-xl font-semibold">{riding ? t.yourRide : t.planARide}</h2>
-        {systemId && start && dest && ride.status === 'ready' && <ShareButton systemId={systemId} startId={start.id} destination={dest} routeIndex={ride.routeIndex} />}
+        {systemId && start && dest && ride.status === 'ready' && <ShareRideButton systemId={systemId} startId={start.id} destination={dest} routeIndex={ride.routeIndex} />}
         {(ride.origin || ride.startId || ride.destination) && (
           <button
             type="button"
@@ -149,6 +152,7 @@ export function RidePlannerPanel() {
           </div>
           <TripSummary plan={plan} units={units} />
           <RouteDetailsCard systemId={systemId} units={units} />
+          {systemId && <PassPrompt systemId={systemId} />}
 
           {along.length === 0 ? (
             <>
@@ -493,36 +497,10 @@ function FavoriteToggle({ systemId, place }: { systemId: string; place: Place })
   )
 }
 
-function ShareButton({ systemId, startId, destination, routeIndex }: { systemId: string; startId: string; destination: Place; routeIndex: number }) {
-  const [copied, setCopied] = useState(false)
+function ShareRideButton({ systemId, startId, destination, routeIndex }: { systemId: string; startId: string; destination: Place; routeIndex: number }) {
   const { t } = useI18n()
-  const share = async () => {
-    const url = buildRideShareUrl(window.location.origin, {
-      systemId,
-      startId,
-      to: { coord: destination.coord, name: destination.name },
-      toStationId: destination.stationId ?? null,
-      routeIndex,
-    })
-    const text = t.shareTitle(destination.name)
-    try {
-      if (typeof navigator.share === 'function') return await navigator.share({ title: text, url })
-    } catch (e) {
-      if (e instanceof DOMException && e.name === 'AbortError') return
-    }
-    try {
-      await navigator.clipboard.writeText(url)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2500)
-    } catch {
-      window.prompt(t.copyLink, url)
-    }
-  }
-  return (
-    <button type="button" className="flex min-h-11 items-center gap-1 px-2 text-sm font-medium text-brand-700 dark:text-brand-300" onClick={() => void share()} aria-live="polite">
-      <Icon name="share" size={18} /> {copied ? t.copied : t.share}
-    </button>
-  )
+  const url = () => buildRideShareUrl(window.location.origin, { systemId, startId, to: { coord: destination.coord, name: destination.name }, toStationId: destination.stationId ?? null, routeIndex })
+  return <ShareButton title={t.shareTitle(destination.name)} url={url} className="flex min-h-11 items-center gap-1 px-2 text-sm font-medium text-brand-700 dark:text-brand-300" />
 }
 
 /**
@@ -638,14 +616,43 @@ function TripSummary({ plan, units }: { plan: RidePlan; units: 'imperial' | 'met
   )
 }
 
+/**
+ * First ride in this city: which pass the rider has, so the ride timer warns before their included time runs
+ * out. Asked once (any answer, "Not sure" included, is remembered; Settings → My pass changes it), and only
+ * when the city's passes include different times.
+ */
+function PassPrompt({ systemId }: { systemId: string }) {
+  const answered = useAppStore((s) => !!s.settings.passBySystem[systemId])
+  const { details } = useSystemDetails(systemId)
+  const { t } = useI18n()
+  if (answered || !details || !passChoiceMatters(details.passes)) return null
+  return (
+    <label className="block space-y-2 rounded-xl bg-brand-50 p-3 dark:bg-brand-900">
+      <span className="block font-medium">{t.whichPass}</span>
+      <span className="block text-sm text-slate-600 dark:text-slate-300">{t.whichPassHelp}</span>
+      <PassSelect systemId={systemId} details={details} placeholder={t.choosePass} className="min-h-11 w-full truncate rounded-lg bg-white px-2 ring-1 ring-slate-300 dark:bg-slate-900 dark:ring-slate-600" />
+    </label>
+  )
+}
+
 /** What the chosen route rides on (same colors as the line on the map), and its hills. One request per route. */
 function RouteDetailsCard({ systemId, units }: { systemId: string | null; units: 'imperial' | 'metric' }) {
   const route = useRideStore((s) => s.route)
-  const { details, pending } = useRouteDetails(systemId, route)
+  const { details, pending, failed, retrying, retry } = useRouteDetails(systemId, route)
   const { t, lang } = useI18n()
   if (!route) return null
   if (pending) return <p className="text-xs text-slate-500" role="status">{t.loadingPathDetails}</p>
-  if (!details) return <p className="text-xs text-slate-500">{t.pathDetailsUnavailable}</p>
+  if (!details)
+    return (
+      <p className="flex items-center gap-2 text-xs text-slate-500" role="status">
+        <span className="min-w-0 flex-1">{retrying ? t.loadingPathDetails : t.pathDetailsUnavailable}</span>
+        {failed && (
+          <button type="button" disabled={retrying} onClick={retry} className="min-h-11 shrink-0 rounded-lg px-2 font-medium text-brand-700 ring-1 ring-slate-300 disabled:opacity-60 dark:text-brand-300 dark:ring-slate-600">
+            {t.tryAgain}
+          </button>
+        )}
+      </p>
+    )
   const { breakdown, elevation } = details
   const total = breakdown.reduce((s, b) => s + b.meters, 0) || 1
   const pct = (m: number) => Math.round((m / total) * 100)

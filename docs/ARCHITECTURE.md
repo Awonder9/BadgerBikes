@@ -11,25 +11,31 @@ file wins; fix the doc.
 ## 1. Product scope
 
 A mobile-first web app (installable PWA) for BCycle riders in any BCycle city. The first visit picks the
-city nearest the rider (`GET /api/locate`, from Cloudflare's city-level request location — no permission
-prompt; `APP.defaultSystemId` = Madison when none is within `SYSTEM_DETECT.maxDistanceMeters`); Settings →
-City switches it (the current ride plan is cleared, since it belongs to the old city's stations).
+city nearest the rider (`GET /api/stations?system=nearest`, from Cloudflare's city-level request location —
+no permission prompt; `APP.defaultSystemId` = Madison when none is within `SYSTEM_DETECT.maxDistanceMeters`),
+in the same request that loads that city's stations; Settings → City switches it (the current ride plan is
+cleared, since it belongs to the old city's stations).
 
-1. **Live station map**: bikes and open docks, auto-refreshed, freshness badge, Bikes/Docks toggle,
-   accessible station list (also the fallback without WebGL2). A launch screen covers the app until the
-   first live snapshot arrives (Retry / Continue if BCycle is unreachable).
+1. **Live station map**: bikes and open docks, auto-refreshed, freshness badge, Bikes/Docks toggle
+   (*E-bikes* with *Prefer e-bikes* in cities with both kinds), accessible station list (also the fallback
+   without WebGL2), *Nearest open dock* (where can I return this bike?), an offline banner. A launch screen
+   covers the app until the first live snapshot arrives (Retry / Continue if BCycle is unreachable).
 2. **Station card**: status banner, live counts with trend, ~walk estimate, *Start ride here* / *Ride to
-   here*, a *BCycle* button (app hand-off), *Watch this station*, star.
+   here*, walking *Directions* (Google Maps), *Share*, a *BCycle* button (app hand-off), *Watch this
+   station*, star.
 3. **Ride planner** (§7): start dock (search, map tap, or *Nearest dock with bikes*) with its e-bike/classic
    mix → destination (search, map tap, quick chips for saved and recent places) → three route options
    (*Bike-friendly*, *Balanced*, *Fastest*) → docks along the route (preselected, uncheck to skip) →
    Google Maps links (split into parts) + a walking link.
 4. **Ride in progress**: parts opened are tracked ("Next: Part 2 → dock"), ride timer against the pass's
-   included minutes, end-dock watch with nearby replacement docks, alerts while the app is open, a banner
-   back to the plan. The plan and progress persist on the device until the last link (walk, or last ride
-   part) is opened or the rider arrives, because switching to Google Maps can reload the page.
+   included minutes (the planner asks for the pass on the first ride in a city), end-dock watch with nearby
+   replacement docks, alerts in the app and — Web Push from the Worker — in the background while Google
+   Maps is in front, a banner back to the plan. The plan and progress persist on the device until the last
+   link (walk, or last ride part) is opened or the rider arrives, because switching to Google Maps can
+   reload the page.
 5. **Share a ride**: link with start dock, destination and route option (Web Share or clipboard).
-6. **Search**: local station match + Photon places; saved places (Home/Work/starred) and recents.
+6. **Search**: local station match + Photon places; saved places (Home/Work/starred) and recents (clearable
+   in Settings).
 7. **First-visit tip**: how to add the app to the home screen (iOS Safari / Android Chrome), shown once.
 8. **About**: attributions, operator contact, "Report a map problem".
 
@@ -84,16 +90,20 @@ endpoints (the code supports this via env).
 
 ## 4. Worker (`worker/`)
 
-**Endpoints** (`src/api/contract.ts`): `GET /api/health`, `GET /api/meta`, `GET /api/stations?system=`,
-`GET /api/system?system=`, `GET /api/locate` (nearest city), `POST /api/routes` (three bike route options), `POST /api/route-details`
+**Endpoints** (`src/api/contract.ts`): `GET /api/health`, `GET /api/meta`, `GET /api/stations?system=`
+(`system=nearest` on a first visit: the nearest city's stations — the response's `systemId` names the city —
+so the launch screen waits for one request, not a city lookup and then the stations),
+`GET /api/system?system=`, `GET /api/locate` (nearest city; the client's fallback if that first request
+fails), `POST /api/routes` (three bike route options), `POST /api/route-details`
 (path breakdown + elevation), `GET /api/geocode?q=&system=[&lat=&lon=]`,
-`GET /api/reverse?lat=&lon=`. Errors: `{ error: { code, message, retryable } }` with 4xx/5xx; codes from
-`AppErrorCode`.
+`GET /api/reverse?lat=&lon=`, `POST /api/push/ride` and `POST /api/push/cancel` (background ride alerts;
+404 when the deployment has no VAPID keys — `/api/meta` then reports `pushPublicKey: null`). Errors:
+`{ error: { code, message, retryable } }` with 4xx/5xx; codes from `AppErrorCode`.
 
 - Validate everything: `system` must match a registry id; coordinates finite and in range; strings trimmed
   and length-limited; body ≤ `HTTP.maxBodyBytes`. Unknown fields ignored.
-- Per-client-IP limits via Rate Limiting bindings (`ROUTE_LIMITER`, `GEOCODE_LIMITER`); exceeded → 429
-  `rate_limited`.
+- Per-client-IP limits via Rate Limiting bindings (`ROUTE_LIMITER`, `GEOCODE_LIMITER`, `PUSH_LIMITER`);
+  exceeded → 429 `rate_limited`.
 - Responses: JSON, `Cache-Control: no-store`, `X-Content-Type-Options: nosniff`, same-origin only.
 
 **Upstream layer (`worker/upstream.ts`)**: cache (per-isolate LRU, then the Cache API) → `UpstreamGate`
@@ -223,9 +233,26 @@ included minutes (warn at `RIDE.timerWarnMinutes`), end dock `ok | low | full` f
 docks with space within `RIDE.replacementRadiusMeters` of the destination (each with a Google Maps link from
 the rider's position), one-shot alerts (vibration + system notification if permitted, shown through the
 service worker's `showNotification` because Android Chrome refuses `new Notification()`; tapping one focuses
-the app via `public/sw-notifications.js`). A web page cannot run while Google Maps is in front, so alerts and
-counts update when the app is open again — the UI says so. Mid-ride, a dock tapped on the map opens its card
-(it never replaces the destination, which would also clear the ride timer and opened parts).
+the app via `public/sw-notifications.js`). Mid-ride, a dock tapped on the map opens its card (it never
+replaces the destination, which would also clear the ride timer and opened parts); *Nearest open dock* is on
+the ride card too. The first ride in a city asks which pass the rider has (only when its passes include
+different times; `passChoiceMatters`), so the timer warns at the right moment.
+
+**Background ride alerts** (Web Push; `src/ui/ride/backgroundAlerts.ts`, `worker/rideAlerts*.ts`,
+`worker/webPush.ts`): a web page cannot run while Google Maps is in front, so while a ride is under way and
+notifications are allowed, the client subscribes to push (VAPID key from `/api/meta`) and sends the Worker
+the ride's start, the pass's included minutes, the end dock, party size and language (`POST /api/push/ride`,
+re-sent whenever one changes; `POST /api/push/cancel` when the ride ends). A `RideAlerts` Durable Object per
+subscription (named by the endpoint's SHA-256) wakes on alarms: "almost up" at `RIDE.timerWarnMinutes`
+before the included time, "past your included time" when it runs out (only "over" once both are due), and
+"end dock full" from a check of the live feed every `PUSH.dockCheckMs`; each once per ride (re-registering
+the same ride repeats nothing). The text comes from the app's messages in the rider's language — never from
+the request. Messages are encrypted per RFC 8291 (aes128gcm) and authorized with VAPID (RFC 8292) using
+WebCrypto only, tested against the RFC 8291 Appendix A vectors; `TTL` `PUSH.ttlSeconds`, `Urgency: high`, a
+`Topic` per alert. 404/410 from the push service deletes the ride; other failures retry after
+`PUSH.retryMs`; everything is deleted at the latest `PUSH.maxRideMs` after the ride started. Pushed and
+in-app alerts share notification tags (`ALERT_TAGS`), so one replaces the other. iPhone: web push only
+works once the app is on the Home Screen; the ride card says so. Without push the in-app alerts still work.
 
 **Share links** (`src/lib/urlParams.ts`): `?system=<id>&start=<station id>&to=<lat,lon>&toName=&toStation=&route=<0-2>`,
 validated on load, applied to the ride store (replacing any saved plan; a link to another city switches it
@@ -269,6 +296,14 @@ like Settings → City), then removed from the address bar.
   derivation and shares the docks-along-route computation across its callers.
 - **Map while planning**: once a route is shown, only the start dock and the docks along the route (the
   selectable stops) stay on the map; other docks are filtered out until you leave the planner.
+- **Prefer e-bikes** (`settings.preferEbikes`, offered only when `fleetComposition` is `mixed`): the Bikes
+  view counts e-bikes (`ebikeState` / `ebikes` feature properties; the toggle reads *E-bikes*), pickup
+  ranking adds `RIDE.pickupNoEbikePenaltyS` for docks without enough e-bikes, and planner estimates use
+  e-bike speeds (`ridesElectric`), as they already did for all-electric fleets. Route requests are unchanged.
+- **Nearest open dock** (`useNearestOpenDock`, home panel and ride card): the rider's position →
+  `nearestOpenDock` (closest dock where the party can return, any distance) → docks view, its card open.
+- **Offline banner**: `navigator.onLine` (`useOnline`); it shares a stack under the map buttons with the
+  ride banner. React Query refetches the counts on reconnect.
 - **Launch screen**: a static copy in `index.html` (inline CSS, no JavaScript) paints as soon as the page
   arrives; `LoadingScreen.tsx` replaces it on the first render with the same layout (status lines reserve two
   lines in every language, so nothing shifts) and stays until the first snapshot; the install tip waits for it.
@@ -287,6 +322,12 @@ like Settings → City), then removed from the address bar.
   `safeExternalUrl` with host allow-lists. App hand-off (one "BCycle" button, `appLaunchUrl`): iOS opens BCycle's App Store page
   in the App Store app (`itms-apps://`, shows Open/Get) because the BCycle app no longer answers
   `bcycle://`; Android launches the app by package (`intent://` launcher intent) with the Play Store as fallback.
+- Web Push: the Worker only sends to https endpoints on known push services (`PUSH.endpointHosts`, no
+  credentials or ports), so a subscription can't aim it at an arbitrary URL; keys are checked for the exact
+  P-256/16-byte shapes; times must be plausible. The alert text is generated server-side from the app's
+  messages and the official station feed, so nobody can make the Worker send their own text. The VAPID
+  private key is a Worker secret. Stored per ride: the push subscription, language, city, end dock, party
+  size and ride timer — no location — until the ride ends, the subscription is gone, or 4 hours pass.
 
 ---
 
@@ -297,17 +338,26 @@ like Settings → City), then removed from the address bar.
 - Key suites: GBFS normalize/merge, pricing parse, Photon, Valhalla/OSRM normalizers (RouteLeg invariants),
   router fallbacks and the busy rejection, route options, docks along the route, Google link building
   (snapping, via points, part splitting, labels), ride store persistence/progress, ride timer and end-dock
-  watch, URL params, gate core, worker endpoints.
+  watch, nearest open dock, URL params, gate core, worker endpoints (incl. the first-visit nearest city).
+- Background alerts: Web Push encryption against the RFC 8291 test vectors and decrypted as a browser would,
+  the VAPID JWT verified with WebCrypto (`worker/webPush.test.ts`); the RideAlerts rules and the Durable
+  Object end to end with fake storage and the captured Madison feed (`worker/rideAlerts.test.ts`); the
+  browser hook's ordering (registers once the plan is known; a ride ended mid-registration is cancelled
+  after it — `src/ui/ride/backgroundAlerts.test.tsx`); the service worker's push/click handlers run against a
+  fake `self` (`src/ui/ride/serviceWorkerAlerts.test.ts`).
 - E2E (Playwright, phone + desktop, network-free with inline `/api/*` mocks): launch screen (slow and
   failing feed), install tip, default city + City setting, shared ride link with a busy route server, plan saved
-  across a reload until the last link is opened.
+  across a reload until the last link is opened, station card Directions/Share, Nearest open dock, offline
+  banner, Prefer e-bikes + clearing recents, the first-ride pass question and the path-details retry.
 
 ---
 
 ## 11. Deployment & operations
 
 Cloudflare Workers + static assets (`wrangler.jsonc`, custom domain badgerbikes.app). `npm run deploy`
-builds and runs `wrangler deploy`; `npm run cf-typegen` after changing bindings. Free plan limits are ample
+builds and runs `wrangler deploy`; `npm run cf-typegen` after changing bindings. Background ride alerts need
+the secrets `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` (`npm run vapid-keys` makes a pair; each deployment its
+own); without them `/api/meta` reports no push key and the client keeps to in-app alerts. Free plan limits are ample
 (I/O-bound requests). For heavier traffic than FOSSGIS allows, point `VITE_VALHALLA_URL` / `VITE_OSRM_*` at a
 self-hosted or commercial Valhalla-compatible service. PWA: `registerType: 'prompt'`, no runtime caching of live data. When a new version is deployed, a
 "Refresh" prompt stays on screen until the rider taps it (no "Later"), so nobody keeps running an old

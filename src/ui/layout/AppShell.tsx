@@ -4,6 +4,7 @@ import { useRegisterSW } from 'virtual:pwa-register/react'
 import { useShallow } from 'zustand/react/shallow'
 import { APP, UI } from '../../config'
 import { latestSnapshot, useStationsSnapshot } from '../../data/hooks'
+import { fleetComposition } from '../../lib/stationState'
 import { MapApiContext } from '../../map/mapApiContext'
 import { MapView } from '../../map/MapView'
 import type { MapApi } from '../../map/types'
@@ -15,10 +16,14 @@ import { InstallTip } from './InstallTip'
 import { AboutPanel, BrowsePanel, PinCard, SettingsPanel, StationList } from '../browse/panels'
 import { StationCard } from '../browse/StationCard'
 import { Button, IconButton } from '../primitives/Button'
+import { Icon } from '../primitives/Icon'
+import { useBackgroundRideAlerts } from '../ride/backgroundAlerts'
 import { RidePlannerPanel } from '../ride/RidePlannerPanel'
 import { rideMapTap } from '../ride/rideActions'
 import { RideBanner } from '../ride/RideProgress'
+import { useRidePlan } from '../ride/useRidePlan'
 import { useArrivalCheck, useRideAlerts } from '../ride/useRideStatus'
+import { useOnline } from '../useOnline'
 import { useRideStore } from '../../ride/rideStore'
 import { LoadingScreen } from './LoadingScreen'
 
@@ -202,17 +207,55 @@ function StationWatchToast() {
   return message ? <Toast message={message} onDismiss={() => setMessage(null)} /> : null
 }
 
-/** Ride alerts and the arrival check, in a leaf: the ride clock re-renders only this, not the whole app. */
+/** Ride alerts (in the app and in the background) and the arrival check, in a leaf: the ride clock re-renders only this. */
 function RideWatchers() {
-  useRideAlerts()
+  const plan = useRidePlan()
+  useRideAlerts(plan)
+  useBackgroundRideAlerts(plan)
   useArrivalCheck()
   return null
+}
+
+/** Bikes / Docks; "E-bikes" when the rider prefers them in a city that has both kinds (the map counts e-bikes then). */
+function MapModeToggle() {
+  const { systemId, mode, preferEbikes } = useAppStore(useShallow((s) => ({ systemId: s.systemId, mode: s.mapMode, preferEbikes: s.settings.preferEbikes })))
+  const { snapshot } = useStationsSnapshot(systemId)
+  const { t } = useI18n()
+  const ebikes = preferEbikes && !!snapshot && fleetComposition(snapshot.stations) === 'mixed'
+  return (
+    <div className="pointer-events-auto flex h-11 items-center rounded-full bg-white p-1 shadow-md dark:bg-slate-900" role="group" aria-label={t.mapShows}>
+      {(['bikes', 'docks'] as const).map((m) => (
+        <button
+          key={m}
+          type="button"
+          aria-pressed={mode === m}
+          className={`flex h-9 min-w-[4.5rem] items-center justify-center whitespace-nowrap rounded-full px-4 text-sm font-semibold ${mode === m ? 'bg-brand-700 text-white' : 'text-slate-700 dark:text-slate-200'}`}
+          onClick={() => useAppStore.getState().setMapMode(m)}
+        >
+          {m === 'docks' ? t.docksMode : ebikes ? t.ebikesMode : t.bikesMode}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+/** No connection: the counts on screen are the last ones received (they refresh when the connection is back). */
+function OfflineBanner() {
+  const online = useOnline()
+  const { t } = useI18n()
+  if (online) return null
+  return (
+    <p role="status" className="flex items-center gap-2 rounded-2xl bg-slate-900 px-3 py-2 text-sm font-medium text-white shadow-xl">
+      <Icon name="warning" size={18} className="shrink-0" />
+      {t.offline}
+    </p>
+  )
 }
 
 export function AppShell() {
   const mapRef = useRef<MapApi | null>(null)
   const desktop = useIsDesktop()
-  const { panel, mode } = useAppStore(useShallow((s) => ({ panel: s.panel, mode: s.mapMode })))
+  const panel = useAppStore((s) => s.panel)
   const [webglFailed, setWebglFailed] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
   const { t } = useI18n()
@@ -275,19 +318,7 @@ export function AppShell() {
           <div className="flex justify-start">
             <IconButton icon="locate" label={t.showMyLocation} className="pointer-events-auto shadow-md" onClick={locate} />
           </div>
-          <div className="pointer-events-auto flex h-11 items-center rounded-full bg-white p-1 shadow-md dark:bg-slate-900" role="group" aria-label={t.mapShows}>
-            {(['bikes', 'docks'] as const).map((m) => (
-              <button
-                key={m}
-                type="button"
-                aria-pressed={mode === m}
-                className={`flex h-9 min-w-[4.5rem] items-center justify-center rounded-full px-4 text-sm font-semibold ${mode === m ? 'bg-brand-700 text-white' : 'text-slate-700 dark:text-slate-200'}`}
-                onClick={() => useAppStore.getState().setMapMode(m)}
-              >
-                {m === 'bikes' ? t.bikesMode : t.docksMode}
-              </button>
-            ))}
-          </div>
+          <MapModeToggle />
           <div className="flex justify-end">
             <IconButton icon="settings" label={t.settings} className="pointer-events-auto shadow-md" onClick={() => useAppStore.getState().setPanel('settings')} />
           </div>
@@ -299,7 +330,11 @@ export function AppShell() {
           <BottomSheet onHeight={setSheetHeight}>{content}</BottomSheet>
         )}
 
-        <RideBanner />
+        {/* Status banners stack under the map buttons (and beside the side panel on desktop). */}
+        <div className="pointer-events-none absolute inset-x-3 top-[calc(max(0.75rem,env(safe-area-inset-top))+3.25rem)] z-30 flex flex-col gap-2" style={desktop ? { left: 412 } : undefined}>
+          <OfflineBanner />
+          <RideBanner />
+        </div>
         <RideWatchers />
         <UpdatePrompt />
         <InstallTip />

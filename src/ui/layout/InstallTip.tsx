@@ -5,17 +5,11 @@ import { APP } from '../../config'
 import { useStationsSnapshot } from '../../data/hooks'
 import { useAppStore } from '../../store/appStore'
 import { useI18n } from '../../i18n/useT'
-import { platform } from '../platform'
+import { isStandalone, platform } from '../platform'
 import { Button } from '../primitives/Button'
 import { Icon } from '../primitives/Icon'
 
 type Os = 'ios' | 'android'
-
-/** Running as an installed home-screen app already. */
-function isStandalone(): boolean {
-  if (typeof window === 'undefined') return false
-  return window.matchMedia?.('(display-mode: standalone)').matches === true || (navigator as Navigator & { standalone?: boolean }).standalone === true
-}
 
 export function InstallTip() {
   const seen = useAppStore((s) => s.settings.installTipSeen)

@@ -44,6 +44,15 @@ export function canReturn(station: Station, partySize = 1): boolean {
   return !!s && s.isInstalled && s.isReturning && s.docks >= partySize
 }
 
+/**
+ * The rider will be on an e-bike: an all-electric fleet, or a fleet with both kinds when they prefer e-bikes
+ * (Settings). Planner estimates then use e-bike speeds.
+ */
+export function ridesElectric(stations: readonly Station[], preferEbikes: boolean): boolean {
+  const fleet = fleetComposition(stations)
+  return fleet === 'electric' || (preferEbikes && fleet === 'mixed')
+}
+
 export type FleetComposition = 'electric' | 'classic' | 'mixed' | 'unknown'
 
 /**

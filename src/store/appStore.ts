@@ -97,6 +97,7 @@ export const useAppStore = create<AppState & AppActions>()(
           if (place.kind === 'myLocation') return {}
           return { recentPlaces: [place, ...s.recentPlaces.filter((p) => !samePlace(p, place))].slice(0, MAX_RECENT) }
         }),
+      clearRecent: () => set({ recentPlaces: [] }),
       watchStation: (watchedStation) => set({ watchedStation }),
     }),
     {

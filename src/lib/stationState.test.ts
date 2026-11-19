@@ -1,7 +1,7 @@
 
 import { describe, expect, it } from 'vitest'
 import { makeStation } from '../test/factories'
-import { canRent, canReturn, classifyCount, classifyStation, fleetComposition, stateForMode } from './stationState'
+import { canRent, canReturn, classifyCount, classifyStation, fleetComposition, ridesElectric, stateForMode } from './stationState'
 
 describe('classifyCount', () => {
   it('uses absolute thresholds, raised by party size', () => {
@@ -61,5 +61,17 @@ describe('fleetComposition', () => {
     expect(fleetComposition([makeStation({ bikes: 3, ebikes: 1, classic: 2 })])).toBe('mixed')
     expect(fleetComposition([makeStation({ bikes: 3, ebikes: null, classic: null })])).toBe('unknown')
     expect(fleetComposition([])).toBe('unknown')
+  })
+})
+
+describe('ridesElectric', () => {
+  it('is an all-electric fleet, or a mixed one when the rider prefers e-bikes', () => {
+    const electric = [makeStation({ bikes: 3, ebikes: 3, classic: 0 })]
+    const mixed = [makeStation({ bikes: 3, ebikes: 1, classic: 2 })]
+    const classic = [makeStation({ bikes: 3, ebikes: 0, classic: 3 })]
+    expect(ridesElectric(electric, false)).toBe(true)
+    expect(ridesElectric(mixed, false)).toBe(false)
+    expect(ridesElectric(mixed, true)).toBe(true)
+    expect(ridesElectric(classic, true)).toBe(false)
   })
 })

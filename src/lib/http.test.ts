@@ -1,7 +1,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AppError } from './errors'
-import { fetchJson, postJson, resetHttpState, setFetchImpl } from './http'
+import { fetchJson, postBytes, postJson, resetHttpState, setFetchImpl } from './http'
 import { LruCache } from './lru'
 import { HostScheduler } from './rateLimiter'
 
@@ -174,6 +174,39 @@ describe('HostScheduler', () => {
       }),
     ).rejects.toThrow('boom')
     await expect(s.schedule(async () => 'next')).resolves.toBe('next')
+  })
+})
+
+describe('postBytes', () => {
+  let restore: (() => void) | undefined
+  afterEach(() => {
+    restore?.()
+    restore = undefined
+  })
+
+  it('sends the bytes with the caller’s headers (no JSON Content-Type) and resolves with any status', async () => {
+    let seen: RequestInit | undefined
+    restore = setFetchImpl(async (_url, init) => {
+      seen = init
+      return new Response('gone', { status: 410 })
+    })
+    const body = new Uint8Array([1, 2, 3])
+    await expect(postBytes('https://push.example/x', body, { headers: { 'Content-Encoding': 'aes128gcm' } })).resolves.toEqual({ status: 410 })
+    expect(seen?.method).toBe('POST')
+    expect(seen?.body).toBe(body)
+    const headers = seen?.headers as Record<string, string> | undefined
+    expect(headers).toMatchObject({ 'Content-Encoding': 'aes128gcm' })
+    expect(headers?.['Content-Type']).toBeUndefined()
+  })
+
+  it('rejects with typed errors on network failure and timeout', async () => {
+    restore = setFetchImpl(async () => {
+      throw new TypeError('offline')
+    })
+    expect(await codeOf(postBytes('https://push.example/x', new Uint8Array(1)))).toBe('network')
+    restore()
+    restore = setFetchImpl((_url, init) => new Promise((_, reject) => init?.signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')))))
+    expect(await codeOf(postBytes('https://push.example/x', new Uint8Array(1), { timeoutMs: 10 }))).toBe('timeout')
   })
 })
 

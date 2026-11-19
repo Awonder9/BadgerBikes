@@ -5,11 +5,11 @@ import { RIDE } from '../../config'
 import { useNow, useStationsSnapshot } from '../../data/hooks'
 import { haversine } from '../../lib/geo'
 import { useLocationStore } from '../../location/locationStore'
-import { endDockState, replacementDocks, rideTimer } from '../../ride/rideProgress'
+import { ALERT_TAGS, endDockState, replacementDocks, rideTimer } from '../../ride/rideProgress'
 import { useRideStore } from '../../ride/rideStore'
 import { useAppStore } from '../../store/appStore'
 import { currentMessages } from '../../i18n/useT'
-import { useRidePlan, type RidePlan } from './useRidePlan'
+import type { RidePlan } from './useRidePlan'
 
 export function useRideStatus(plan: RidePlan) {
   const { systemId, partySize } = useAppStore(useShallow((s) => ({ systemId: s.systemId, partySize: s.settings.partySize })))
@@ -55,9 +55,12 @@ export function useArrivalCheck(): void {
   }, [active, fix, destination])
 }
 
-/** Fires a vibration + system notification (when allowed) once per condition while a ride is active. */
-export function useRideAlerts(): void {
-  const plan = useRidePlan()
+/**
+ * Fires a vibration + system notification (when allowed) once per condition while a ride is active and the
+ * app is open. In the background the Worker sends the same alerts (backgroundAlerts.ts) with the same tags,
+ * so one replaces the other instead of both showing.
+ */
+export function useRideAlerts(plan: RidePlan): void {
   const { active, timer, endStation, dock } = useRideStatus(plan)
   const fired = useRef(new Set<string>())
   useEffect(() => {
@@ -66,23 +69,23 @@ export function useRideAlerts(): void {
       return
     }
     const t = currentMessages()
-    const alerts: Array<[string, string, string]> = []
-    if (timer?.state === 'warn') alerts.push(['warn', t.notifyWarnTitle, t.notifyWarnBody(Math.ceil((timer.leftS ?? 0) / 60))])
-    if (timer?.state === 'over') alerts.push(['over', t.notifyOverTitle, t.extraFees])
-    if (endStation && dock === 'full') alerts.push([`full:${endStation.id}`, t.notifyFullTitle, t.notifyFullBody(endStation.name)])
-    else if (endStation && dock === 'low') alerts.push([`low:${endStation.id}`, t.notifyLowTitle, t.notifyLowBody(endStation.name, endStation.status?.docks ?? 0)])
-    for (const [key, title, body] of alerts) {
+    const alerts: Array<[key: string, tag: string, title: string, body: string]> = []
+    if (timer?.state === 'warn') alerts.push(['warn', ALERT_TAGS.warn, t.notifyWarnTitle, t.notifyWarnBody(Math.ceil((timer.leftS ?? 0) / 60))])
+    if (timer?.state === 'over') alerts.push(['over', ALERT_TAGS.over, t.notifyOverTitle, t.extraFees])
+    if (endStation && dock === 'full') alerts.push([`full:${endStation.id}`, ALERT_TAGS.full, t.notifyFullTitle, t.notifyFullBody(endStation.name)])
+    else if (endStation && dock === 'low') alerts.push([`low:${endStation.id}`, ALERT_TAGS.low, t.notifyLowTitle, t.notifyLowBody(endStation.name, endStation.status?.docks ?? 0)])
+    for (const [key, tag, title, body] of alerts) {
       if (fired.current.has(key)) continue
       fired.current.add(key)
-      notify(title, body)
+      notify(title, body, tag)
     }
   }, [active, timer?.state, timer?.leftS, endStation, dock])
 }
 
-function notify(title: string, body: string): void {
+function notify(title: string, body: string, tag: string): void {
   if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') navigator.vibrate([200, 100, 200])
   if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return
-  const options: NotificationOptions = { body, icon: '/icons/icon-192.png', tag: title }
+  const options: NotificationOptions = { body, icon: '/icons/icon-192.png', tag }
   const page = () => {
     try {
       const n = new Notification(title, options)

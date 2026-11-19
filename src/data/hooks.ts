@@ -3,7 +3,7 @@
 import { QueryClient, useQuery } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { api } from '../api/client'
-import type { MetaResponse, StationsResponse } from '../api/contract'
+import { NEAREST_SYSTEM, type MetaResponse, type StationsResponse } from '../api/contract'
 import { POLL } from '../config'
 import { AppError, toAppError } from '../lib/errors'
 import type { ClientStationsSnapshot, SystemDetails } from '../types'
@@ -79,6 +79,21 @@ export function prefetchStations(client: QueryClient, systemId: string | null): 
   if (systemId) void client.prefetchQuery(stationsQuery(systemId))
 }
 
+/**
+ * First visit (no city yet): one request picks the city nearest the rider's network location and loads its
+ * stations, so the launch screen doesn't wait for a city lookup and then a second request. Resolves to that
+ * city (its stations are in the cache for the hooks), or null if the request failed.
+ */
+export async function prefetchNearestStations(client: QueryClient): Promise<string | null> {
+  try {
+    const data = await api.stations(NEAREST_SYSTEM)
+    client.setQueryData(qk.stations(data.systemId), data)
+    return data.systemId
+  } catch {
+    return null
+  }
+}
+
 export interface StationsQuery {
   snapshot: ClientStationsSnapshot | undefined
   /** As of the last response; displays that show it over time age it on their own clock (FreshnessBadge). */
@@ -128,10 +143,12 @@ export function useSystemDetails(systemId: string | null, enabled = true): { det
   return { details: q.data, error: q.error ? toAppError(q.error) : null }
 }
 
-export function useMeta(): MetaResponse | undefined {
+/** Operator info and the push key. `enabled` false: no request, but cached data is returned. */
+export function useMeta(enabled = true): MetaResponse | undefined {
   const q = useQuery({
     queryKey: qk.meta(),
     queryFn: ({ signal }) => api.meta(signal),
+    enabled,
     staleTime: Infinity,
     retry: (n, err) => retryable(n, err, 2),
   })

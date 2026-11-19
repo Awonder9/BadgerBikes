@@ -99,6 +99,14 @@ export function buildRideShareUrl(origin: string, state: RideShareState): string
   return url.toString()
 }
 
+/** A link that opens the app on a station's card (read back by parseLaunchParams). */
+export function buildStationShareUrl(origin: string, systemId: string, stationId: string): string {
+  const url = new URL('/', origin)
+  url.searchParams.set('system', systemId)
+  url.searchParams.set('station', stationId)
+  return url.toString()
+}
+
 /** Host allow-lists for links built from feed data. */
 export const LINK_HOSTS = {
   bcycle: ['bcycle.com'],

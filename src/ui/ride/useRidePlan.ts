@@ -44,10 +44,10 @@ export function useIncludedMinutes(enabled = true): number | null {
  * computed once per change of its inputs instead of once per caller. Inputs are compared by identity.
  */
 let alongMemo: { args: readonly unknown[]; value: RouteDock[] } | null = null
-function sharedDocksAlong(route: RouteLeg, snapshot: StationsSnapshot, startId: string, dest: Place, partySize: number, maxRideMinutes: number, keepIds: readonly string[]): RouteDock[] {
-  const args = [route, snapshot, startId, dest, partySize, maxRideMinutes, keepIds]
+function sharedDocksAlong(route: RouteLeg, snapshot: StationsSnapshot, startId: string, dest: Place, partySize: number, settings: { maxRideMinutes: number; preferEbikes: boolean }, keepIds: readonly string[]): RouteDock[] {
+  const args = [route, snapshot, startId, dest, partySize, settings.maxRideMinutes, settings.preferEbikes, keepIds]
   if (alongMemo?.args.every((a, i) => a === args[i])) return alongMemo.value
-  // maxRideMinutes is read by docksAlong from the store; it is part of the key so a change recomputes.
+  // docksAlong reads these settings from the store; they are part of the key so a change recomputes.
   const value = docksAlong(route, snapshot, startId, dest, partySize, keepIds)
   alongMemo = { args, value }
   return value
@@ -92,7 +92,9 @@ export interface RidePlan {
 }
 
 export function useRidePlan(): RidePlan {
-  const { systemId, partySize, maxRideMinutes } = useAppStore(useShallow((s) => ({ systemId: s.systemId, partySize: s.settings.partySize, maxRideMinutes: s.settings.maxRideMinutes })))
+  const { systemId, partySize, maxRideMinutes, preferEbikes } = useAppStore(
+    useShallow((s) => ({ systemId: s.systemId, partySize: s.settings.partySize, maxRideMinutes: s.settings.maxRideMinutes, preferEbikes: s.settings.preferEbikes })),
+  )
   const ride = useRideStore(useShallow((s) => ({ origin: s.origin, startId: s.startId, destination: s.destination, route: s.route, stopIds: s.stopIds, openedParts: s.openedParts })))
   // Faster polling only while it matters (planner open or a ride under way); this hook is also used by
   // always-mounted pieces (ride banner, alerts, map), which must not keep the app polling fast.
@@ -107,14 +109,18 @@ export function useRidePlan(): RidePlan {
   // The chosen stops stay listed even when their counts change, so a dock that fills up mid-ride is still
   // the end of the ride (and is reported as full) instead of silently disappearing from the plan.
   const along = useMemo(
-    () => (route && snapshot && startId && snapshot.byId.has(startId) && dest ? sharedDocksAlong(route, snapshot, startId, dest, partySize, maxRideMinutes, ride.stopIds) : []),
-    [route, snapshot, startId, dest, partySize, maxRideMinutes, ride.stopIds],
+    () =>
+      route && snapshot && startId && snapshot.byId.has(startId) && dest
+        ? sharedDocksAlong(route, snapshot, startId, dest, partySize, { maxRideMinutes, preferEbikes }, ride.stopIds)
+        : [],
+    [route, snapshot, startId, dest, partySize, maxRideMinutes, preferEbikes, ride.stopIds],
   )
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- maxRideMinutes is read inside optimizedFor
-  const optimizedIds = useMemo(() => new Set(snapshot && dest && route ? optimizedFor(along, route, snapshot, dest, partySize) : []), [along, route, snapshot, dest, partySize, maxRideMinutes])
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- maxRideMinutes and preferEbikes are read inside optimizedFor
+  const optimizedIds = useMemo(() => new Set(snapshot && dest && route ? optimizedFor(along, route, snapshot, dest, partySize) : []), [along, route, snapshot, dest, partySize, maxRideMinutes, preferEbikes])
   const chosen = useMemo(() => along.filter((s) => ride.stopIds.includes(s.station.id)), [along, ride.stopIds])
   const end = chosen.at(-1)
-  const electric = useMemo(() => (snapshot ? fleetComposition(snapshot.stations) === 'electric' : false), [snapshot])
+  const fleet = useMemo(() => (snapshot ? fleetComposition(snapshot.stations) : 'unknown'), [snapshot])
+  const electric = fleet === 'electric' || (preferEbikes && fleet === 'mixed')
   const pace = route ? routePace(route) : undefined
   const segments = useMemo(() => (startId ? rideSegments(startId, chosen, maxRideMinutes > 0 ? maxRideMinutes : null, electric, pace) : []), [startId, chosen, maxRideMinutes, electric, pace])
   const walkTo = dest && end && haversine(end.station.coord, dest.coord) > WALK_LINK_MIN_METERS ? dest.coord : null
@@ -139,9 +145,10 @@ export function useRidePlan(): RidePlan {
   const origin = ride.origin
   const fromPlace = origin && !origin.stationId ? origin : null
   const walkToDock = fromPlace && start && haversine(fromPlace.coord, start.coord) > WALK_LINK_MIN_METERS ? walkLeg(fromPlace.coord, start.coord) : null
+  const wantEbikes = preferEbikes && fleet === 'mixed'
   const pickups = useMemo(
-    () => (fromPlace && snapshot ? pickupOptions(fromPlace.coord, dest?.coord ?? null, snapshot.stations, partySize, RIDE.pickupCandidates, electric) : []),
-    [fromPlace, dest, snapshot, partySize, electric],
+    () => (fromPlace && snapshot ? pickupOptions(fromPlace.coord, dest?.coord ?? null, snapshot.stations, partySize, RIDE.pickupCandidates, electric, wantEbikes) : []),
+    [fromPlace, dest, snapshot, partySize, electric, wantEbikes],
   )
   const walkFromDock = walkTo && end ? walkLeg(end.station.coord, walkTo) : null
   const rideS = end ? rideSeconds(end.along + end.offset, electric, pace) : null

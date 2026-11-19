@@ -42,6 +42,8 @@ export const zhHans: Messages = {
   watchReady: (name, n, kind, baseline) => `${name} 现在有 ${count(n, kind)}（之前为 ${baseline}）。`,
   locationDenied: '此网站的定位权限已关闭。请在浏览器设置中允许定位，然后重试。',
   locationNotFound: '无法获取你的位置，请稍后重试。',
+  ebikesMode: '电动单车',
+  offline: '你已离线。单车和空位数量可能不是最新的。',
 
   // Loading screen
   yourCity: '你的城市',
@@ -107,6 +109,7 @@ export const zhHans: Messages = {
   saveAsHome: '设为家',
   saveAsWork: '设为公司',
   stations: '站点',
+  nearestOpenDock: '最近有空位的站点',
 
   // Settings
   city: '城市',
@@ -128,7 +131,13 @@ export const zhHans: Messages = {
   styleDark: '深色',
   language: '语言',
   languageAuto: '跟随系统',
-  storageNote: '已保存的地点、最近的目的地、收藏的站点和当前骑行只存储在本设备上。清除本网站的数据（Cookie 和网站数据）会将其删除。',
+  preferEbikes: '优先电动单车',
+  preferEbikesHelp: '地图显示电动单车数量，规划时优先选择有电动单车的站点。',
+  recentPlaces: '最近的地点',
+  recentCount: (n) => `${n} 个地点`,
+  clearRecentAria: '清除最近的地点',
+  storageNote:
+    '已保存的地点、最近的目的地、收藏的站点和当前骑行只存储在本设备上。清除本网站的数据（Cookie 和网站数据）会将其删除。骑行中开启提醒时，本应用的服务器也会保存该次骑行的计时和终点站（不含你的位置），直到骑行结束。',
   aboutLink: '关于和致谢',
 
   // About
@@ -161,6 +170,9 @@ export const zhHans: Messages = {
   rideToHere: '骑到这里',
   watching: '正在关注 — 轻点停止',
   tellMeWhen: (kind) => (kind === 'bikes' ? '有单车时通知我' : '有空位时通知我'),
+  directions: '步行路线',
+  directionsAria: (name) => `在 Google 地图中查看前往 ${name} 的步行路线`,
+  shareStationTitle: (name) => `${name}：实时单车和空位`,
 
   // Search
   searching: '正在搜索',
@@ -254,6 +266,9 @@ export const zhHans: Messages = {
     busyRoad: '机动车道路',
   },
   elevationProfile: '海拔剖面图',
+  whichPass: '你用的是哪种骑行套餐？',
+  whichPassHelp: '这样骑行计时器就能在包含的时间用完前提醒你。随时可以在设置中更改。',
+  choosePass: '选择你的套餐',
 
   // Saved places
   savePlace: '收藏地点',
@@ -289,6 +304,8 @@ export const zhHans: Messages = {
   noOtherDocks: '目的地附近目前没有其他有空位的站点。',
   turnOnAlerts: '开启提醒（时间快到、终点站已满）',
   alertsNote: '只有在本应用打开时才会更新提醒和数量 — 请在路段之间回来查看。',
+  alertsBackground: '即使 Google 地图在前台，你也会收到这些提醒。',
+  alertsIosInstall: '在 iPhone 上，把本应用添加到主屏幕后，即使 Google 地图在前台也能收到这些提醒。',
   bannerFull: (name) => `${name} 已满 — 轻点查看附近站点`,
   minLeft: (min) => ` · 剩余 ${min} 分钟`,
   nextShort: (n) => `下一段：第 ${n} 段`,

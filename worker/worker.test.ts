@@ -1,7 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { APP } from '../src/config'
 import { resetHttpState, setFetchImpl } from '../src/lib/http'
+import type { PushRideRequest } from '../src/api/contract'
 import { makeSnapshot, makeStation } from '../src/test/factories'
-import { createApp, type AppDeps } from './app'
+import { createApp, type AppDeps, type RideAlertsRpc } from './app'
 import { GateCore } from './gateCore'
 import { createUpstream, resetUpstreamState, type Gate } from './upstream'
 
@@ -42,6 +44,18 @@ describe('worker app', () => {
     expect(await (await app.fetch(req())).json()).toEqual({ systemId: null })
   })
 
+  it('first visit: picks the nearest city and returns its stations in one request', async () => {
+    const asked: string[] = []
+    const app = createApp(deps({ fetchStationsSnapshot: async (id) => (asked.push(id), { ...snapshot, systemId: id }) }))
+    const req = (cf?: Record<string, string>) => Object.assign(new Request('https://x.test/api/stations?system=nearest'), cf ? { cf } : {})
+    const near = (await (await app.fetch(req({ latitude: '40.0150', longitude: '-105.2705' }))).json()) as { systemId: string; stations: unknown[] }
+    expect([near.systemId, near.stations.length]).toEqual(['bcycle_boulder', 1])
+    // Nowhere near a BCycle city, or no location: the default city.
+    expect(((await (await app.fetch(req({ latitude: '61.2', longitude: '-149.9' }))).json()) as { systemId: string }).systemId).toBe(APP.defaultSystemId)
+    expect(((await (await app.fetch(req())).json()) as { systemId: string }).systemId).toBe(APP.defaultSystemId)
+    expect(asked).toEqual(['bcycle_boulder', APP.defaultSystemId, APP.defaultSystemId])
+  })
+
   it('returns route details for a valid polyline only', async () => {
     const app = createApp(deps())
     const { encodePolyline } = await import('../src/lib/polyline')
@@ -72,6 +86,67 @@ describe('worker app', () => {
     const app = createApp(deps({ limiters: { route: { limit: async () => ({ success: false }) } as unknown as RateLimit } }))
     const res = await call(app, '/api/routes', { method: 'POST', body: routeBody })
     expect(res.status).toBe(429)
+  })
+})
+
+describe('background ride alerts API', () => {
+  const now = 1_800_000_000_000
+  const keys = { p256dh: 'BCVxsr7N_eNgVRqvHtD0zTZsEc6-VV-JvLexhqUzORcxaOzi6-AYWXvTBHm4bjyPjs7Vd8pZGH6SRpkNtoIAiw4', auth: 'BTBZMqHH6r4Tts7J_aSIgg' }
+  const ride = (o: Record<string, unknown> = {}) =>
+    JSON.stringify({ subscription: { endpoint: 'https://fcm.googleapis.com/fcm/send/abc', keys }, lang: 'en', systemId: 'bcycle_madison', endStationId: 'bcycle_madison_1874', partySize: 1, rideStartedAtMs: now - 60_000, includedMinutes: 30, ...o })
+  function withPush() {
+    const calls: Array<{ endpoint: string; op: string; req?: PushRideRequest }> = []
+    const rideAlerts = async (endpoint: string): Promise<RideAlertsRpc> => ({
+      schedule: async (req) => void calls.push({ endpoint, op: 'schedule', req }),
+      cancel: async () => void calls.push({ endpoint, op: 'cancel' }),
+    })
+    return { calls, app: createApp(deps({ now: () => now, push: { publicKey: 'BPUBLIC', rideAlerts } })) }
+  }
+  const post = (app: ReturnType<typeof createApp>, path: string, body: string) => call(app, path, { method: 'POST', body })
+
+  it('is off (and says so) without VAPID keys; the public key is published in /api/meta when on', async () => {
+    const off = createApp(deps())
+    expect(await (await call(off, '/api/meta')).json()).toMatchObject({ pushPublicKey: null })
+    expect((await post(off, '/api/push/ride', ride())).status).toBe(404)
+    expect(await (await call(withPush().app, '/api/meta')).json()).toMatchObject({ pushPublicKey: 'BPUBLIC' })
+  })
+
+  it('schedules the device’s ride and cancels it, keyed by its endpoint', async () => {
+    const { app, calls } = withPush()
+    const res = await post(app, '/api/push/ride', ride())
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ ok: true })
+    expect(calls[0]).toMatchObject({ endpoint: 'https://fcm.googleapis.com/fcm/send/abc', op: 'schedule', req: { lang: 'en', endStationId: 'bcycle_madison_1874', includedMinutes: 30 } })
+    expect((await post(app, '/api/push/cancel', JSON.stringify({ endpoint: 'https://fcm.googleapis.com/fcm/send/abc' }))).status).toBe(200)
+    expect(calls[1]).toEqual({ endpoint: 'https://fcm.googleapis.com/fcm/send/abc', op: 'cancel' })
+  })
+
+  it('only ever sends to known push services over https (never an arbitrary URL)', async () => {
+    const { app, calls } = withPush()
+    const refused = ['https://evil.example/fcm', 'http://fcm.googleapis.com/fcm/send/abc', 'https://fcm.googleapis.com.evil.example/x', 'https://user:pw@fcm.googleapis.com/x', 'https://fcm.googleapis.com:8443/x', 'javascript:alert(1)']
+    const statuses = await Promise.all(refused.map(async (endpoint) => [endpoint, (await post(app, '/api/push/ride', ride({ subscription: { endpoint, keys } }))).status]))
+    expect(statuses).toEqual(refused.map((endpoint) => [endpoint, 400]))
+    expect((await post(app, '/api/push/ride', ride({ subscription: { endpoint: 'https://wns2-par02p.notify.windows.com/w/?token=x', keys } }))).status).toBe(200)
+    expect(calls).toHaveLength(1)
+  })
+
+  it('rejects malformed keys, languages, parties and implausible times', async () => {
+    const { app, calls } = withPush()
+    const bad = [
+      ride({ subscription: { endpoint: 'https://fcm.googleapis.com/fcm/send/abc', keys: { p256dh: 'AAAA', auth: keys.auth } } }),
+      ride({ subscription: { endpoint: 'https://fcm.googleapis.com/fcm/send/abc', keys: { p256dh: keys.p256dh, auth: '<b>' } } }),
+      ride({ lang: 'fr' }),
+      ride({ partySize: 9 }),
+      ride({ rideStartedAtMs: now - 5 * 60 * 60_000 }),
+      ride({ rideStartedAtMs: now + 10 * 60_000 }),
+      ride({ includedMinutes: 0 }),
+      ride({ endStationId: '../x' }),
+      ride({ systemId: 'bcycle_nowhere' }),
+    ]
+    const statuses = await Promise.all(bad.map(async (body) => (await post(app, '/api/push/ride', body)).status))
+    expect(statuses).toEqual([400, 400, 400, 400, 400, 400, 400, 400, 404]) // the last: an unknown city
+    expect(calls).toHaveLength(0)
+    expect((await post(app, '/api/push/ride', ride({ rideStartedAtMs: null, includedMinutes: null, endStationId: null }))).status).toBe(200)
   })
 })
 

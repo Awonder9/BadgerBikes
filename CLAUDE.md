@@ -19,9 +19,12 @@ turn-by-turn directions, with ride progress tracked in the app.
   `window.__bcycle.map.current` the map API (getViewport, fitBounds…; calls made before the lazily loaded
   map exists are applied when it is created)
 - `npm run update-systems` — regenerate `src/data/systems.json` from the live BCycle feeds
+- `npm run vapid-keys` — print a VAPID key pair for background ride alerts (Worker secrets
+  `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY`; optional — without them push is off and in-app alerts remain)
 
 ## Where code runs
-- `worker/` — Cloudflare Worker: `/api/*` (stations, route options, geocoding). All upstream API
+- `worker/` — Cloudflare Worker: `/api/*` (stations, route options, geocoding, background ride alerts via
+  Web Push from the `RideAlerts` Durable Object). All upstream API
   calls happen here, never from the browser — with one deliberate exception: place search asks Photon
   directly from the browser (`api.geocode` in `src/api/client.ts`), because Photon throttles by IP and the
   Worker's shared Cloudflare IPs made a third of searches fail; it falls back to `/api/geocode`.

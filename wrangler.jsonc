@@ -13,19 +13,28 @@
     "run_worker_first": ["/api/*"]
   },
   // One UpstreamGate instance per upstream group ("fossgis", "photon") enforces the public servers'
-  // usage policies globally — across all users and Worker isolates.
+  // usage policies globally — across all users and Worker isolates. One RideAlerts instance per push
+  // subscription holds that device's ride and sends its background alerts (Web Push) on alarms.
   "durable_objects": {
-    "bindings": [{ "name": "UPSTREAM_GATE", "class_name": "UpstreamGate" }]
+    "bindings": [
+      { "name": "UPSTREAM_GATE", "class_name": "UpstreamGate" },
+      { "name": "RIDE_ALERTS", "class_name": "RideAlerts" }
+    ]
   },
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["UpstreamGate"] }],
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["UpstreamGate"] },
+    { "tag": "v2", "new_sqlite_classes": ["RideAlerts"] }
+  ],
   // Per-client-IP limits on our own API so one client cannot exhaust the shared upstream budget.
   "ratelimits": [
     { "name": "ROUTE_LIMITER", "namespace_id": "1002", "simple": { "limit": 30, "period": 60 } },
-    { "name": "GEOCODE_LIMITER", "namespace_id": "1003", "simple": { "limit": 60, "period": 60 } }
+    { "name": "GEOCODE_LIMITER", "namespace_id": "1003", "simple": { "limit": 60, "period": 60 } },
+    { "name": "PUSH_LIMITER", "namespace_id": "1004", "simple": { "limit": 20, "period": 60 } }
   ],
   "vars": {
-    // CONTACT_EMAIL (operator contact for the FOSSGIS/Photon usage policies, shown in About) is a secret,
-    // not set here: `npx wrangler secret put CONTACT_EMAIL` for production, `.dev.vars` for local dev.
+    // Secrets, not set here (`npx wrangler secret put NAME` for production, `.dev.vars` for local dev):
+    // CONTACT_EMAIL — operator contact for the FOSSGIS/Photon usage policies, shown in About;
+    // VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY — background ride alerts (`npm run vapid-keys`); optional.
     "APP_VERSION": "0.1.0"
   },
   "observability": {

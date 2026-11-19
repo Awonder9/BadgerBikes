@@ -45,7 +45,22 @@ const leg = {
 }
 const down = { status: 503, json: { error: { code: 'upstream_unavailable', message: 'offline test', retryable: true } } }
 
-async function mockApi(context: BrowserContext, o: { stations?: 'ok' | 'down' | 'slow'; routes?: 'ok' | 'busy' } = {}) {
+const pass = (id: string, name: string, includedMinutes: number | null) => ({ id, name, price: 0, currency: 'USD', description: '', includedMinutes, url: null })
+const systemDetails = {
+  systemId: 'bcycle_madison',
+  name: 'Madison BCycle',
+  timezone: 'America/Chicago',
+  phone: null,
+  email: null,
+  websiteUrl: null,
+  rentalApps: { ios: null, android: null },
+  passes: [pass('day', 'Day Pass', 30), pass('annual', 'Annual', 60)],
+  defaultIncludedMinutes: 30,
+}
+
+/** Mocks every request; the returned object switches path details off and on during a test. */
+async function mockApi(context: BrowserContext, o: { stations?: 'ok' | 'down' | 'slow'; routes?: 'ok' | 'busy'; system?: Json; routeDetailsDown?: boolean } = {}) {
+  const control = { routeDetailsDown: o.routeDetailsDown ?? false }
   await context.route(/^https?:\/\/(?!localhost)/, (route) => route.abort())
   await context.route(API, async (route) => {
     const path = new URL(route.request().url()).pathname
@@ -56,10 +71,14 @@ async function mockApi(context: BrowserContext, o: { stations?: 'ok' | 'down' | 
     }
     if (path === '/api/routes') return route.fulfill(o.routes === 'ok' ? { json: { routes: [leg, leg, leg] } } : down)
     if (path === '/api/locate') return route.fulfill({ json: { systemId: 'bcycle_madison' } })
-    if (path === '/api/route-details')
+    if (path === '/api/system' && o.system) return route.fulfill({ json: o.system })
+    if (path === '/api/route-details') {
+      if (control.routeDetailsDown) return route.fulfill(down)
       return route.fulfill({ json: { breakdown: [{ kind: 'bikePath', meters: 1200 }, { kind: 'sharedLane', meters: 420 }], elevation: { gainM: 18, lossM: 3, minM: 270, maxM: 288, profile: [[100, 270], [800, 280], [1500, 288]] } } })
+    }
     return route.fulfill(down)
   })
+  return control
 }
 
 /** Skips the first-visit install tip. */
@@ -109,17 +128,26 @@ test('first visit offers home-screen install steps for iOS and Android, once', a
 test('picks the default city from the rider location; the city can be changed in Settings', async ({ page, context }) => {
   await mockApi(context)
   await skipInstallTip(page)
+  const calls: string[] = []
+  page.on('request', (r) => {
+    const u = new URL(r.url())
+    if (u.pathname === '/api/stations' || u.pathname === '/api/locate') calls.push(u.pathname + u.search)
+  })
   await page.goto('/')
   await expect(page.getByRole('combobox', { name: 'Search stations or places' })).toBeVisible()
+  // First visit: one request picks the city and loads its stations (no separate city lookup first).
+  expect(calls).toEqual(['/api/stations?system=nearest'])
   await page.getByRole('button', { name: 'Settings' }).click()
   const city = page.getByRole('combobox', { name: /^City/ })
   await expect(city).toHaveValue('bcycle_madison')
   await city.selectOption('bcycle_indego')
   await expect(city).toHaveValue('bcycle_indego')
   await expect(page.getByText(/stored on this device only/)).toBeVisible()
+  calls.length = 0
   await page.reload()
   await page.getByRole('button', { name: 'Settings' }).click()
   await expect(page.getByRole('combobox', { name: /^City/ })).toHaveValue('bcycle_indego') // remembered
+  expect(calls[0]).toBe('/api/stations?system=bcycle_indego')
 })
 
 test('a shared ride link opens the planner; a busy route server asks to retry in a few seconds', async ({ page, context }) => {
@@ -232,6 +260,78 @@ test('Home, Work and favorites can be set from Settings and starred from the pla
   await expect(page.getByRole('button', { name: 'Remove from favorites' })).toHaveAttribute('aria-pressed', 'true')
   await page.getByRole('button', { name: 'Back' }).click()
   await expect(page.getByRole('list', { name: 'Starred stations' })).toContainText('Charlie Square')
+})
+
+test('a station card has walking directions and a share link that opens that card', async ({ page, context }) => {
+  await mockApi(context)
+  await context.grantPermissions(['clipboard-read', 'clipboard-write'])
+  // A phone without a share sheet: the link goes to the clipboard.
+  await page.addInitScript(() => Reflect.deleteProperty(Navigator.prototype, 'share'))
+  await skipInstallTip(page)
+  await page.goto('/?station=st_a')
+  const card = page.getByRole('region', { name: 'Station Alpha & Main' })
+  await expect(card).toBeVisible()
+  const directions = new URL((await card.getByRole('link', { name: 'Walking directions to Alpha & Main in Google Maps' }).getAttribute('href'))!)
+  expect(directions.searchParams.get('travelmode')).toBe('walking')
+  expect(directions.searchParams.get('destination')).toBe(`${A[1].toFixed(6)},${A[0].toFixed(6)}`)
+  await card.getByRole('button', { name: 'Share' }).click()
+  await expect(card.getByRole('button', { name: 'Copied' })).toBeVisible()
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toMatch(/\/\?system=bcycle_madison&station=st_a$/)
+})
+
+test('"Nearest open dock" opens the closest dock with room, on the docks map', async ({ page, context }) => {
+  await mockApi(context)
+  await context.grantPermissions(['geolocation'])
+  await context.setGeolocation({ latitude: B[1] + 0.0005, longitude: B[0] }) // next to Bravo Park
+  await skipInstallTip(page)
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Nearest open dock' }).click()
+  await expect(page.getByRole('region', { name: 'Station Bravo Park' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Docks' })).toHaveAttribute('aria-pressed', 'true')
+})
+
+test('an offline banner shows while there is no connection', async ({ page, context }) => {
+  await mockApi(context)
+  await skipInstallTip(page)
+  await page.goto('/')
+  await expect(page.getByText(/^Live · /)).toBeVisible()
+  await context.setOffline(true)
+  await expect(page.getByText(/You’re offline/)).toBeVisible()
+  await context.setOffline(false)
+  await expect(page.getByText(/You’re offline/)).toBeHidden()
+})
+
+test('Settings: prefer e-bikes in a city with both kinds, and clear recent places', async ({ page, context }) => {
+  await mockApi(context)
+  const recent = [
+    { kind: 'search', name: 'Coffee Shop', coord: [-89.39, 43.07] },
+    { kind: 'search', name: 'Library', coord: [-89.38, 43.07] },
+  ]
+  await page.addInitScript((r) => localStorage.setItem('bcycle.app', JSON.stringify({ state: { settings: { installTipSeen: true }, recentPlaces: r }, version: 1 })), recent)
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Settings' }).click()
+  await expect(page.getByText('2 places')).toBeVisible()
+  await page.getByRole('button', { name: 'Clear recent places' }).click()
+  await expect(page.getByText('0 places')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Clear recent places' })).toBeDisabled()
+  await page.getByRole('checkbox', { name: /Prefer e-bikes/ }).check()
+  await page.getByRole('button', { name: 'Back' }).click()
+  await expect(page.getByRole('button', { name: 'E-bikes' })).toHaveAttribute('aria-pressed', 'true')
+})
+
+test('the first ride asks which pass the rider has, and path details can be retried', async ({ page, context }) => {
+  const api = await mockApi(context, { routes: 'ok', system: systemDetails, routeDetailsDown: true })
+  await skipInstallTip(page)
+  await page.goto(`/?start=st_a&to=${C[1]},${C[0]}&toName=Charlie%20Square&toStation=st_c`)
+  await expect(page.getByText('Path details are unavailable right now.')).toBeVisible()
+  api.routeDetailsDown = false
+  await page.getByRole('button', { name: 'Try again' }).click()
+  await expect(page.getByRole('region', { name: 'Path details' })).toContainText('74% bike path')
+  const passQuestion = page.getByRole('combobox', { name: /Which pass do you have/ })
+  await passQuestion.selectOption('annual')
+  await expect(passQuestion).toHaveCount(0) // asked once
+  await page.getByRole('button', { name: 'Settings' }).click()
+  await expect(page.getByRole('combobox', { name: /^My pass/ })).toHaveValue('annual')
 })
 
 test.describe('on a Taiwanese (zh-TW) browser', () => {

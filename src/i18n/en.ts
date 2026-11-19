@@ -41,6 +41,8 @@ export const en = {
   watchReady: (name: string, n: number, kind: Kind, baseline: number) => `${name} now has ${count(n, kind)} (up from ${baseline}).`,
   locationDenied: 'Location is off for this site. Allow it in your browser settings, then try again.',
   locationNotFound: 'Couldn’t find your location. Try again in a moment.',
+  ebikesMode: 'E-bikes',
+  offline: 'You’re offline. Bike and dock counts may be out of date.',
 
   // Loading screen
   yourCity: 'your city',
@@ -107,6 +109,7 @@ export const en = {
   saveAsHome: 'Save as Home',
   saveAsWork: 'Save as Work',
   stations: 'Stations',
+  nearestOpenDock: 'Nearest open dock',
 
   // Settings
   city: 'City',
@@ -128,7 +131,13 @@ export const en = {
   styleDark: 'Dark',
   language: 'Language',
   languageAuto: 'System default',
-  storageNote: 'Saved places, recent destinations, starred stations and your current ride are stored on this device only. Clearing this site’s data (cookies and site data) removes them.',
+  preferEbikes: 'Prefer e-bikes',
+  preferEbikesHelp: 'The map counts e-bikes, and the planner looks for docks that have them.',
+  recentPlaces: 'Recent places',
+  recentCount: (n: number) => (n === 1 ? '1 place' : `${n} places`),
+  clearRecentAria: 'Clear recent places',
+  storageNote:
+    'Saved places, recent destinations, starred stations and your current ride are stored on this device only. Clearing this site’s data (cookies and site data) removes them. With alerts on during a ride, the app’s server also keeps that ride’s timer and end dock (never your location) until the ride ends.',
   aboutLink: 'About & attributions',
 
   // About
@@ -161,6 +170,9 @@ export const en = {
   rideToHere: 'Ride to here',
   watching: 'Watching — tap to stop',
   tellMeWhen: (kind: Kind) => `Tell me when a ${kind === 'bikes' ? 'bike' : 'dock'} frees up`,
+  directions: 'Directions',
+  directionsAria: (name: string) => `Walking directions to ${name} in Google Maps`,
+  shareStationTitle: (name: string) => `${name}: live bikes and docks`,
 
   // Search
   searching: 'Searching',
@@ -259,6 +271,9 @@ export const en = {
     busyRoad: 'Road with traffic',
   },
   elevationProfile: 'Elevation profile',
+  whichPass: 'Which pass do you have?',
+  whichPassHelp: 'So the ride timer can warn you before your included time runs out. Change it anytime in Settings.',
+  choosePass: 'Choose your pass',
 
   // Saved places
   savePlace: 'Save place',
@@ -294,6 +309,8 @@ export const en = {
   noOtherDocks: 'No other docks with space close to your destination right now.',
   turnOnAlerts: 'Turn on alerts (time running low, end dock full)',
   alertsNote: 'Alerts and counts update while this app is open — check back between parts.',
+  alertsBackground: 'You’ll get these alerts even while Google Maps is open.',
+  alertsIosInstall: 'On iPhone, add the app to your Home Screen to get these alerts while Google Maps is open.',
   bannerFull: (name: string) => `${name} is full — tap for nearby docks`,
   minLeft: (min: number) => ` · ${min} min left`,
   nextShort: (n: number) => `Next: Part ${n}`,

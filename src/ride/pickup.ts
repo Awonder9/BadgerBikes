@@ -16,7 +16,12 @@ export interface PickupOption {
   score: number
 }
 
-export function pickupOptions(origin: LngLat, destination: LngLat | null, stations: readonly Station[], partySize = 1, max: number = RIDE.pickupCandidates, electric = false): PickupOption[] {
+/**
+ * `electric`: ride estimates at e-bike speed. `wantEbikes`: the rider prefers e-bikes in a mixed fleet, so a
+ * dock without enough e-bikes for the party ranks lower (but is still offered: a classic bike nearby can beat
+ * a long walk to an e-bike).
+ */
+export function pickupOptions(origin: LngLat, destination: LngLat | null, stations: readonly Station[], partySize = 1, max: number = RIDE.pickupCandidates, electric = false, wantEbikes = false): PickupOption[] {
   const usable = stations.filter((s) => canRent(s, partySize))
   const near = kNearest(origin, usable, (s) => s.coord, 12, RIDE.pickupWalkMeters)
   const pool = near.length ? near : kNearest(origin, usable, (s) => s.coord, max)
@@ -26,7 +31,8 @@ export function pickupOptions(origin: LngLat, destination: LngLat | null, statio
       const ride = destination ? estimateBetween(item.coord, destination, 'bike', electric ? 'electric' : 'classic').duration : 0
       // A dock with only a couple of bikes is a gamble by the time you walk there.
       const low = (item.status?.bikes ?? 0) - (partySize - 1) <= RIDE.pickupLowBikes ? RIDE.pickupLowBikesPenaltyS : 0
-      return { station: item, walkS: walk.duration, walkM: walk.distance, score: walk.duration + ride + low }
+      const noEbike = wantEbikes && (item.status?.ebikes ?? 0) < partySize ? RIDE.pickupNoEbikePenaltyS : 0
+      return { station: item, walkS: walk.duration, walkM: walk.distance, score: walk.duration + ride + low + noEbike }
     })
     .sort((a, b) => a.score - b.score)
     .slice(0, max)

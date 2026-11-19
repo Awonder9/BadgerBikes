@@ -30,3 +30,12 @@ describe('pickupOptions', () => {
     expect(p[0]!.walkS).toBeGreaterThan(3000)
   })
 })
+
+describe('pickupOptions with "Prefer e-bikes"', () => {
+  it('ranks a dock without enough e-bikes lower, but still offers it', () => {
+    const classicOnly = makeStation({ id: 'classic', coord: dest(O, 100, 0), bikes: 6, ebikes: 0, classic: 6 })
+    const withEbikes = makeStation({ id: 'ebikes', coord: dest(O, 400, 0), bikes: 6, ebikes: 3, classic: 3 })
+    expect(pickupOptions(O, null, [classicOnly, withEbikes]).map((p) => p.station.id)).toEqual(['classic', 'ebikes'])
+    expect(pickupOptions(O, null, [classicOnly, withEbikes], 1, 3, true, true).map((p) => p.station.id)).toEqual(['ebikes', 'classic'])
+  })
+})

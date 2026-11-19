@@ -42,6 +42,8 @@ export const zhHant: Messages = {
   watchReady: (name, n, kind, baseline) => `${name} 現在有 ${count(n, kind)}（原本為 ${baseline}）。`,
   locationDenied: '此網站的定位權限已關閉。請在瀏覽器設定中允許定位，然後再試一次。',
   locationNotFound: '無法取得你的位置，請稍後再試。',
+  ebikesMode: '電動單車',
+  offline: '你目前離線。單車和空位數量可能不是最新的。',
 
   // Loading screen
   yourCity: '你的城市',
@@ -107,6 +109,7 @@ export const zhHant: Messages = {
   saveAsHome: '設為住家',
   saveAsWork: '設為公司',
   stations: '站點',
+  nearestOpenDock: '最近有空位的站點',
 
   // Settings
   city: '城市',
@@ -128,7 +131,13 @@ export const zhHant: Messages = {
   styleDark: '深色',
   language: '語言',
   languageAuto: '跟隨系統',
-  storageNote: '已儲存的地點、最近的目的地、收藏的站點和目前的騎乘只會儲存在這台裝置上。清除本網站的資料（Cookie 和網站資料）會將其刪除。',
+  preferEbikes: '優先電動單車',
+  preferEbikesHelp: '地圖顯示電動單車數量，規劃時優先選擇有電動單車的站點。',
+  recentPlaces: '最近的地點',
+  recentCount: (n) => `${n} 個地點`,
+  clearRecentAria: '清除最近的地點',
+  storageNote:
+    '已儲存的地點、最近的目的地、收藏的站點和目前的騎乘只會儲存在這台裝置上。清除本網站的資料（Cookie 和網站資料）會將其刪除。騎乘中開啟提醒時，本 App 的伺服器也會保存該次騎乘的計時和終點站（不含你的位置），直到騎乘結束。',
   aboutLink: '關於與致謝',
 
   // About
@@ -161,6 +170,9 @@ export const zhHant: Messages = {
   rideToHere: '騎到這裡',
   watching: '正在關注 — 輕點以停止',
   tellMeWhen: (kind) => (kind === 'bikes' ? '有單車時通知我' : '有空位時通知我'),
+  directions: '步行路線',
+  directionsAria: (name) => `在 Google 地圖中查看前往 ${name} 的步行路線`,
+  shareStationTitle: (name) => `${name}：即時單車和空位`,
 
   // Search
   searching: '正在搜尋',
@@ -254,6 +266,9 @@ export const zhHant: Messages = {
     busyRoad: '汽車道路',
   },
   elevationProfile: '海拔剖面圖',
+  whichPass: '你用的是哪種騎乘方案？',
+  whichPassHelp: '這樣騎乘計時器就能在包含的時間用完前提醒你。隨時可以在設定中變更。',
+  choosePass: '選擇你的方案',
 
   // Saved places
   savePlace: '收藏地點',
@@ -289,6 +304,8 @@ export const zhHant: Messages = {
   noOtherDocks: '目的地附近目前沒有其他有空位的站點。',
   turnOnAlerts: '開啟提醒（時間快到、終點站已滿）',
   alertsNote: '只有在本 App 開啟時才會更新提醒和數量 — 請在路段之間回來查看。',
+  alertsBackground: '即使 Google 地圖在前景，你也會收到這些提醒。',
+  alertsIosInstall: '在 iPhone 上，把本 App 加入主畫面後，即使 Google 地圖在前景也能收到這些提醒。',
   bannerFull: (name) => `${name} 已滿 — 輕點查看附近站點`,
   minLeft: (min) => ` · 剩餘 ${min} 分鐘`,
   nextShort: (n) => `下一段：第 ${n} 段`,

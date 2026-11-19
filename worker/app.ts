@@ -1,6 +1,6 @@
 // HTTP layer for /api/*. Dependencies are injected so handlers are testable in Node.
-import { BIKE_ROUTING } from '../src/config'
-import { API_PATHS, type LocateResponse, type MetaResponse, type StationsResponse } from '../src/api/contract'
+import { APP, BIKE_ROUTING } from '../src/config'
+import { API_PATHS, NEAREST_SYSTEM, type LocateResponse, type MetaResponse, type OkResponse, type PushRideRequest, type StationsResponse } from '../src/api/contract'
 import { nearestSystem } from '../src/data/systems'
 import { isValidLngLat } from '../src/lib/geo'
 import type { fetchStationsSnapshot as FetchStations, fetchSystemDetails as FetchSystem } from '../src/data/gbfs'
@@ -9,7 +9,13 @@ import { AppError, toAppError, type AppErrorCode } from '../src/lib/errors'
 
 import type { UpstreamFetch } from '../src/lib/upstream'
 import type { AltRouter } from '../src/routing/types'
-import { geocodeQuery, latLonParams, readJsonBody, requireSystem, routeDetailsRequest, routeRequest } from './validate'
+import { geocodeQuery, latLonParams, pushCancelRequest, pushRideRequest, readJsonBody, requireSystem, routeDetailsRequest, routeRequest } from './validate'
+
+/** One device's background ride alerts (the RideAlerts Durable Object's RPC methods). */
+export interface RideAlertsRpc {
+  schedule(req: PushRideRequest): Promise<void>
+  cancel(): Promise<void>
+}
 
 export interface AppDeps {
   upstream: UpstreamFetch
@@ -22,10 +28,19 @@ export interface AppDeps {
   contactEmail: string | null
   version: string
   /** Per-client limits; undefined → unlimited. */
-  limiters?: { route?: RateLimit; geocode?: RateLimit }
+  limiters?: { route?: RateLimit; geocode?: RateLimit; push?: RateLimit }
+  /** Background ride alerts (Web Push); null when this deployment has no VAPID keys. */
+  push?: { publicKey: string; rideAlerts: (endpoint: string) => Promise<RideAlertsRpc> } | null
 }
 
 const BASE_HEADERS = { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' }
+
+/** The BCycle city nearest Cloudflare's city-level estimate of where a request came from (no browser permission). */
+function systemNear(request: Request) {
+  const cf = (request as Request & { cf?: { latitude?: unknown; longitude?: unknown } }).cf
+  const coord = [Number(cf?.longitude), Number(cf?.latitude)]
+  return isValidLngLat(coord) ? nearestSystem(coord) : null
+}
 
 export function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { ...BASE_HEADERS, 'Content-Type': 'application/json; charset=utf-8' } })
@@ -72,18 +87,27 @@ export function createApp(deps: AppDeps) {
     const signal = request.signal
 
     if (p === API_PATHS.health) return json({ ok: true, service: 'badger-bikes', time: new Date(deps.now()).toISOString() })
-    if (p === API_PATHS.meta) return json({ contactEmail: deps.contactEmail, version: deps.version } satisfies MetaResponse)
+    if (p === API_PATHS.meta) return json({ contactEmail: deps.contactEmail, version: deps.version, pushPublicKey: deps.push?.publicKey ?? null } satisfies MetaResponse)
 
-    if (p === API_PATHS.locate && method === 'GET') {
-      // Cloudflare's city-level estimate of where the request came from (no browser permission needed).
-      const cf = (request as Request & { cf?: { latitude?: unknown; longitude?: unknown } }).cf
-      const coord = [Number(cf?.longitude), Number(cf?.latitude)]
-      const sys = isValidLngLat(coord) ? nearestSystem(coord) : null
-      return json({ systemId: sys?.id ?? null } satisfies LocateResponse)
+    if ((p === API_PATHS.pushRide || p === API_PATHS.pushCancel) && method === 'POST') {
+      await limit(deps.limiters?.push, request)
+      if (!deps.push) throw new AppError('not_found', 'Background alerts are not set up on this server')
+      const body = await readJsonBody(request)
+      if (p === API_PATHS.pushRide) {
+        const ride = pushRideRequest(body, deps.now())
+        await (await deps.push.rideAlerts(ride.subscription.endpoint)).schedule(ride)
+      } else {
+        await (await deps.push.rideAlerts(pushCancelRequest(body).endpoint)).cancel()
+      }
+      return json({ ok: true } satisfies OkResponse)
     }
 
+    if (p === API_PATHS.locate && method === 'GET') return json({ systemId: systemNear(request)?.id ?? null } satisfies LocateResponse)
+
     if (p === API_PATHS.stations && method === 'GET') {
-      const sys = requireSystem(url.searchParams.get('system'))
+      const requested = url.searchParams.get('system')
+      // First visit: pick the city here, in the same round trip as its stations.
+      const sys = requested === NEAREST_SYSTEM ? (systemNear(request) ?? requireSystem(APP.defaultSystemId)) : requireSystem(requested)
       const s = await deps.fetchStationsSnapshot(sys.id, deps.upstream, { signal, now: deps.now })
       const body: StationsResponse = { systemId: s.systemId, lastUpdatedMs: s.lastUpdatedMs, fetchedAtMs: s.fetchedAtMs, stations: [...s.stations] }
       return json(body)

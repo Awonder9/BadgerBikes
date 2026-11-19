@@ -48,6 +48,8 @@ describe('useAppStore actions', () => {
     expect(names[0]).toBe('P5')
     expect(names).toHaveLength(8)
     expect(new Set(names).size).toBe(8)
+    useAppStore.getState().clearRecent()
+    expect(useAppStore.getState().recentPlaces).toEqual([])
   })
 
   it('toggles stars and replaces Home/Work saved places', () => {
@@ -64,6 +66,10 @@ describe('useAppStore actions', () => {
   it('validates settings updates', () => {
     useAppStore.getState().updateSettings({ partySize: 0 })
     expect(useAppStore.getState().settings.partySize).toBe(1)
+    expect(useAppStore.getState().settings.preferEbikes).toBe(false)
+    useAppStore.getState().updateSettings({ preferEbikes: true })
+    expect(useAppStore.getState().settings.preferEbikes).toBe(true)
+    expect(sanitizePersisted({ settings: { preferEbikes: 'yes' } }).settings.preferEbikes).toBe(false)
     useAppStore.getState().setPassChoice('bcycle_madison', { planId: null, includedMinutes: 60 })
     expect(useAppStore.getState().settings.passBySystem.bcycle_madison).toEqual({ planId: null, includedMinutes: 60 })
   })

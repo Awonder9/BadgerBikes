@@ -13,6 +13,8 @@ import {
   type GeocodeResponse,
   type LocateResponse,
   type MetaResponse,
+  type OkResponse,
+  type PushRideRequest,
   type ReverseResponse,
   type RoutesApiRequest,
   type RouteDetailsResponse,
@@ -88,6 +90,16 @@ export const api = {
       { signal, provider: PROVIDER },
     )
     return res.places
+  },
+
+  /** Background alerts for the ride under way on this device (replaces its previous ride). */
+  async pushRide(body: PushRideRequest, signal?: AbortSignal): Promise<void> {
+    await postJson<OkResponse>(API_PATHS.pushRide, body, { signal, provider: PROVIDER })
+  },
+
+  /** The ride ended: no more background alerts for this device. */
+  async pushCancel(endpoint: string, signal?: AbortSignal): Promise<void> {
+    await postJson<OkResponse>(API_PATHS.pushCancel, { endpoint }, { signal, provider: PROVIDER })
   },
 
   async reverse(coord: LngLat, signal?: AbortSignal): Promise<Place | null> {

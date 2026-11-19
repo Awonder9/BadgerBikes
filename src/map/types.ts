@@ -76,6 +76,8 @@ export interface StationFeatureProps {
   /** −1 when the feed has no breakdown (maplibre properties must be primitives). */
   ebikes: number
   bikeState: AvailabilityState
+  /** Availability counting e-bikes only ("Prefer e-bikes"); the bikeState when the feed has no breakdown. */
+  ebikeState: AvailabilityState
   dockState: AvailabilityState
   starred: boolean
   /** Role in the current plan, or '' (drives highlight rings). */

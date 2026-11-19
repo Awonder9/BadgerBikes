@@ -1,7 +1,9 @@
 // Request validation for the Worker API. Everything from the client is untrusted.
-import type { RouteApiRequest } from '../src/api/contract'
-import { APP, GEOCODE, HTTP, ROUTE_DETAILS } from '../src/config'
+import type { PushRideRequest, PushSubscriptionJson, RouteApiRequest } from '../src/api/contract'
+import { APP, GEOCODE, HTTP, PUSH, ROUTE_DETAILS } from '../src/config'
 import { SYSTEMS } from '../src/data/systems'
+import { LANGS, type Lang } from '../src/i18n/lang'
+import { base64urlToBytes } from '../src/lib/base64url'
 import { AppError } from '../src/lib/errors'
 import { isValidLngLat } from '../src/lib/geo'
 import { decodePolyline } from '../src/lib/polyline'
@@ -75,6 +77,67 @@ export function geocodeQuery(raw: string | null): string {
   const q = (raw ?? '').trim().replace(/\s+/g, ' ').slice(0, GEOCODE.maxQueryLength)
   if (q.length < GEOCODE.minChars) throw bad(`Query must be at least ${GEOCODE.minChars} characters`)
   return q
+}
+
+/**
+ * A push endpoint the Worker may send to: https on a known push service (PUSH.endpointHosts) — never an
+ * arbitrary URL, so a subscription can't turn the Worker into a request relay.
+ */
+export function pushEndpoint(v: unknown): string {
+  if (typeof v !== 'string' || v.length > PUSH.maxEndpointLength) throw bad('Invalid push endpoint')
+  let url: URL
+  try {
+    url = new URL(v)
+  } catch {
+    throw bad('Invalid push endpoint')
+  }
+  const host = url.hostname.toLowerCase()
+  const known = PUSH.endpointHosts.some((h) => host === h || host.endsWith(`.${h}`))
+  if (url.protocol !== 'https:' || url.username || url.password || url.port || !known) throw bad('Unsupported push service')
+  return url.href
+}
+
+function pushSubscription(v: unknown): PushSubscriptionJson {
+  if (!isObj(v) || !isObj(v.keys)) throw bad('Invalid push subscription')
+  const { p256dh, auth } = v.keys
+  const key = typeof p256dh === 'string' ? base64urlToBytes(p256dh) : null
+  const secret = typeof auth === 'string' ? base64urlToBytes(auth) : null
+  if (!key || key.length !== 65 || key[0] !== 4 || !secret || secret.length !== 16) throw bad('Invalid push subscription keys')
+  return { endpoint: pushEndpoint(v.endpoint), keys: { p256dh: p256dh as string, auth: auth as string } }
+}
+
+/** An integer in [min, max], or null when `v` is null; anything else is a bad request. */
+function intOrNull(v: unknown, min: number, max: number, what: string): number | null {
+  if (v === null) return null
+  if (typeof v !== 'number' || !Number.isInteger(v) || v < min || v > max) throw bad(`Invalid ${what}`)
+  return v
+}
+
+/** POST /api/push/ride body. Times must be plausible for a ride under way now. */
+export function pushRideRequest(body: unknown, nowMs: number): PushRideRequest {
+  if (!isObj(body)) throw bad('Invalid body')
+  const lang: Lang | undefined = LANGS.find((l) => l === body.lang)
+  if (!lang) throw bad('Invalid language')
+  const partySize = intOrNull(body.partySize, 1, 4, 'party size')
+  if (partySize === null) throw bad('Invalid party size')
+  const end = body.endStationId
+  const endStationId = end === null ? null : optId(end)
+  if (endStationId === undefined) throw bad('Invalid end dock')
+  return {
+    subscription: pushSubscription(body.subscription),
+    lang,
+    systemId: requireSystem(body.systemId).id,
+    endStationId,
+    partySize,
+    rideStartedAtMs: intOrNull(body.rideStartedAtMs, nowMs - PUSH.maxRideMs, nowMs + 60_000, 'ride start'),
+    includedMinutes: intOrNull(body.includedMinutes, 1, 600, 'included minutes'),
+  }
+}
+
+/** POST /api/push/cancel body. */
+export function pushCancelRequest(body: unknown): { endpoint: string } {
+  if (!isObj(body)) throw bad('Invalid body')
+  return { endpoint: pushEndpoint(body.endpoint) }
 }
 
 export async function readJsonBody(request: Request): Promise<unknown> {

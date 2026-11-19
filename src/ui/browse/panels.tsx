@@ -8,7 +8,7 @@ import { getSystem, SYSTEMS } from '../../data/systems'
 import { useReverseGeocode } from '../../geocode/hooks'
 import { formatDistance, formatTimeAgo } from '../../lib/format'
 import { haversine } from '../../lib/geo'
-import { classifyStation } from '../../lib/stationState'
+import { classifyStation, fleetComposition } from '../../lib/stationState'
 import { findSavedPlace, useAppStore } from '../../store/appStore'
 import type { SavedPlace, Settings } from '../../store/types'
 import { LANG_NAMES, LANGS, type LanguageSetting } from '../../i18n/lang'
@@ -20,7 +20,9 @@ import { AvailabilityPill } from '../primitives/Availability'
 import { Button, IconButton } from '../primitives/Button'
 import { Icon } from '../primitives/Icon'
 import { changeCity, planRide, rideTo, startRideFrom } from '../ride/rideActions'
+import { PassSelect } from './PassSelect'
 import { SearchBox } from './SearchBox'
+import { useNearestOpenDock } from './useNearestOpenDock'
 
 /** "Live · 20 s ago" / "Data may be stale" — ages on its own clock, so its parents don't re-render with it. */
 export function FreshnessBadge({ hasData, isError, lastUpdatedMs }: { hasData: boolean; isError: boolean; lastUpdatedMs: number | undefined }) {
@@ -54,6 +56,24 @@ function RefreshButton() {
       <Icon name="refresh" size={16} className={isFetching ? 'motion-safe:animate-spin' : ''} />
       {isFetching ? t.refreshing : t.refresh}
     </button>
+  )
+}
+
+/** Where can I return this bike? The closest dock with room, from the rider's position. */
+function NearestOpenDockButton() {
+  const { find, finding, message } = useNearestOpenDock()
+  const { t } = useI18n()
+  return (
+    <>
+      <Button block variant="secondary" icon="dock" disabled={finding} onClick={find}>
+        {finding ? t.findingYou : t.nearestOpenDock}
+      </Button>
+      {message && (
+        <p role="status" className="text-sm text-amber-800 dark:text-amber-300">
+          {message}
+        </p>
+      )}
+    </>
   )
 }
 
@@ -96,6 +116,7 @@ export function BrowsePanel() {
           {t.planARide}
         </Button>
       )}
+      <NearestOpenDockButton />
       <div className="flex items-center justify-between gap-2">
         <span className="flex min-w-0 items-center gap-1">
           <FreshnessBadge hasData={!!snapshot} isError={!!error} lastUpdatedMs={snapshot?.lastUpdatedMs} />
@@ -256,8 +277,10 @@ export function StationList() {
 export function SettingsPanel() {
   const { settings, systemId } = useAppStore(useShallow((s) => ({ settings: s.settings, systemId: s.systemId })))
   const { details } = useSystemDetails(systemId)
+  const { snapshot } = useStationsSnapshot(systemId)
+  // "Prefer e-bikes" only means something where there are both kinds.
+  const mixedFleet = !!snapshot && fleetComposition(snapshot.stations) === 'mixed'
   const update = (patch: Partial<Settings>) => useAppStore.getState().updateSettings(patch)
-  const pass = systemId ? settings.passBySystem[systemId] : undefined
   const { t } = useI18n()
   // Labels may wrap and selects are capped, so no row is ever wider than the screen (Safari sizes a
   // native select to its longest option).
@@ -320,25 +343,19 @@ export function SettingsPanel() {
             ))}
           </select>
         </label>
+        {mixedFleet && (
+          <label className={row}>
+            <span>
+              {t.preferEbikes}
+              <span className="block text-sm text-slate-500">{t.preferEbikesHelp}</span>
+            </span>
+            <input type="checkbox" className="h-6 w-6 shrink-0" checked={settings.preferEbikes} onChange={(e) => update({ preferEbikes: e.target.checked })} />
+          </label>
+        )}
         {systemId && details && details.passes.length > 0 && (
           <label className={row}>
             <span>{t.myPass}</span>
-            <select
-              className={select}
-              value={pass?.planId ?? ''}
-              onChange={(e) => {
-                const plan = details.passes.find((p) => p.id === e.target.value)
-                useAppStore.getState().setPassChoice(systemId, plan ? { planId: plan.id, includedMinutes: plan.includedMinutes } : { planId: null, includedMinutes: details.defaultIncludedMinutes })
-              }}
-            >
-              <option value="">{t.notSure(details.defaultIncludedMinutes)}</option>
-              {details.passes.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                  {p.includedMinutes ? t.perRide(p.includedMinutes) : t.perMinute}
-                </option>
-              ))}
-            </select>
+            <PassSelect systemId={systemId} details={details} className={select} />
           </label>
         )}
         <label className={row}>
@@ -354,6 +371,7 @@ export function SettingsPanel() {
           </select>
         </label>
         {systemId && <SavedPlacesSettings systemId={systemId} />}
+        <RecentPlacesSetting />
         <p className="px-4 py-3 text-sm text-slate-500">
           {t.storageNote}
         </p>
@@ -363,6 +381,30 @@ export function SettingsPanel() {
         </button>
       </div>
     </section>
+  )
+}
+
+/** The recent places offered in search and as quick destinations (all cities): how many, and a way to clear them. */
+function RecentPlacesSetting() {
+  const count = useAppStore((s) => s.recentPlaces.length)
+  const { t } = useI18n()
+  return (
+    <div className="flex min-h-14 items-center gap-3 px-4 py-2">
+      <Icon name="clock" size={20} className="shrink-0 text-slate-500" />
+      <span className="min-w-0 flex-1">
+        <span className="block">{t.recentPlaces}</span>
+        <span className="block text-sm text-slate-500">{t.recentCount(count)}</span>
+      </span>
+      <button
+        type="button"
+        disabled={count === 0}
+        aria-label={t.clearRecentAria}
+        className="min-h-11 shrink-0 px-2 text-sm font-medium text-brand-700 disabled:text-slate-400 dark:text-brand-300 dark:disabled:text-slate-600"
+        onClick={() => useAppStore.getState().clearRecent()}
+      >
+        {t.clear}
+      </button>
+    </div>
   )
 }
 
