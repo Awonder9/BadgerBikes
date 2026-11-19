@@ -1,12 +1,14 @@
 // "Share": the phone's share sheet when there is one, else the clipboard ("Copied"), else a prompt to copy.
 import { useState } from 'react'
 import { useI18n } from '../../i18n/useT'
+import { countUse } from '../usage'
 import { Icon } from './Icon'
 
 export function ShareButton({ title, url, className }: { title: string; url: () => string; className: string }) {
   const [copied, setCopied] = useState(false)
   const { t } = useI18n()
   const share = async () => {
+    countUse('share')
     const link = url()
     try {
       if (typeof navigator.share === 'function') return await navigator.share({ title, url: link })

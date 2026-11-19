@@ -1,0 +1,150 @@
+// Anonymous usage counts, pure part: how a report from the app is counted into a day's record, and how the
+// dashboard's numbers come out of the records. The Usage Durable Object (worker/usage.ts) stores the records.
+//
+// Unique devices without identifiers: a device reports only its first open of each day, with the number of
+// days since its previous active day ("gap"; null for a new device). A device active in the window [S, E] is
+// counted exactly once — on its first active day d in the window, which is the day whose gap reaches back
+// before S (gap > d − S). So per day we keep a histogram of gaps, and the unique devices in any window of up
+// to USAGE.maxGapDays days are a sum over it.
+import type { StatsDay, StatsResponse, UsageCounter, UsageEvent, UsageFirst, UsagePlatform, UsageRequest } from '../src/api/contract'
+import { USAGE } from '../src/config'
+import type { Lang } from '../src/i18n/lang'
+import { addDays } from '../src/lib/usage'
+
+/** One day's counts (USAGE.timeZone). Nothing in it can tell devices apart. */
+export interface UsageDayRecord {
+  /** Returning devices by days since their previous active day: [g − 1] for gap g (the last one: that many or more). */
+  gaps: number[]
+  newUsers: number
+  opens: number
+  /** Check-ins (a device with the app open in one window) by hour of day. */
+  beats: number[]
+  peakActive: number
+  counts: Partial<Record<UsageEvent | UsageCounter, number>>
+  cities: Record<string, number>
+  platforms: Partial<Record<UsagePlatform, number>>
+  installed: number
+  langs: Partial<Record<Lang, number>>
+}
+
+/** Check-ins in the current window and the one before ("active now"). */
+export interface WindowState {
+  window: number
+  count: number
+  previous: number
+}
+
+export function emptyDay(): UsageDayRecord {
+  return {
+    gaps: Array.from({ length: USAGE.maxGapDays }, () => 0),
+    newUsers: 0,
+    opens: 0,
+    beats: Array.from({ length: 24 }, () => 0),
+    peakActive: 0,
+    counts: {},
+    cities: {},
+    platforms: {},
+    installed: 0,
+    langs: {},
+  }
+}
+
+function inc<K extends string>(record: Partial<Record<K, number>>, key: K): void {
+  record[key] = (record[key] ?? 0) + 1
+}
+
+function countFirst(day: UsageDayRecord, first: UsageFirst): void {
+  if (first.gap === null) day.newUsers++
+  else {
+    const i = Math.min(Math.max(first.gap, 1), USAGE.maxGapDays) - 1
+    day.gaps[i] = (day.gaps[i] ?? 0) + 1
+  }
+  if (first.systemId) inc(day.cities, first.systemId)
+  inc(day.platforms, first.platform)
+  if (first.installed) day.installed++
+  inc(day.langs, first.lang)
+}
+
+/** The window state after one more check-in in `window`. */
+function checkIn(state: WindowState | null, window: number): WindowState {
+  if (!state || window > state.window + 1) return { window, count: 1, previous: 0 }
+  if (window === state.window + 1) return { window, count: 1, previous: state.count }
+  return { ...state, count: state.count + 1 } // this window (or a late one, counted as this one)
+}
+
+/**
+ * Counts one report into today's record (mutated). Returns the new window state and whether it was a device
+ * never seen before (for the all-time total).
+ */
+export function applyUsage(day: UsageDayRecord, state: WindowState | null, req: UsageRequest, at: { window: number; hour: number }): { state: WindowState | null; newDevice: boolean } {
+  if (req.kind === 'event') {
+    inc(day.counts, req.name)
+    return { state, newDevice: false }
+  }
+  if (req.kind === 'open') day.opens++
+  if (req.first) countFirst(day, req.first)
+  const next = checkIn(state, at.window)
+  day.beats[at.hour] = (day.beats[at.hour] ?? 0) + 1
+  day.peakActive = Math.max(day.peakActive, next.count)
+  return { state: next, newDevice: req.first?.gap === null }
+}
+
+export function countServer(day: UsageDayRecord, name: UsageCounter): void {
+  inc(day.counts, name)
+}
+
+/** Devices with the app open now: the current window's check-ins, or the previous window's if more. */
+export function activeNow(state: WindowState | null, window: number): number {
+  if (!state) return 0
+  if (state.window === window) return Math.max(state.count, state.previous)
+  return state.window === window - 1 ? state.count : 0
+}
+
+const sum = (xs: readonly number[]) => xs.reduce((a, b) => a + b, 0)
+
+/** Unique devices active on a day. */
+export const dailyUsers = (d: UsageDayRecord): number => d.newUsers + sum(d.gaps)
+
+/**
+ * Unique devices active in the `length` days ending `end` (length ≤ USAGE.maxGapDays): each counted on its
+ * first active day d in the window — a new device, or one whose previous active day was before the window.
+ */
+export function uniqueUsers(records: ReadonlyMap<string, UsageDayRecord>, end: string, length: number): number {
+  let total = 0
+  for (let k = 0; k < length; k++) {
+    const d = records.get(addDays(end, k - length + 1))
+    if (!d) continue
+    // k = days since the window's start; the previous active day is outside the window when gap > k.
+    total += d.newUsers + sum(d.gaps.slice(k))
+  }
+  return total
+}
+
+/** The dashboard: `days` days ending `today`, from the stored records (which must reach back far enough). */
+export function summarize(
+  records: ReadonlyMap<string, UsageDayRecord>,
+  o: { today: string; days: number; nowMs: number; window: number; state: WindowState | null; allTime: number; since: string | null },
+): StatsResponse {
+  const days: StatsDay[] = []
+  for (let i = o.days - 1; i >= 0; i--) {
+    const day = addDays(o.today, -i)
+    const r = records.get(day) ?? emptyDay()
+    days.push({
+      day,
+      users: dailyUsers(r),
+      users7: uniqueUsers(records, day, 7),
+      users30: uniqueUsers(records, day, 30),
+      users90: uniqueUsers(records, day, 90),
+      newUsers: r.newUsers,
+      opens: r.opens,
+      peakActive: r.peakActive,
+      beats: r.beats,
+      counts: r.counts,
+      cities: r.cities,
+      platforms: r.platforms,
+      installed: r.installed,
+      langs: r.langs,
+    })
+  }
+  return { timeZone: USAGE.timeZone, generatedAtMs: o.nowMs, activeNow: activeNow(o.state, o.window), allTimeUsers: o.allTime, since: o.since, days }
+}

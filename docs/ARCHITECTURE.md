@@ -62,6 +62,8 @@ Browser (React app, static assets on Cloudflare)       Cloudflare Worker (/api/*
   after `GEOCODE.directTimeoutMs` the client falls back to `/api/geocode`. CSP `connect-src` allows
   photon.komoot.io.
 - **Device**: map, UI, docks-along-route selection, Google Maps link building, ride progress.
+- **Usage dashboard** (`/analytics`, `analytics.html` + `src/analytics/`): a separate page and bundle that
+  nothing in the app links to or loads; see §8a.
 - **Shared pure modules** (`src/lib`, `src/data/gbfs.ts`, `src/geocode/photon.ts`, `src/routing`, `src/ride`
   except `rideStore.ts`) are runtime-agnostic: no DOM, no Node APIs, injected clocks. `tsconfig.worker.json`
   (no DOM lib) checks everything the Worker imports.
@@ -97,7 +99,8 @@ so the launch screen waits for one request, not a city lookup and then the stati
 fails), `POST /api/routes` (three bike route options), `POST /api/route-details`
 (path breakdown + elevation), `GET /api/geocode?q=&system=[&lat=&lon=]`,
 `GET /api/reverse?lat=&lon=`, `POST /api/push/ride` and `POST /api/push/cancel` (background ride alerts;
-404 when the deployment has no VAPID keys — `/api/meta` then reports `pushPublicKey: null`). Errors:
+404 when the deployment has no VAPID keys — `/api/meta` then reports `pushPublicKey: null`),
+`POST /api/usage` and `GET /api/analytics?days=` (anonymous usage counts and the dashboard, §8a). Errors:
 `{ error: { code, message, retryable } }` with 4xx/5xx; codes from `AppErrorCode`.
 
 - Validate everything: `system` must match a registry id; coordinates finite and in range; strings trimmed
@@ -317,6 +320,39 @@ like Settings → City), then removed from the address bar.
 
 ---
 
+## 8a. Usage counts and the dashboard (`src/ui/usage.ts`, `worker/usage*.ts`, `src/analytics/`)
+
+**Goal**: how many people use the app (unique users today / 7 / 30 / 90 days and all time, active now) and
+how, without tracking anyone. **No identifier leaves the device**, and nothing stored can tell devices apart.
+
+- The device keeps only `{ day, window }` (its last active day in `USAGE.timeZone` and its last check-in
+  window) in localStorage. It sends `POST /api/usage`: `open` once per page load (after the city is known),
+  `beat` once per `USAGE.beatMs` window while visible (other tabs skip a claimed window), and `event` for a
+  few feature uses (`USAGE.events`; a ride start is the first Google Maps link / walk / GPX of a ride). With
+  its first open or check-in of a day it adds `first`: the **gap in days since its previous active day**
+  (null = new device), city, platform, installed or not, language.
+- **Unique users from gaps**: a device active in the window [S, E] is counted once, on its first active day d
+  in the window, where its gap > d − S. So per day the server keeps a histogram of gaps (1 … 90, the last
+  bucket "90 or more") and any window up to `USAGE.maxGapDays` is a sum (`uniqueUsers` in
+  `worker/usageCore.ts`), exact — a 400-device simulation checks it against true distinct counts. All-time
+  users is a running total of new devices.
+- **Active now**: check-ins in the current window, or the previous window while the current one fills.
+  Riders in Google Maps aren't counted until they return to the app (the page can't run then).
+- The Worker counts `routes` (route options served), `routes_busy` (the busy routing server asked the rider
+  to retry) and `alerts_sent` itself.
+- Storage: one `Usage` Durable Object (SQLite, KV API): `d:YYYY-MM-DD` day records, `window`, `total`. Days
+  older than `USAGE.keepDays` are deleted. No IP, User-Agent, location or identifier is stored.
+- Not counted: Do Not Track / Global Privacy Control on, `navigator.webdriver` (automation, tests),
+  bot-like User-Agents (server side), browsers without working site storage. Settings → storage note says so.
+- **Dashboard** at `/analytics`: public by URL (anonymous totals only), `noindex` (meta + `X-Robots-Tag`),
+  not linked from the app, not precached by the app's service worker (`globIgnores`, and
+  `navigateFallbackDenylist` so the app shell never answers it). `GET /api/analytics` is rate-limited and
+  cached per Worker isolate for 30 s. Charts are hand-made SVG (`src/analytics/charts.tsx`): stacked columns
+  (new vs returning), lines (7/30-day uniques; routes vs rides), hour-of-day activity, ranked bars
+  (cities, devices, installed, languages, features); every chart has a table view and keyboard scrubbing.
+
+---
+
 ## 9. Security
 
 - Launch params: `system`, station and ride ids match `^[A-Za-z0-9_.-]{1,80}$`; coordinates validated;
@@ -333,6 +369,9 @@ like Settings → City), then removed from the address bar.
   messages and the official station feed, so nobody can make the Worker send their own text. The VAPID
   private key is a Worker secret. Stored per ride: the push subscription, language, city, end dock, party
   size and ride timer — no location — until the ride ends, the subscription is gone, or 4 hours pass.
+- Usage counts (§8a) carry no identifier; reports are validated field by field (known kinds, events,
+  platforms, languages; gap 1–90) and rate-limited per IP. Anyone can post fake counts — the usual limit of
+  client-side analytics — but never text: the dashboard only renders numbers and names from fixed tables.
 
 ---
 
@@ -350,10 +389,15 @@ like Settings → City), then removed from the address bar.
   browser hook's ordering (registers once the plan is known; a ride ended mid-registration is cancelled
   after it — `src/ui/ride/backgroundAlerts.test.tsx`); the service worker's push/click handlers run against a
   fake `self` (`src/ui/ride/serviceWorkerAlerts.test.ts`).
+- Usage counts: the unique-user math against a 400-device simulation, the Usage object with fake storage
+  (`worker/usage.test.ts`); what the browser sends and when, DNT/GPC (`src/ui/usage.test.tsx`); day and gap
+  helpers across DST (`src/lib/usage.test.ts`); the dashboard's range numbers (`src/analytics/aggregate.test.ts`).
 - E2E (Playwright, phone + desktop, network-free with inline `/api/*` mocks): launch screen (slow and
   failing feed), install tip, default city + City setting, shared ride link with a busy route server, plan saved
   across a reload until the last link is opened, station card Directions/Share, Nearest open dock, offline
-  banner, Prefer e-bikes + clearing recents, the first-ride pass question and the path-details retry.
+  banner, Prefer e-bikes + clearing recents, the first-ride pass question and the path-details retry, the
+  alerts help on Android and iPhone (and the planner's iPhone hint), the `/analytics` dashboard, and that
+  the app has no link to it.
 
 ---
 
@@ -362,7 +406,8 @@ like Settings → City), then removed from the address bar.
 Cloudflare Workers + static assets (`wrangler.jsonc`, custom domain badgerbikes.app). `npm run deploy`
 builds and runs `wrangler deploy`; `npm run cf-typegen` after changing bindings. Background ride alerts need
 the secrets `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` (`npm run vapid-keys` makes a pair; each deployment its
-own); without them `/api/meta` reports no push key and the client keeps to in-app alerts. Free plan limits are ample
+own); without them `/api/meta` reports no push key and the client keeps to in-app alerts. Usage counts need
+nothing to set up (the `Usage` Durable Object comes with the deploy); the dashboard is at `/analytics`. Free plan limits are ample
 (I/O-bound requests). For heavier traffic than FOSSGIS allows, point `VITE_VALHALLA_URL` / `VITE_OSRM_*` at a
 self-hosted or commercial Valhalla-compatible service. PWA: `registerType: 'prompt'`, no runtime caching of live data. When a new version is deployed, a
 "Refresh" prompt stays on screen until the rider taps it (no "Later"), so nobody keeps running an old

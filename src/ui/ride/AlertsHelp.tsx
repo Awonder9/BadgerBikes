@@ -62,10 +62,22 @@ export function AlertsHelp() {
   }
 }
 
-/** What the rider needs to do, step by step; open at first, and it folds away with a tap to keep the card short. */
-function Steps({ title, steps, note }: { title: string; steps: readonly string[]; note?: string }) {
+/**
+ * Planner, iPhone in a Safari tab, before the ride: one line saying alerts while Google Maps is open need the
+ * Home Screen app (the ride card would say so only once the ride is under way); the steps are a tap away.
+ */
+export function IosAlertsHint() {
+  const iosTab = platform() === 'ios' && !isStandalone()
+  const meta = useMeta(iosTab)
+  const { t } = useI18n()
+  if (!iosTab || !meta?.pushPublicKey) return null
+  return <Steps title={t.alertsIosTitle} steps={t.alertsIosSteps(APP.name)} note={t.alertsIosNote} open={false} />
+}
+
+/** What the rider needs to do, step by step (folds away with a tap). */
+function Steps({ title, steps, note, open = true }: { title: string; steps: readonly string[]; note?: string; open?: boolean }) {
   return (
-    <details open className="group rounded-lg bg-white/70 px-3 pb-2 text-sm text-slate-900 dark:bg-slate-950/60 dark:text-slate-100">
+    <details open={open} className="group rounded-lg bg-white/70 px-3 text-sm text-slate-900 ring-1 ring-slate-200 open:pb-2 dark:bg-slate-950/60 dark:text-slate-100 dark:ring-slate-700">
       <summary className="flex min-h-11 cursor-pointer list-none items-center gap-1.5 font-semibold [&::-webkit-details-marker]:hidden">
         <Icon name="bell" size={16} className="shrink-0" />
         <span className="min-w-0 flex-1">{title}</span>

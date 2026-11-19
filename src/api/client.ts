@@ -20,6 +20,8 @@ import {
   type RouteDetailsResponse,
   type RoutesResponse,
   type StationsResponse,
+  type StatsResponse,
+  type UsageRequest,
 } from './contract'
 
 const PROVIDER = 'api'
@@ -100,6 +102,16 @@ export const api = {
   /** The ride ended: no more background alerts for this device. */
   async pushCancel(endpoint: string, signal?: AbortSignal): Promise<void> {
     await postJson<OkResponse>(API_PATHS.pushCancel, { endpoint }, { signal, provider: PROVIDER })
+  },
+
+  /** An anonymous usage report (src/ui/usage.ts). */
+  async usage(report: UsageRequest): Promise<void> {
+    await postJson<OkResponse>(API_PATHS.usage, report, { provider: PROVIDER })
+  },
+
+  /** The usage dashboard's numbers (/analytics). */
+  analytics(days: number, signal?: AbortSignal): Promise<StatsResponse> {
+    return fetchJson<StatsResponse>(`${API_PATHS.analytics}${qs({ days })}`, { signal, provider: PROVIDER, cache: 'no-store' })
   },
 
   async reverse(coord: LngLat, signal?: AbortSignal): Promise<Place | null> {

@@ -1,6 +1,6 @@
 // HTTP API contract between the Cloudflare Worker (worker/) and the client (src/api/client.ts).
 // Same origin in dev and prod; JSON everywhere; errors use ApiErrorBody with a 4xx/5xx status.
-import type { Priority } from '../config'
+import type { Priority, USAGE } from '../config'
 import type { Lang } from '../i18n/lang'
 import type { RouteDetails } from '../routing/details'
 import type { RouteRequest } from '../routing/types'
@@ -18,6 +18,8 @@ export const API_PATHS = {
   reverse: '/api/reverse',
   pushRide: '/api/push/ride',
   pushCancel: '/api/push/cancel',
+  usage: '/api/usage',
+  analytics: '/api/analytics',
 } as const
 
 /** GET /api/health */
@@ -122,3 +124,69 @@ export interface PushCancelRequest {
 export interface OkResponse {
   ok: true
 }
+
+/** Something the app counts (USAGE.events). */
+export type UsageEvent = (typeof USAGE.events)[number]
+/** Something the Worker counts itself (USAGE.serverCounters). */
+export type UsageCounter = (typeof USAGE.serverCounters)[number]
+export type UsagePlatform = 'ios' | 'android' | 'desktop'
+
+/**
+ * Sent with a device's first open or check-in of the day (USAGE.timeZone): how many days since its previous
+ * active day (null: never seen before), and coarse context. No identifier.
+ */
+export interface UsageFirst {
+  gap: number | null
+  systemId: string | null
+  platform: UsagePlatform
+  /** Running as an installed home-screen app. */
+  installed: boolean
+  lang: Lang
+}
+
+/** POST /api/usage — anonymous usage counts (see USAGE in src/config.ts). Answer: OkResponse. */
+export type UsageRequest =
+  /** The app was opened (a page load); also a check-in for the current window. */
+  | { kind: 'open'; first: UsageFirst | null }
+  /** The app is open (visible) in a new USAGE.beatMs window. */
+  | { kind: 'beat'; first: UsageFirst | null }
+  | { kind: 'event'; name: UsageEvent }
+
+/** One day of the dashboard (USAGE.timeZone). */
+export interface StatsDay {
+  /** YYYY-MM-DD */
+  day: string
+  /** Unique devices active that day, and in the 7 / 30 / 90 days ending that day. */
+  users: number
+  users7: number
+  users30: number
+  users90: number
+  newUsers: number
+  /** App opens (page loads). */
+  opens: number
+  /** Most devices with the app open in one USAGE.beatMs window. */
+  peakActive: number
+  /** Check-ins by hour of day (each is one device with the app open in one window). */
+  beats: number[]
+  counts: Partial<Record<UsageEvent | UsageCounter, number>>
+  /** Daily unique devices by city, platform, installed or not, and language. */
+  cities: Record<string, number>
+  platforms: Partial<Record<UsagePlatform, number>>
+  installed: number
+  langs: Partial<Record<Lang, number>>
+}
+
+/** GET /api/analytics?days=N — the usage dashboard at /analytics (anonymous totals; cached briefly). */
+export interface StatsResponse {
+  timeZone: string
+  generatedAtMs: number
+  /** Devices that checked in during the current or the previous USAGE.beatMs window. */
+  activeNow: number
+  /** Unique devices since counting began. */
+  allTimeUsers: number
+  /** The first day with any counts (null: none yet). */
+  since: string | null
+  /** Oldest first, ending today. */
+  days: StatsDay[]
+}
+

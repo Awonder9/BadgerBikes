@@ -6,10 +6,12 @@ import { createRouter } from '../src/routing'
 import { createApp } from './app'
 import { endpointKey, type PushSecrets } from './rideAlerts'
 import { createUpstream } from './upstream'
+import { USAGE_OBJECT } from './usage'
 import { vapidKeysFrom } from './webPush'
 
 export { UpstreamGate } from './gate'
 export { RideAlerts } from './rideAlerts'
+export { Usage } from './usage'
 
 export default {
   async fetch(request, env, ctx): Promise<Response> {
@@ -28,6 +30,7 @@ export default {
       contactEmail: env.CONTACT_EMAIL || null,
       cache: typeof caches !== 'undefined' ? caches.default : null,
     })
+    const usage = () => env.USAGE.get(env.USAGE.idFromName(USAGE_OBJECT))
     const app = createApp({
       upstream,
       createRouter,
@@ -38,10 +41,12 @@ export default {
       now: () => Date.now(),
       contactEmail: env.CONTACT_EMAIL || null,
       version: env.APP_VERSION,
-      limiters: { route: env.ROUTE_LIMITER, geocode: env.GEOCODE_LIMITER, push: env.PUSH_LIMITER },
+      limiters: { route: env.ROUTE_LIMITER, geocode: env.GEOCODE_LIMITER, push: env.PUSH_LIMITER, usage: env.USAGE_LIMITER },
       push: vapid
         ? { publicKey: vapid.publicKey, rideAlerts: async (endpoint) => env.RIDE_ALERTS.get(env.RIDE_ALERTS.idFromName(await endpointKey(endpoint))) }
         : null,
+      usage: { record: (req) => usage().record(req), count: (name) => usage().count(name), report: (days) => usage().report(days) },
+      background: (work) => ctx.waitUntil(work),
     })
     return app.fetch(request)
   },

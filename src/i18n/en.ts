@@ -137,7 +137,7 @@ export const en = {
   recentCount: (n: number) => (n === 1 ? '1 place' : `${n} places`),
   clearRecentAria: 'Clear recent places',
   storageNote:
-    'Saved places, recent destinations, starred stations and your current ride are stored on this device only. Clearing this site’s data (cookies and site data) removes them. With alerts on during a ride, the app’s server also keeps that ride’s timer and end dock (never your location) until the ride ends.',
+    'Saved places, recent destinations, starred stations and your current ride are stored on this device only. Clearing this site’s data (cookies and site data) removes them. With alerts on during a ride, the app’s server also keeps that ride’s timer and end dock (never your location) until the ride ends. The app also sends anonymous usage counts (no identifier or location); Do Not Track or Global Privacy Control turns them off.',
   aboutLink: 'About & attributions',
 
   // About

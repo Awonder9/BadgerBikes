@@ -14,6 +14,7 @@ import { base64urlToBytes } from '../../lib/base64url'
 import { useRideStore } from '../../ride/rideStore'
 import { useAppStore } from '../../store/appStore'
 import { useNotificationAccess } from '../notifications'
+import { countUse } from '../usage'
 import type { RidePlan } from './useRidePlan'
 
 /**
@@ -93,7 +94,9 @@ export function useBackgroundRideAlerts(plan: RidePlan): void {
         if (!sub) return useBackgroundAlerts.setState({ on: false, failed: true }) // no service worker
         registered.current = sub.endpoint
         await api.pushRide({ ...ride, subscription: sub })
-        if (!stale) useBackgroundAlerts.setState({ on: true, failed: false })
+        if (stale) return
+        if (!useBackgroundAlerts.getState().on) countUse('alerts_on') // once per ride, not per update
+        useBackgroundAlerts.setState({ on: true, failed: false })
       } catch {
         if (!stale) useBackgroundAlerts.setState({ on: false, failed: true })
       }

@@ -1,9 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { APP } from '../src/config'
 import { resetHttpState, setFetchImpl } from '../src/lib/http'
-import type { PushRideRequest } from '../src/api/contract'
+import type { PushRideRequest, StatsResponse, UsageRequest } from '../src/api/contract'
 import { makeSnapshot, makeStation } from '../src/test/factories'
-import { createApp, type AppDeps, type RideAlertsRpc } from './app'
+import { AppError } from '../src/lib/errors'
+import { createApp, resetAnalyticsCache, type AppDeps, type RideAlertsRpc, type UsageRpc } from './app'
 import { GateCore } from './gateCore'
 import { createUpstream, resetUpstreamState, type Gate } from './upstream'
 
@@ -147,6 +148,81 @@ describe('background ride alerts API', () => {
     expect(statuses).toEqual([400, 400, 400, 400, 400, 400, 400, 400, 404]) // the last: an unknown city
     expect(calls).toHaveLength(0)
     expect((await post(app, '/api/push/ride', ride({ rideStartedAtMs: null, includedMinutes: null, endStationId: null }))).status).toBe(200)
+  })
+})
+
+describe('usage counts and the dashboard', () => {
+  afterEach(() => resetAnalyticsCache())
+  function usageDeps() {
+    const recorded: UsageRequest[] = []
+    const counted: string[] = []
+    const usage: UsageRpc = {
+      record: async (req) => void recorded.push(req),
+      count: async (name) => void counted.push(name),
+      report: async (days) => ({ timeZone: 'America/Chicago', generatedAtMs: 0, activeNow: 3, allTimeUsers: 9, since: null, days: Array.from({ length: days }, () => ({}) as never) }),
+    }
+    return { recorded, counted, usage }
+  }
+  const post = (body: unknown, ua = 'Mozilla/5.0 (iPhone)') => ({ method: 'POST', body: JSON.stringify(body), headers: { 'User-Agent': ua } })
+  const first = { gap: 3, systemId: 'bcycle_madison', platform: 'android', installed: true, lang: 'zh-Hans' }
+
+  it('counts known reports from people, not from bots, and refuses anything else', async () => {
+    const { recorded, usage } = usageDeps()
+    const app = createApp(deps({ usage }))
+    expect((await call(app, '/api/usage', post({ kind: 'open', first }))).status).toBe(200)
+    expect((await call(app, '/api/usage', post({ kind: 'beat', first: null }))).status).toBe(200)
+    expect((await call(app, '/api/usage', post({ kind: 'event', name: 'gpx' }))).status).toBe(200)
+    // A city this Worker doesn't know still counts the device, without the city.
+    await call(app, '/api/usage', post({ kind: 'open', first: { ...first, gap: null, systemId: 'bcycle_atlantis' } }))
+    expect((await call(app, '/api/usage', post({ kind: 'open', first: null }, 'Googlebot/2.1'))).status).toBe(200)
+    expect(recorded).toEqual([
+      { kind: 'open', first },
+      { kind: 'beat', first: null },
+      { kind: 'event', name: 'gpx' },
+      { kind: 'open', first: { ...first, gap: null, systemId: null } },
+    ])
+    const bad = [
+      { kind: 'event', name: 'routes' }, // counted by the Worker only
+      { kind: 'visit' },
+      { kind: 'open', first: { ...first, gap: 0 } },
+      { kind: 'open', first: { ...first, gap: 91 } },
+      { kind: 'open', first: { ...first, platform: 'windows' } },
+      { kind: 'open', first: { ...first, lang: 'fr' } },
+      { kind: 'open', first: { ...first, installed: 'yes' } },
+      { kind: 'open', first: { systemId: 'bcycle_madison', platform: 'ios', installed: false, lang: 'en' } }, // no gap
+    ]
+    expect(await Promise.all(bad.map(async (b) => (await call(app, '/api/usage', post(b))).status))).toEqual(bad.map(() => 400))
+    expect(recorded).toHaveLength(4)
+  })
+
+  it('the dashboard numbers are public, checked, and read from the Usage object at most every 30 s', async () => {
+    const { usage } = usageDeps()
+    let reads = 0
+    let now = 1_800_000_000_000
+    const app = createApp(deps({ now: () => now, usage: { ...usage, report: (days) => (reads++, usage.report(days)) } }))
+    const ok = await call(app, '/api/analytics?days=30')
+    expect(ok.status).toBe(200)
+    expect(ok.headers.get('Cache-Control')).toBe('no-store')
+    expect(((await ok.json()) as StatsResponse).days).toHaveLength(30)
+    await call(app, '/api/analytics?days=30')
+    expect(reads).toBe(1)
+    now += 30_000
+    await call(app, '/api/analytics?days=30')
+    expect(reads).toBe(2)
+    expect((await call(app, '/api/analytics?days=0')).status).toBe(400)
+    expect((await call(createApp(deps()), '/api/analytics')).status).toBe(404) // a server without usage counts
+  })
+
+  it('counts route requests, and the ones the busy routing server turned away', async () => {
+    const { counted, usage } = usageDeps()
+    const pending: Array<Promise<unknown>> = []
+    const ok = createApp(deps({ usage, background: (w) => void pending.push(w) }))
+    await call(ok, '/api/routes', { method: 'POST', body: routeBody })
+    const busyRouter = () => ({ ...deps().createRouter({ upstream: deps().upstream }), routeLadder: async () => Promise.reject(new AppError('upstream_unavailable', 'busy')) })
+    const busy = createApp(deps({ usage, background: (w) => void pending.push(w), createRouter: busyRouter as never }))
+    expect((await call(busy, '/api/routes', { method: 'POST', body: routeBody })).status).toBe(503)
+    await Promise.all(pending)
+    expect(counted).toEqual(['routes', 'routes_busy'])
   })
 })
 

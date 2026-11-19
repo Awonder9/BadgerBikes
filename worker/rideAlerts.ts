@@ -13,6 +13,7 @@ import { postBytes } from '../src/lib/http'
 import { endDockState, type EndDockState } from '../src/ride/rideProgress'
 import { alertMessage, dueAlerts, markSent, nextWakeMs, planRide, type AlertKind, type RideAlertState } from './rideAlertsCore'
 import { createUpstream } from './upstream'
+import { USAGE_OBJECT } from './usage'
 import { pushRequest, vapidKeysFrom } from './webPush'
 
 const KEY = 'ride'
@@ -51,7 +52,10 @@ export class RideAlerts extends DurableObject<Env> {
     for (const kind of dueAlerts(state, now, dock?.state ?? null)) {
       const result = await this.send(state, kind, now, dock?.name ?? null)
       if (result === 'gone') return this.cancel()
-      if (result === 'sent') markSent(state, kind)
+      if (result === 'sent') {
+        markSent(state, kind)
+        await this.countSent()
+      }
     }
     await this.ctx.storage.put(KEY, state)
     await this.wake(state, now)
@@ -77,6 +81,15 @@ export class RideAlerts extends DurableObject<Env> {
       return station ? { state: endDockState(station, state.partySize), name: station.name } : null
     } catch {
       return null // the feed is unreachable: check again next time
+    }
+  }
+
+  /** For the usage dashboard: an alert reached a rider. Never holds up the alerts. */
+  private async countSent(): Promise<void> {
+    try {
+      await this.env.USAGE.get(this.env.USAGE.idFromName(USAGE_OBJECT)).count('alerts_sent')
+    } catch {
+      /* best effort */
     }
   }
 

@@ -15,6 +15,7 @@ import type { Place } from './types'
 import { AppShell } from './ui/layout/AppShell'
 import { changeCity } from './ui/ride/rideActions'
 import { isDarkStyle, usePrefersDark } from './ui/useMediaQuery'
+import { useUsageCounts } from './ui/usage'
 
 // Created at startup, not on first render, so the launch screen's station request is already on its way
 // while React renders: the stored city, the city a share link opens, or on a first visit the nearest city.
@@ -110,6 +111,7 @@ function Root() {
   useTheme()
   useDocumentLang()
   useLocationWatcher()
+  useUsageCounts()
   return <AppShell />
 }
 

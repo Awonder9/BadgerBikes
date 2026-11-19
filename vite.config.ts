@@ -33,6 +33,11 @@ export default defineConfig({
       },
     },
   },
+  environments: {
+    // The app, and the usage dashboard (/analytics) as a page of its own: the app never loads or links to it.
+    // (Client build only: a top-level input would also become the Worker build's entry.)
+    client: { build: { rolldownOptions: { input: { main: 'index.html', analytics: 'analytics.html' } } } },
+  },
   plugins: [
     react(),
     tailwindcss(),
@@ -59,8 +64,10 @@ export default defineConfig({
       workbox: {
         // App shell only. Live data (/api/*) and map tiles are never cached by the service worker.
         globPatterns: ['**/*.{js,css,html,svg,png,webmanifest}'],
+        // The usage dashboard is for the operator: never downloaded to riders' phones.
+        globIgnores: ['analytics.html', 'assets/analytics-*'],
         navigateFallback: 'index.html',
-        navigateFallbackDenylist: [/^\/api\//],
+        navigateFallbackDenylist: [/^\/api\//, /^\/analytics/],
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
         runtimeCaching: [],
         // Tapping a ride alert (shown through the service worker) focuses the app.

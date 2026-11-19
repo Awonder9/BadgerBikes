@@ -27,6 +27,8 @@ import { IconButton } from '../primitives/Button'
 import { Icon } from '../primitives/Icon'
 import { ShareButton } from '../primitives/ShareButton'
 import { Spinner } from '../primitives/Spinner'
+import { countUse } from '../usage'
+import { IosAlertsHint } from './AlertsHelp'
 import { RideStatusCard } from './RideProgress'
 import { useRidePlan, type RidePlan } from './useRidePlan'
 
@@ -201,6 +203,7 @@ export function RidePlannerPanel() {
                   {t.change}
                 </button>
               </p>
+              {!riding && <IosAlertsHint />}
               {(() => {
                 // Up to 6 buttons share one row, shrinking text, icons and padding past 4 so labels still fit.
                 // More than 6: split into balanced rows of at most 4 at full size.
@@ -530,6 +533,7 @@ function ExactRouteFile({ plan }: { plan: RidePlan }) {
     // The ride starts with this file instead of the Google Maps parts — once it was actually handed over
     // (closing the share sheet without choosing an app changes nothing).
     const started = () => {
+      countUse('gpx')
       const ride = useRideStore.getState()
       rideParts.forEach((l, i) => ride.markPartOpened(i, i === 0 && l.fromDock, !plan.walkToDock))
       if (!walkLink) ride.finishPlan()

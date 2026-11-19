@@ -18,6 +18,7 @@ import { Icon } from '../primitives/Icon'
 import { ShareButton } from '../primitives/ShareButton'
 import { platform } from '../platform'
 import { rideTo, startRideAt } from '../ride/rideActions'
+import { countUse } from '../usage'
 
 function statusBanner(st: Station, t: Messages): string | null {
   const s = st.status
@@ -153,6 +154,7 @@ export function StationCard() {
           href={directionsFromHereUrl(st.coord, 'walking')}
           target="_blank"
           rel="noopener noreferrer"
+          onClick={() => countUse('directions')}
           aria-label={t.directionsAria(st.name)}
           className="flex min-h-11 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl px-2 font-medium ring-1 ring-slate-300 dark:ring-slate-600"
         >

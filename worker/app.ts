@@ -1,6 +1,17 @@
 // HTTP layer for /api/*. Dependencies are injected so handlers are testable in Node.
 import { APP, BIKE_ROUTING } from '../src/config'
-import { API_PATHS, NEAREST_SYSTEM, type LocateResponse, type MetaResponse, type OkResponse, type PushRideRequest, type StationsResponse } from '../src/api/contract'
+import {
+  API_PATHS,
+  NEAREST_SYSTEM,
+  type LocateResponse,
+  type MetaResponse,
+  type OkResponse,
+  type PushRideRequest,
+  type StationsResponse,
+  type StatsResponse,
+  type UsageCounter,
+  type UsageRequest,
+} from '../src/api/contract'
 import { nearestSystem } from '../src/data/systems'
 import { isValidLngLat } from '../src/lib/geo'
 import type { fetchStationsSnapshot as FetchStations, fetchSystemDetails as FetchSystem } from '../src/data/gbfs'
@@ -9,12 +20,19 @@ import { AppError, toAppError, type AppErrorCode } from '../src/lib/errors'
 
 import type { UpstreamFetch } from '../src/lib/upstream'
 import type { AltRouter } from '../src/routing/types'
-import { geocodeQuery, latLonParams, pushCancelRequest, pushRideRequest, readJsonBody, requireSystem, routeDetailsRequest, routeRequest } from './validate'
+import { geocodeQuery, latLonParams, pushCancelRequest, pushRideRequest, readJsonBody, reportDays, requireSystem, routeDetailsRequest, routeRequest, usageRequest } from './validate'
 
 /** One device's background ride alerts (the RideAlerts Durable Object's RPC methods). */
 export interface RideAlertsRpc {
   schedule(req: PushRideRequest): Promise<void>
   cancel(): Promise<void>
+}
+
+/** The anonymous usage counts (the Usage Durable Object's RPC methods). */
+export interface UsageRpc {
+  record(req: UsageRequest): Promise<void>
+  count(name: UsageCounter): Promise<void>
+  report(days: number): Promise<StatsResponse>
 }
 
 export interface AppDeps {
@@ -28,9 +46,28 @@ export interface AppDeps {
   contactEmail: string | null
   version: string
   /** Per-client limits; undefined → unlimited. */
-  limiters?: { route?: RateLimit; geocode?: RateLimit; push?: RateLimit }
+  limiters?: { route?: RateLimit; geocode?: RateLimit; push?: RateLimit; usage?: RateLimit }
   /** Background ride alerts (Web Push); null when this deployment has no VAPID keys. */
   push?: { publicKey: string; rideAlerts: (endpoint: string) => Promise<RideAlertsRpc> } | null
+  /** Anonymous usage counts; null/undefined → not counted. */
+  usage?: UsageRpc | null
+  /** Keeps work the response doesn't wait for alive after it is sent (ctx.waitUntil). */
+  background?: (work: Promise<unknown>) => void
+}
+
+/** Crawlers and automated browsers aren't people using the app. */
+const BOT_UA = /bot|crawl|spider|slurp|headless|lighthouse|pagespeed/i
+
+/**
+ * The dashboard's numbers, kept per Worker isolate for ANALYTICS_CACHE_MS: the page is public, so a shared link
+ * must not turn into one Usage-object read per visit.
+ */
+const ANALYTICS_CACHE_MS = 30_000
+const analyticsCache = new Map<number, { atMs: number; body: StatsResponse }>()
+
+/** Test hook. */
+export function resetAnalyticsCache(): void {
+  analyticsCache.clear()
 }
 
 const BASE_HEADERS = { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' }
@@ -80,6 +117,13 @@ async function limit(limiter: RateLimit | undefined, request: Request): Promise<
 }
 
 export function createApp(deps: AppDeps) {
+  /** Counts something in the background; never delays or fails the response. */
+  function count(name: UsageCounter): void {
+    if (!deps.usage) return
+    const work = deps.usage.count(name).catch(() => {})
+    deps.background?.(work)
+  }
+
   async function handle(request: Request): Promise<Response> {
     const url = new URL(request.url)
     const p = url.pathname
@@ -144,7 +188,33 @@ export function createApp(deps: AppDeps) {
       const r = routeRequest(body)
       const { systemId: _s, priority, ...routeReq } = r
       const router = deps.createRouter({ upstream: deps.upstream })
-      return json({ routes: await router.routeLadder(routeReq, BIKE_ROUTING.options.map((o) => o.useRoads), { signal, priority: priority ?? 'interactive' }) })
+      try {
+        const routes = await router.routeLadder(routeReq, BIKE_ROUTING.options.map((o) => o.useRoads), { signal, priority: priority ?? 'interactive' })
+        count('routes')
+        return json({ routes })
+      } catch (err) {
+        const code = toAppError(err).code
+        if (code === 'upstream_unavailable' || code === 'rate_limited') count('routes_busy') // the rider was asked to try again
+        throw err
+      }
+    }
+
+    if (p === API_PATHS.usage && method === 'POST') {
+      await limit(deps.limiters?.usage, request)
+      const report = usageRequest(await readJsonBody(request))
+      if (deps.usage && !BOT_UA.test(request.headers.get('User-Agent') ?? 'bot')) await deps.usage.record(report)
+      return json({ ok: true } satisfies OkResponse)
+    }
+
+    if (p === API_PATHS.analytics && method === 'GET') {
+      if (!deps.usage) throw new AppError('not_found', 'Usage counts are not set up on this server')
+      await limit(deps.limiters?.usage, request)
+      const days = reportDays(url.searchParams.get('days'))
+      const cached = analyticsCache.get(days)
+      if (cached && deps.now() - cached.atMs < ANALYTICS_CACHE_MS) return json(cached.body)
+      const body = await deps.usage.report(days)
+      analyticsCache.set(days, { atMs: deps.now(), body })
+      return json(body)
     }
 
     if (p.startsWith('/api/')) throw new AppError('not_found', `No API route for ${method} ${p}`)

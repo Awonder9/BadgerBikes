@@ -14,22 +14,27 @@
   },
   // One UpstreamGate instance per upstream group ("fossgis", "photon") enforces the public servers'
   // usage policies globally — across all users and Worker isolates. One RideAlerts instance per push
-  // subscription holds that device's ride and sends its background alerts (Web Push) on alarms.
+  // subscription holds that device's ride and sends its background alerts (Web Push) on alarms. One Usage
+  // instance keeps the anonymous usage counts behind the usage dashboard (/analytics).
   "durable_objects": {
     "bindings": [
       { "name": "UPSTREAM_GATE", "class_name": "UpstreamGate" },
-      { "name": "RIDE_ALERTS", "class_name": "RideAlerts" }
+      { "name": "RIDE_ALERTS", "class_name": "RideAlerts" },
+      { "name": "USAGE", "class_name": "Usage" }
     ]
   },
   "migrations": [
     { "tag": "v1", "new_sqlite_classes": ["UpstreamGate"] },
-    { "tag": "v2", "new_sqlite_classes": ["RideAlerts"] }
+    { "tag": "v2", "new_sqlite_classes": ["RideAlerts"] },
+    { "tag": "v3", "new_sqlite_classes": ["Usage"] }
   ],
   // Per-client-IP limits on our own API so one client cannot exhaust the shared upstream budget.
   "ratelimits": [
     { "name": "ROUTE_LIMITER", "namespace_id": "1002", "simple": { "limit": 30, "period": 60 } },
     { "name": "GEOCODE_LIMITER", "namespace_id": "1003", "simple": { "limit": 60, "period": 60 } },
-    { "name": "PUSH_LIMITER", "namespace_id": "1004", "simple": { "limit": 20, "period": 60 } }
+    { "name": "PUSH_LIMITER", "namespace_id": "1004", "simple": { "limit": 20, "period": 60 } },
+    // Generous: a campus or office network can put many riders behind one IP.
+    { "name": "USAGE_LIMITER", "namespace_id": "1005", "simple": { "limit": 300, "period": 60 } }
   ],
   "vars": {
     // Secrets, not set here (`npx wrangler secret put NAME` for production, `.dev.vars` for local dev):

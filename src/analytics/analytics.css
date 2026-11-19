@@ -1,0 +1,32 @@
+@import '../index.css';
+
+/* Chart colors (validated as a categorical pair against these surfaces, light and dark: CVD ΔE ≥ 24,
+   contrast ≥ 3:1). Text never takes these colors; marks do. */
+:root {
+  --viz-surface: #ffffff;
+  --viz-1: #2a78d6;
+  --viz-2: #eb6834;
+  --viz-grid: #e2e8f0;
+  --viz-axis: #cbd5e1;
+}
+:root.dark {
+  --viz-surface: #0f172a;
+  --viz-1: #3987e5;
+  --viz-2: #d95926;
+  --viz-grid: #1e293b;
+  --viz-axis: #334155;
+}
+
+@layer base {
+  /* A scrolling page, not the app's full-screen map: let it grow with its content. */
+  html,
+  body,
+  #root {
+    height: auto;
+    min-height: 100%;
+  }
+  body {
+    @apply bg-slate-50 dark:bg-slate-950;
+    overscroll-behavior: auto;
+  }
+}

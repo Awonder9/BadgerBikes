@@ -396,7 +396,7 @@ test.describe('ride alerts on an Android phone (Chrome tab)', () => {
 test.describe('ride alerts on an iPhone (Safari tab)', () => {
   test.use({ userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1' })
 
-  test('explains that alerts need the app on the Home Screen, step by step', async ({ page, context }) => {
+  test('explains, before and during the ride, that alerts need the app on the Home Screen', async ({ page, context }) => {
     await mockApi(context, { routes: 'ok', push: true })
     await skipInstallTip(page)
     // Safari tabs have no notifications or push at all.
@@ -404,6 +404,14 @@ test.describe('ride alerts on an iPhone (Safari tab)', () => {
       Reflect.deleteProperty(window, 'Notification')
       Reflect.deleteProperty(window, 'PushManager')
     })
+    // Before the ride: one folded line above the Google Maps button; the steps open with a tap.
+    await page.goto(`/?start=st_a&to=${C[1]},${(C[0] + 0.004).toFixed(5)}&toName=Coffee%20Shop`)
+    const hint = page.getByText('To get alerts while Google Maps is open, add the app to your Home Screen')
+    await expect(hint).toBeVisible()
+    await expect(page.getByText('Tap “Add to Home Screen”, then Add.')).toBeHidden()
+    await hint.click()
+    await expect(page.getByText('Tap “Add to Home Screen”, then Add.')).toBeVisible()
+    // Once the ride is under way, the ride card shows the steps instead.
     const card = await startRide(page, context)
     await expect(card.getByText('To get alerts while Google Maps is open, add the app to your Home Screen')).toBeVisible()
     await expect(card.getByText('Tap “Add to Home Screen”, then Add.')).toBeVisible()
@@ -411,4 +419,67 @@ test.describe('ride alerts on an iPhone (Safari tab)', () => {
     await expect(card.getByText(/Needs iOS 16\.4 or later\. Safari tabs can’t receive alerts/)).toBeVisible()
     await expect(card.getByRole('button', { name: /Turn on alerts/ })).toHaveCount(0)
   })
+})
+
+/** 180 days of plausible dashboard numbers (GET /api/analytics), growing over time, ending today. */
+function statsFixture() {
+  const today = new Date()
+  const days = Array.from({ length: 180 }, (_, i) => {
+    const d = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate() - (179 - i)))
+    const weekend = d.getUTCDay() === 0 || d.getUTCDay() === 6
+    const users = Math.round((20 + i * 0.6) * (weekend ? 1.3 : 1))
+    const newUsers = Math.round(users * 0.2)
+    return {
+      day: d.toISOString().slice(0, 10),
+      users,
+      users7: Math.round(users * 3.1),
+      users30: Math.round(users * 7.4),
+      users90: Math.round(users * 12),
+      newUsers,
+      opens: users * 3,
+      peakActive: Math.round(users / 6),
+      beats: Array.from({ length: 24 }, (_hour, h) => (h >= 7 && h <= 21 ? Math.round(users * (h === 8 || h === 17 ? 2.2 : 1)) : 0)),
+      counts: { routes: Math.round(users * 0.9), ride_start: Math.round(users * 0.4), nearest_dock: 5, directions: 7, share: 2, gpx: 1, alerts_on: 3, alerts_sent: 4, routes_busy: 1 },
+      cities: { bcycle_madison: users - 3, bcycle_boulder: 3 },
+      platforms: { ios: Math.round(users * 0.6), android: users - Math.round(users * 0.6) },
+      installed: Math.round(users * 0.3),
+      langs: { en: users - 2, 'zh-Hans': 2 },
+    }
+  })
+  return { timeZone: 'America/Chicago', generatedAtMs: Date.now(), activeNow: 4, allTimeUsers: 2950, since: days[0]!.day, days }
+}
+
+test('the usage dashboard at /analytics shows unique users, active now, charts and tables', async ({ page, context }) => {
+  const fixture = statsFixture()
+  await context.route(/^https?:\/\/(?!localhost)/, (route) => route.abort())
+  await context.route(/\/api\/analytics/, (route) => route.fulfill({ json: fixture }))
+  await page.goto('/analytics')
+
+  const last = fixture.days.at(-1)!
+  const hero = page.getByRole('region', { name: 'Unique users' })
+  await expect(hero).toContainText('Unique users, last 30 days')
+  await expect(hero).toContainText(last.users30.toLocaleString('en-US'))
+  await expect(page.getByText('Active now', { exact: true })).toBeVisible()
+  await expect(page.getByText('2,950')).toBeVisible() // all-time users
+  await expect(page.getByRole('slider', { name: /Daily users, last 30 days/ })).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Cities' })).toContainText('Madison')
+
+  // The range scopes everything (and is remembered); each chart has its table.
+  await page.getByRole('radio', { name: 'Last 7 days' }).click()
+  await expect(hero).toContainText(last.users7.toLocaleString('en-US'))
+  const daily = page.getByRole('figure').filter({ hasText: 'Daily users' })
+  await daily.getByRole('button', { name: 'Table' }).click()
+  await expect(daily.getByRole('row')).toHaveCount(8) // header + 7 days
+  await page.reload()
+  await expect(page.getByRole('radio', { name: 'Last 7 days' })).toBeChecked()
+})
+
+test('the app has no way into the dashboard', async ({ page, context }) => {
+  await mockApi(context)
+  await skipInstallTip(page)
+  await page.goto('/')
+  await expect(page.getByRole('combobox', { name: 'Search stations or places' })).toBeVisible()
+  await page.getByRole('button', { name: 'Settings' }).click()
+  await expect(page.locator('a[href*="analytics"]')).toHaveCount(0)
+  expect(await page.content()).not.toContain('/analytics')
 })

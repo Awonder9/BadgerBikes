@@ -1,6 +1,6 @@
 // Request validation for the Worker API. Everything from the client is untrusted.
-import type { PushRideRequest, PushSubscriptionJson, RouteApiRequest } from '../src/api/contract'
-import { APP, GEOCODE, HTTP, PUSH, ROUTE_DETAILS } from '../src/config'
+import type { PushRideRequest, PushSubscriptionJson, RouteApiRequest, UsageFirst, UsagePlatform, UsageRequest } from '../src/api/contract'
+import { APP, GEOCODE, HTTP, PUSH, ROUTE_DETAILS, USAGE } from '../src/config'
 import { SYSTEMS } from '../src/data/systems'
 import { LANGS, type Lang } from '../src/i18n/lang'
 import { base64urlToBytes } from '../src/lib/base64url'
@@ -138,6 +138,39 @@ export function pushRideRequest(body: unknown, nowMs: number): PushRideRequest {
 export function pushCancelRequest(body: unknown): { endpoint: string } {
   if (!isObj(body)) throw bad('Invalid body')
   return { endpoint: pushEndpoint(body.endpoint) }
+}
+
+const PLATFORMS: readonly UsagePlatform[] = ['ios', 'android', 'desktop']
+
+function usageFirst(v: unknown): UsageFirst {
+  if (!isObj(v)) throw bad('Invalid usage report')
+  const gap = v.gap === null ? null : intOrNull(v.gap ?? NaN, 1, USAGE.maxGapDays, 'gap')
+  const platform = PLATFORMS.find((p) => p === v.platform)
+  const lang = LANGS.find((l) => l === v.lang)
+  if (!platform || !lang || typeof v.installed !== 'boolean') throw bad('Invalid usage report')
+  // A city this Worker doesn't know (an older or newer app) still counts the device, without the city.
+  const systemId = typeof v.systemId === 'string' && systemsById.has(v.systemId) ? v.systemId : null
+  return { gap, systemId, platform, installed: v.installed, lang }
+}
+
+/** POST /api/usage body: only the known kinds, events and fields (see UsageRequest). */
+export function usageRequest(body: unknown): UsageRequest {
+  if (!isObj(body)) throw bad('Invalid body')
+  if (body.kind === 'event') {
+    const name = USAGE.events.find((e) => e === body.name)
+    if (!name) throw bad('Unknown event')
+    return { kind: 'event', name }
+  }
+  if (body.kind !== 'open' && body.kind !== 'beat') throw bad('Invalid kind')
+  return { kind: body.kind, first: body.first === null || body.first === undefined ? null : usageFirst(body.first) }
+}
+
+/** ?days= for the dashboard: an integer in [1, USAGE.maxReportDays] (default 90). */
+export function reportDays(raw: string | null): number {
+  if (raw === null) return 90
+  const n = Number(raw)
+  if (!Number.isInteger(n) || n < 1 || n > USAGE.maxReportDays) throw bad('Invalid days')
+  return n
 }
 
 export async function readJsonBody(request: Request): Promise<unknown> {

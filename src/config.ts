@@ -248,6 +248,30 @@ export const PUSH = {
   vapidTokenSeconds: 12 * 60 * 60,
 } as const
 
+/**
+ * Anonymous usage counts for the usage dashboard (/analytics; worker/usage.ts). No identifier leaves the
+ * device: it keeps only its last active day and last check-in window, and reports "first open today, N days
+ * after the previous one" — enough to count unique devices over any window up to `maxGapDays`.
+ */
+export const USAGE = {
+  /** Days and hours are counted in this time zone (BCycle cities are in US time zones). */
+  timeZone: 'America/Chicago',
+  /** While the app is visible, a device checks in once per window ("active now", activity by hour). */
+  beatMs: 5 * 60_000,
+  /** Up to 10 s after a window starts, so devices don't all check in at the same instant. */
+  beatJitterMs: 10_000,
+  /** Gaps between a device's active days are told apart up to this many days (unique users up to 90 days). */
+  maxGapDays: 90,
+  /** Day records the server keeps; older ones are deleted (the all-time total is kept separately). */
+  keepDays: 400,
+  /** Most days the dashboard can show (each needs `maxGapDays` before it for its 90-day count). */
+  maxReportDays: 365,
+  /** What the app counts (each once per use). */
+  events: ['ride_start', 'gpx', 'share', 'nearest_dock', 'directions', 'alerts_on'],
+  /** What the Worker counts itself. */
+  serverCounters: ['routes', 'routes_busy', 'alerts_sent'],
+} as const
+
 /** Google Maps hand-off (src/ride/googleMaps.ts). */
 export const GOOGLE_HANDOFF = {
   /** Google Maps mobile links accept at most this many waypoints. */

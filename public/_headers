@@ -4,6 +4,10 @@
   X-Content-Type-Options: nosniff
   Permissions-Policy: geolocation=(self), camera=(), microphone=()
 
+# The usage dashboard (reached only by its address): not for search engines.
+/analytics*
+  X-Robots-Tag: noindex, nofollow
+
 # Built JS/CSS have content hashes in their names: a changed file gets a new name, so they never need
 # revalidating (Cloudflare's default is max-age=0, must-revalidate).
 /assets/*

@@ -47,7 +47,9 @@ location; each station card has walking **Directions** and **Share**; **Prefer e
 both kinds) makes the map count e-bikes; and an offline banner says when the counts can't update.
 
 If the free routing server is busy, the app says so and asks you to try again in a few seconds.
-Saved places, recents and the current ride live in the browser on that device only.
+Saved places, recents and the current ride live in the browser on that device only. The app sends anonymous
+usage counts (no identifier or location) for the operator's dashboard; Do Not Track or Global Privacy
+Control turns them off.
 
 ## Run it locally
 
@@ -79,6 +81,14 @@ build: `npm run preview`). Without the keys everything else works the same, and 
 while the app is open. During a ride with alerts on, the Worker keeps that ride's timer, end dock and push
 subscription (no location) until the ride ends, at most 4 hours.
 
+**Usage dashboard:** `https://<your domain>/analytics` (badgerbikes.app/analytics) shows unique users
+(today, 7, 30 and 90 days, all time), who is using the app now, new vs returning users, routes planned and
+rides started, when people use it, cities, devices, Home Screen vs browser, languages and feature use.
+Nothing to set up, and nothing in the app links to it. The counts are anonymous: the app sends no
+identifier, IP-derived data or location (how unique users are counted without one:
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) §8a), and browsers with Do Not Track or Global Privacy
+Control send nothing.
+
 **Why the contact email:** the free FOSSGIS routing servers and Photon search ask every app to identify
 itself so their operators can reach you before blocking it. The email is sent with each request and
 shown on the About page. For heavy traffic, point `VITE_VALHALLA_URL` / `VITE_OSRM_*` at a self-hosted or
@@ -107,7 +117,8 @@ npm run e2e          # Playwright smoke tests (phone + desktop, network-free)
   policy globally with a Durable Object. Another Durable Object per device sends background ride alerts
   (Web Push, encrypted with WebCrypto; no push library).
 - **Browser** (`src/`): MapLibre map and UI; `src/ride/` finds docks along the route, builds the Google
-  Maps links (no API key needed) and keeps the ride plan and progress.
+  Maps links (no API key needed) and keeps the ride plan and progress. `src/analytics/` is the separate
+  `/analytics` page.
 - Design and rationale: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ## Note on cloud-synced folders

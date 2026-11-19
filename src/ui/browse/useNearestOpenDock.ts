@@ -7,6 +7,7 @@ import { useLocationStore, waitForFix } from '../../location/locationStore'
 import { useMapApiGetter } from '../../map/mapApiContext'
 import { nearestOpenDock } from '../../ride/rideProgress'
 import { useAppStore } from '../../store/appStore'
+import { countUse } from '../usage'
 
 export function useNearestOpenDock(): { find: () => void; finding: boolean; message: string | null } {
   const getMap = useMapApiGetter()
@@ -22,6 +23,7 @@ export function useNearestOpenDock(): { find: () => void; finding: boolean; mess
       const app = useAppStore.getState()
       const hit = nearestOpenDock(latestSnapshot(app.systemId)?.stations ?? [], here, app.settings.partySize)
       if (!hit) return setMessage(t.noOpenDocks)
+      countUse('nearest_dock')
       app.setMapMode('docks')
       app.selectStation(hit.station.id)
       getMap()?.flyTo(hit.station.coord, { zoom: 16 })
