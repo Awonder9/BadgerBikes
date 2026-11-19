@@ -59,7 +59,7 @@ const systemDetails = {
 }
 
 /** Mocks every request; the returned object switches path details off and on during a test. */
-async function mockApi(context: BrowserContext, o: { stations?: 'ok' | 'down' | 'slow'; routes?: 'ok' | 'busy'; system?: Json; routeDetailsDown?: boolean } = {}) {
+async function mockApi(context: BrowserContext, o: { stations?: 'ok' | 'down' | 'slow'; routes?: 'ok' | 'busy'; system?: Json; routeDetailsDown?: boolean; push?: boolean } = {}) {
   const control = { routeDetailsDown: o.routeDetailsDown ?? false }
   await context.route(/^https?:\/\/(?!localhost)/, (route) => route.abort())
   await context.route(API, async (route) => {
@@ -71,6 +71,8 @@ async function mockApi(context: BrowserContext, o: { stations?: 'ok' | 'down' | 
     }
     if (path === '/api/routes') return route.fulfill(o.routes === 'ok' ? { json: { routes: [leg, leg, leg] } } : down)
     if (path === '/api/locate') return route.fulfill({ json: { systemId: 'bcycle_madison' } })
+    // A server with background alerts set up (a VAPID public key; never used to send in these tests).
+    if (path === '/api/meta' && o.push) return route.fulfill({ json: { contactEmail: null, version: 'test', pushPublicKey: 'BCVxsr7N_eNgVRqvHtD0zTZsEc6-VV-JvLexhqUzORcxaOzi6-AYWXvTBHm4bjyPjs7Vd8pZGH6SRpkNtoIAiw4' } })
     if (path === '/api/system' && o.system) return route.fulfill({ json: o.system })
     if (path === '/api/route-details') {
       if (control.routeDetailsDown) return route.fulfill(down)
@@ -356,5 +358,57 @@ test.describe('on a Taiwanese (zh-TW) browser', () => {
     await page.getByRole('button', { name: 'Settings' }).click() // remembered
     await page.getByRole('combobox', { name: /^Language/ }).selectOption('auto')
     await expect(page.getByRole('heading', { name: '設定' })).toBeVisible()
+  })
+})
+
+/** Opens a shared ride and its first Google Maps part: the ride is under way and the ride card shows. */
+async function startRide(page: Page, context: BrowserContext) {
+  await page.goto(`/?start=st_a&to=${C[1]},${(C[0] + 0.004).toFixed(5)}&toName=Coffee%20Shop`)
+  const popup = context.waitForEvent('page')
+  await page.getByRole('link', { name: /Open in Google Maps|Part 1/ }).click()
+  await (await popup).close()
+  const card = page.getByRole('region', { name: 'Ride in progress' })
+  await expect(card).toBeVisible()
+  return card
+}
+
+test.describe('ride alerts on an Android phone (Chrome tab)', () => {
+  test.use({ userAgent: 'Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Mobile Safari/537.36' })
+
+  test('says what tapping "Turn on alerts" does, and how to allow alerts again after blocking them', async ({ page, context }) => {
+    await mockApi(context, { routes: 'ok', push: true })
+    await skipInstallTip(page)
+    // Not asked yet; the rider taps Block in the browser's prompt.
+    await page.addInitScript(() => {
+      let permission: NotificationPermission = 'default'
+      Object.defineProperty(Notification, 'permission', { get: () => permission, configurable: true })
+      Notification.requestPermission = async () => (permission = 'denied')
+    })
+    const card = await startRide(page, context)
+    await expect(card.getByText(/even while Google Maps is open\. If Android also asks about notifications for Chrome/)).toBeVisible()
+    await card.getByRole('button', { name: /Turn on alerts/ }).click()
+    await expect(card.getByText('Notifications are blocked for this app — how to turn them on')).toBeVisible()
+    await expect(card.getByText('Tap the icon left of the web address, tap Permissions, and turn on Notifications.')).toBeVisible()
+    await expect(card.getByRole('button', { name: /Turn on alerts/ })).toHaveCount(0)
+  })
+})
+
+test.describe('ride alerts on an iPhone (Safari tab)', () => {
+  test.use({ userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1' })
+
+  test('explains that alerts need the app on the Home Screen, step by step', async ({ page, context }) => {
+    await mockApi(context, { routes: 'ok', push: true })
+    await skipInstallTip(page)
+    // Safari tabs have no notifications or push at all.
+    await page.addInitScript(() => {
+      Reflect.deleteProperty(window, 'Notification')
+      Reflect.deleteProperty(window, 'PushManager')
+    })
+    const card = await startRide(page, context)
+    await expect(card.getByText('To get alerts while Google Maps is open, add the app to your Home Screen')).toBeVisible()
+    await expect(card.getByText('Tap “Add to Home Screen”, then Add.')).toBeVisible()
+    await expect(card.getByText(/plan your ride there, and tap “Turn on alerts”/)).toBeVisible()
+    await expect(card.getByText(/Needs iOS 16\.4 or later\. Safari tabs can’t receive alerts/)).toBeVisible()
+    await expect(card.getByRole('button', { name: /Turn on alerts/ })).toHaveCount(0)
   })
 })

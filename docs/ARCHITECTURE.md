@@ -251,8 +251,13 @@ the request. Messages are encrypted per RFC 8291 (aes128gcm) and authorized with
 WebCrypto only, tested against the RFC 8291 Appendix A vectors; `TTL` `PUSH.ttlSeconds`, `Urgency: high`, a
 `Topic` per alert. 404/410 from the push service deletes the ride; other failures retry after
 `PUSH.retryMs`; everything is deleted at the latest `PUSH.maxRideMs` after the ride started. Pushed and
-in-app alerts share notification tags (`ALERT_TAGS`), so one replaces the other. iPhone: web push only
-works once the app is on the Home Screen; the ride card says so. Without push the in-app alerts still work.
+in-app alerts share notification tags (`ALERT_TAGS`), so one replaces the other. Without push the in-app
+alerts still work. The ride card's alerts section (`src/ui/ride/AlertsHelp.tsx`, rules in `alertsGuide.ts`)
+tells the rider what this phone needs: on iPhone in a Safari tab, the Add to Home Screen steps (tabs can't
+receive web push; the Home Screen app keeps its own storage, so the ride is planned there); on Android, to
+allow Chrome's notifications too if Android asks; once blocked, how to allow them again (Android tab,
+installed Android app, iPhone Settings); in an Android browser without notifications, to use Chrome. It never
+promises background alerts when the server has no VAPID keys.
 
 **Share links** (`src/lib/urlParams.ts`): `?system=<id>&start=<station id>&to=<lat,lon>&toName=&toStation=&route=<0-2>`,
 validated on load, applied to the ride store (replacing any saved plan; a link to another city switches it

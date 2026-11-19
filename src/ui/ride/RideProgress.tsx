@@ -2,8 +2,9 @@
 // minutes, a watch on the end dock (alerts when it fills up, with nearby docks that have space), and a
 // banner to get back to the plan from anywhere in the app.
 //
-// The page cannot run while Google Maps is in front, so alerts fire while this app is open — e.g. when
-// the rider comes back for the next part. Counts refresh as soon as the app is visible again.
+// The page cannot run while Google Maps is in front: with alerts on, the server pushes them then
+// (backgroundAlerts.ts; AlertsHelp says what this phone needs for that), otherwise they fire while this app is
+// open — e.g. when the rider comes back for the next part. Counts refresh as soon as the app is visible again.
 import { formatDistance } from '../../lib/format'
 import { directionsFromHereUrl } from '../../ride/googleMaps'
 import { clock } from '../../ride/rideProgress'
@@ -11,10 +12,8 @@ import { useRideStore } from '../../ride/rideStore'
 import { useAppStore } from '../../store/appStore'
 import { useI18n } from '../../i18n/useT'
 import { useNearestOpenDock } from '../browse/useNearestOpenDock'
-import { requestNotificationAccess, useNotificationAccess } from '../notifications'
-import { isStandalone, platform } from '../platform'
 import { Icon } from '../primitives/Icon'
-import { useBackgroundAlerts } from './backgroundAlerts'
+import { AlertsHelp } from './AlertsHelp'
 import { useRidePlan, type RidePlan } from './useRidePlan'
 import { useRideStatus } from './useRideStatus'
 
@@ -23,8 +22,6 @@ export function RideStatusCard({ plan }: { plan: RidePlan }) {
   const { active, timer, endStation, dock, replacements } = useRideStatus(plan)
   const units = useAppStore((s) => s.settings.units)
   const { t, lang } = useI18n()
-  const access = useNotificationAccess()
-  const background = useBackgroundAlerts((s) => s.on)
   const nearest = useNearestOpenDock()
   if (!active) return null
   const tone = timer?.state === 'over' ? 'bg-red-50 text-red-900 dark:bg-red-950 dark:text-red-100' : timer?.state === 'warn' ? 'bg-amber-50 text-amber-900 dark:bg-amber-950 dark:text-amber-100' : 'bg-brand-50 dark:bg-brand-900'
@@ -86,12 +83,7 @@ export function RideStatusCard({ plan }: { plan: RidePlan }) {
         {nearest.finding ? t.findingYou : t.nearestOpenDock}
       </button>
       {nearest.message && <p className="text-sm">{nearest.message}</p>}
-      {access === 'default' && (
-        <button type="button" className="text-sm underline" onClick={() => void requestNotificationAccess()}>
-          {t.turnOnAlerts}
-        </button>
-      )}
-      <p className="text-xs opacity-80">{background ? t.alertsBackground : platform() === 'ios' && !isStandalone() ? t.alertsIosInstall : t.alertsNote}</p>
+      <AlertsHelp />
     </section>
   )
 }

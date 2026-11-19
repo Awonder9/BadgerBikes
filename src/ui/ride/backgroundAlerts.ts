@@ -16,8 +16,11 @@ import { useAppStore } from '../../store/appStore'
 import { useNotificationAccess } from '../notifications'
 import type { RidePlan } from './useRidePlan'
 
-/** Whether the alerts of the ride under way also reach the rider in the background (the ride card says so). */
-export const useBackgroundAlerts = create<{ on: boolean }>(() => ({ on: false }))
+/**
+ * The ride under way's background alerts, for the ride card: `on` once the server has the ride (alerts reach
+ * the rider while Google Maps is in front); `failed` when that couldn't be set up (only in-app alerts).
+ */
+export const useBackgroundAlerts = create<{ on: boolean; failed: boolean }>(() => ({ on: false, failed: false }))
 
 export function pushSupported(): boolean {
   return typeof window !== 'undefined' && 'PushManager' in window && 'serviceWorker' in navigator && typeof Notification !== 'undefined'
@@ -86,12 +89,13 @@ export function useBackgroundRideAlerts(plan: RidePlan): void {
       if (stale) return // superseded before its turn (a newer ride is queued, or the ride ended)
       try {
         const sub = await subscription(publicKey)
-        if (!sub || stale) return
+        if (stale) return
+        if (!sub) return useBackgroundAlerts.setState({ on: false, failed: true }) // no service worker
         registered.current = sub.endpoint
         await api.pushRide({ ...ride, subscription: sub })
-        if (!stale) useBackgroundAlerts.setState({ on: true })
+        if (!stale) useBackgroundAlerts.setState({ on: true, failed: false })
       } catch {
-        if (!stale) useBackgroundAlerts.setState({ on: false })
+        if (!stale) useBackgroundAlerts.setState({ on: false, failed: true })
       }
     })
     return () => {
@@ -105,7 +109,7 @@ export function useBackgroundRideAlerts(plan: RidePlan): void {
     if (active) return
     const endpoint = registered.current
     registered.current = null
-    useBackgroundAlerts.setState({ on: false })
+    useBackgroundAlerts.setState({ on: false, failed: false })
     if (endpoint) cancel(endpoint)
   }, [active])
 }
