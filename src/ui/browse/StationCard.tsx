@@ -16,7 +16,7 @@ import { AvailabilityPill } from '../primitives/Availability'
 import { Button, IconButton } from '../primitives/Button'
 import { Icon } from '../primitives/Icon'
 import { ShareButton } from '../primitives/ShareButton'
-import { platform } from '../platform'
+import { platform, shareOrigin } from '../platform'
 import { rideTo, startRideAt } from '../ride/rideActions'
 import { countUse } from '../usage'
 
@@ -162,7 +162,7 @@ export function StationCard() {
         </a>
         <ShareButton
           title={t.shareStationTitle(st.name)}
-          url={() => buildStationShareUrl(window.location.origin, systemId, st.id)}
+          url={() => buildStationShareUrl(shareOrigin(), systemId, st.id)}
           className="flex min-h-11 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl px-2 font-medium ring-1 ring-slate-300 dark:ring-slate-600"
         />
       </div>

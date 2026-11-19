@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { alertsGuide, type AlertsGuideInput } from './alertsGuide'
 
-const base: AlertsGuideInput = { platform: 'android', standalone: false, access: 'default', pushSupported: true, serverPush: true, background: { on: false, failed: false } }
+const base: AlertsGuideInput = { platform: 'android', nativeApp: false, standalone: false, access: 'default', pushSupported: true, serverPush: true, background: { on: false, failed: false } }
 const guide = (o: Partial<AlertsGuideInput>) => alertsGuide({ ...base, ...o })
 
 describe('what the ride card says about alerts', () => {
@@ -23,6 +23,13 @@ describe('what the ride card says about alerts', () => {
 
   it('a browser without notifications on Android is pointed to Chrome', () => {
     expect(guide({ access: 'unsupported', pushSupported: false })).toBe('useChrome')
+  })
+
+  it('the iOS/Android app: alerts while it is open — never Home Screen steps, Chrome or an iOS update', () => {
+    // Its web view has no Notification API or Web Push, even though the server sends background alerts.
+    for (const platform of ['ios', 'android'] as const) {
+      expect(guide({ nativeApp: true, platform, standalone: true, access: 'unsupported', pushSupported: false, serverPush: true })).toBe('appOnly')
+    }
   })
 
   it('without background alerts on the server, never promises them (no install steps, no "use Chrome")', () => {

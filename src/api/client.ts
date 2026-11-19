@@ -1,7 +1,7 @@
-// Typed client for the Worker API (same origin), plus the one direct third-party call: place search to
-// Photon (see api.geocode). The only place the browser makes requests besides map tiles. All calls reject
-// with AppError (see src/lib/errors.ts).
-import { ENDPOINTS, GEOCODE, SYSTEM_DETECT } from '../config'
+// Typed client for the Worker API (same origin; from the native apps, the deployed site), plus the one direct
+// third-party call: place search to Photon (see api.geocode). The only place the browser makes requests besides
+// map tiles. All calls reject with AppError (see src/lib/errors.ts).
+import { ENDPOINTS, GEOCODE, NATIVE_APP, SYSTEM_DETECT } from '../config'
 import { getSystem } from '../data/systems'
 import { searchBias, searchPlaces } from '../geocode/photon'
 import { fetchJson, postJson } from '../lib/http'
@@ -43,29 +43,37 @@ function qs(params: Record<string, string | number | null | undefined>): string 
   return s ? `?${s}` : ''
 }
 
+/**
+ * An /api/* URL: relative in the web app (the page's own origin serves the API); absolute in the native apps,
+ * whose page is served from the phone, so their requests go to the deployed site (NATIVE_APP.webOrigin).
+ */
+function apiUrl(path: string, params: Record<string, string | number | null | undefined> = {}): string {
+  return `${NATIVE_APP.webOrigin}${path}${qs(params)}`
+}
+
 export const api = {
   stations(systemId: string, signal?: AbortSignal): Promise<StationsResponse> {
-    return fetchJson<StationsResponse>(`${API_PATHS.stations}${qs({ system: systemId })}`, { signal, cache: 'no-store', provider: PROVIDER })
+    return fetchJson<StationsResponse>(apiUrl(API_PATHS.stations, { system: systemId }), { signal, cache: 'no-store', provider: PROVIDER })
   },
 
   system(systemId: string, signal?: AbortSignal): Promise<SystemDetails> {
-    return fetchJson<SystemDetails>(`${API_PATHS.system}${qs({ system: systemId })}`, { signal, provider: PROVIDER })
+    return fetchJson<SystemDetails>(apiUrl(API_PATHS.system, { system: systemId }), { signal, provider: PROVIDER })
   },
 
   meta(signal?: AbortSignal): Promise<MetaResponse> {
-    return fetchJson<MetaResponse>(API_PATHS.meta, { signal, provider: PROVIDER })
+    return fetchJson<MetaResponse>(apiUrl(API_PATHS.meta), { signal, provider: PROVIDER })
   },
 
   async locate(signal?: AbortSignal): Promise<string | null> {
-    return (await fetchJson<LocateResponse>(API_PATHS.locate, { signal, provider: PROVIDER, timeoutMs: SYSTEM_DETECT.timeoutMs })).systemId
+    return (await fetchJson<LocateResponse>(apiUrl(API_PATHS.locate), { signal, provider: PROVIDER, timeoutMs: SYSTEM_DETECT.timeoutMs })).systemId
   },
 
   routeDetails(systemId: string, polyline: string, signal?: AbortSignal): Promise<RouteDetailsResponse> {
-    return postJson<RouteDetailsResponse>(API_PATHS.routeDetails, { systemId, polyline }, { signal, provider: PROVIDER })
+    return postJson<RouteDetailsResponse>(apiUrl(API_PATHS.routeDetails), { systemId, polyline }, { signal, provider: PROVIDER })
   },
 
   async routes(body: RoutesApiRequest, signal?: AbortSignal): Promise<RouteLeg[]> {
-    return (await postJson<RoutesResponse>(API_PATHS.routes, body, { signal, provider: PROVIDER })).routes
+    return (await postJson<RoutesResponse>(apiUrl(API_PATHS.routes), body, { signal, provider: PROVIDER })).routes
   },
 
   /**
@@ -88,7 +96,7 @@ export const api = {
 
   async geocodeViaWorker(query: string, systemId: string, near: LngLat | null, signal?: AbortSignal): Promise<Place[]> {
     const res = await fetchJson<GeocodeResponse>(
-      `${API_PATHS.geocode}${qs({ q: query, system: systemId, lat: near?.[1].toFixed(GEOCODE.biasDecimals), lon: near?.[0].toFixed(GEOCODE.biasDecimals) })}`,
+      apiUrl(API_PATHS.geocode, { q: query, system: systemId, lat: near?.[1].toFixed(GEOCODE.biasDecimals), lon: near?.[0].toFixed(GEOCODE.biasDecimals) }),
       { signal, provider: PROVIDER },
     )
     return res.places
@@ -96,26 +104,26 @@ export const api = {
 
   /** Background alerts for the ride under way on this device (replaces its previous ride). */
   async pushRide(body: PushRideRequest, signal?: AbortSignal): Promise<void> {
-    await postJson<OkResponse>(API_PATHS.pushRide, body, { signal, provider: PROVIDER })
+    await postJson<OkResponse>(apiUrl(API_PATHS.pushRide), body, { signal, provider: PROVIDER })
   },
 
   /** The ride ended: no more background alerts for this device. */
   async pushCancel(endpoint: string, signal?: AbortSignal): Promise<void> {
-    await postJson<OkResponse>(API_PATHS.pushCancel, { endpoint }, { signal, provider: PROVIDER })
+    await postJson<OkResponse>(apiUrl(API_PATHS.pushCancel), { endpoint }, { signal, provider: PROVIDER })
   },
 
   /** An anonymous usage report (src/ui/usage.ts). */
   async usage(report: UsageRequest): Promise<void> {
-    await postJson<OkResponse>(API_PATHS.usage, report, { provider: PROVIDER })
+    await postJson<OkResponse>(apiUrl(API_PATHS.usage), report, { provider: PROVIDER })
   },
 
   /** The usage dashboard's numbers (/analytics). */
   analytics(days: number, signal?: AbortSignal): Promise<StatsResponse> {
-    return fetchJson<StatsResponse>(`${API_PATHS.analytics}${qs({ days })}`, { signal, provider: PROVIDER, cache: 'no-store' })
+    return fetchJson<StatsResponse>(apiUrl(API_PATHS.analytics, { days }), { signal, provider: PROVIDER, cache: 'no-store' })
   },
 
   async reverse(coord: LngLat, signal?: AbortSignal): Promise<Place | null> {
-    const res = await fetchJson<ReverseResponse>(`${API_PATHS.reverse}${qs({ lat: coord[1].toFixed(5), lon: coord[0].toFixed(5) })}`, {
+    const res = await fetchJson<ReverseResponse>(apiUrl(API_PATHS.reverse, { lat: coord[1].toFixed(5), lon: coord[0].toFixed(5) }), {
       signal,
       provider: PROVIDER,
     })

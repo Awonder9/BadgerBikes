@@ -5,7 +5,7 @@ import { APP } from '../../config'
 import { useMeta } from '../../data/hooks'
 import { useI18n } from '../../i18n/useT'
 import { requestNotificationAccess, useNotificationAccess } from '../notifications'
-import { isStandalone, platform } from '../platform'
+import { isNativeApp, isStandalone, platform } from '../platform'
 import { Icon } from '../primitives/Icon'
 import { alertsGuide } from './alertsGuide'
 import { pushSupported, useBackgroundAlerts } from './backgroundAlerts'
@@ -18,7 +18,7 @@ export function AlertsHelp() {
   const os = platform()
   const standalone = isStandalone()
   const serverPush = meta ? meta.pushPublicKey !== null : null
-  const guide = alertsGuide({ platform: os, standalone, access, pushSupported: pushSupported(), serverPush, background })
+  const guide = alertsGuide({ platform: os, nativeApp: isNativeApp(), standalone, access, pushSupported: pushSupported(), serverPush, background })
   const note = (text: string) => <p className="text-xs opacity-80">{text}</p>
 
   switch (guide) {

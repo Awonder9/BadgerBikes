@@ -1,5 +1,5 @@
 // HTTP layer for /api/*. Dependencies are injected so handlers are testable in Node.
-import { APP, BIKE_ROUTING } from '../src/config'
+import { APP, BIKE_ROUTING, NATIVE_APP } from '../src/config'
 import {
   API_PATHS,
   NEAREST_SYSTEM,
@@ -72,6 +72,22 @@ export function resetAnalyticsCache(): void {
 }
 
 const BASE_HEADERS = { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' }
+
+/**
+ * CORS for the native apps only (NATIVE_APP.origins): their page is served from the phone, so every /api/*
+ * request they make is cross-origin. Other origins get no CORS headers, as before (the web app is same-origin).
+ */
+function corsHeaders(origin: string | null): Record<string, string> | null {
+  return origin !== null && (NATIVE_APP.origins as readonly string[]).includes(origin) ? { 'Access-Control-Allow-Origin': origin } : null
+}
+
+/** A preflight answer (the client's POSTs carry a JSON body): what src/lib/http.ts sends. */
+const PREFLIGHT_HEADERS = {
+  'Access-Control-Allow-Methods': 'GET, POST',
+  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Max-Age': String(NATIVE_APP.preflightMaxAgeSeconds),
+  Vary: 'Origin',
+}
 
 /**
  * A route option as the app gets it: without the spoken-instruction text Valhalla adds to every maneuver
@@ -233,11 +249,20 @@ export function createApp(deps: AppDeps) {
 
   return {
     async fetch(request: Request): Promise<Response> {
+      const cors = corsHeaders(request.headers.get('Origin'))
+      if (cors && request.method === 'OPTIONS') return new Response(null, { status: 204, headers: { ...cors, ...PREFLIGHT_HEADERS } })
+      let res: Response
       try {
-        return await handle(request)
+        res = await handle(request)
       } catch (err) {
-        return errorResponse(err)
+        res = errorResponse(err)
       }
+      // Errors too, so the app can read their code (retryable, rate limited, …).
+      if (cors) {
+        for (const [name, value] of Object.entries(cors)) res.headers.set(name, value)
+        res.headers.append('Vary', 'Origin')
+      }
+      return res
     },
   }
 }

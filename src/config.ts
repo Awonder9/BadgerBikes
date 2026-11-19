@@ -25,6 +25,26 @@ export const APP = {
 } as const
 
 /**
+ * The iOS and Android apps (Capacitor: capacitor.config.ts, docs/ARCHITECTURE.md §12): this web app bundled into
+ * a native shell, loaded from the phone instead of from the deployed site.
+ */
+export const NATIVE_APP = {
+  /**
+   * The deployed web app, for a bundle it doesn't serve: the native apps send /api/* requests there and share
+   * links point there. Set in `.env.native` (Vite mode "native": `npm run build:native`); empty in the web app,
+   * which uses its own origin.
+   */
+  webOrigin: trimSlash(env.VITE_WEB_ORIGIN || ''),
+  /**
+   * The origins the apps' web views send (Capacitor's defaults: iOS serves the bundle from capacitor://localhost,
+   * Android from https://localhost). The Worker answers cross-origin /api/* requests from these only (CORS).
+   */
+  origins: ['capacitor://localhost', 'https://localhost'],
+  /** How long a web view may reuse a CORS preflight answer (WebKit caps it at 10 min, Chromium at 2 h). */
+  preflightMaxAgeSeconds: 7200,
+} as const
+
+/**
  * Upstream budgets, enforced globally by the UpstreamGate Durable Object (one instance per group).
  * FOSSGIS: "max one request per second" covers BOTH routing hosts together; OSRM /table is not used
  * (6 req/min per IP and each matrix cell counts as a request).

@@ -13,6 +13,9 @@ turn-by-turn directions, with ride progress tracked in the app.
 - `npm run build` — production build to `$TMPDIR/bcycle-live-dist` (outside OneDrive; `BUILD_OUT_DIR=dist` overrides)
 - `npm run preview` — build, then serve the production build in workerd locally
 - `npm run deploy` — build + `wrangler deploy` to Cloudflare (needs `npx wrangler login` once)
+- `npm run build:native` — the bundle for the iOS/Android apps (Vite mode `native`: `/api/*` on `VITE_WEB_ORIGIN`
+  from `.env.native`, no Worker build, no service worker) into `$TMPDIR/bcycle-live-native`, then `cap sync`
+- `npm run ios` / `npm run android` — `build:native`, then open Xcode / Android Studio
 - `npm run cf-typegen` — regenerate `worker-configuration.d.ts` after changing `wrangler.jsonc`
 - `npm run e2e` — Playwright smoke tests (Chromium, network-free) in `e2e/`
 - Dev-only debugging: `window.__bcycle.app` / `window.__bcycle.ride` expose the Zustand stores,
@@ -31,6 +34,9 @@ turn-by-turn directions, with ride progress tracked in the app.
 - `src/` — the React client; docks-along-route, Google Maps links and ride progress run on the device.
   `src/analytics/` + `analytics.html` is the separate usage dashboard at `/analytics` (its own bundle; never
   link to it from the app or import it there). Usage counts carry no identifier (docs/ARCHITECTURE.md §8a).
+- `ios/`, `android/` — Capacitor native shells around the same bundle (`capacitor.config.ts`; docs/ARCHITECTURE.md
+  §12); their `public/` copies of it are generated and gitignored. There the page is cross-origin to the Worker
+  (CORS allows only `NATIVE_APP.origins`); tell the app apart with `isNativeApp()` (`src/ui/platform.ts`).
 - Pure modules in `src/` that the Worker imports must be runtime-agnostic: no DOM, no Node APIs.
   `tsconfig.worker.json` (no DOM lib) enforces this for everything the Worker imports.
 

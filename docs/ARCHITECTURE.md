@@ -10,7 +10,8 @@ file wins; fix the doc.
 
 ## 1. Product scope
 
-A mobile-first web app (installable PWA) for BCycle riders in any BCycle city. The first visit picks the
+A mobile-first web app (installable PWA, also packaged as iOS and Android apps — §12) for BCycle riders in any
+BCycle city. The first visit picks the
 city nearest the rider (`GET /api/stations?system=nearest`, from Cloudflare's city-level request location —
 no permission prompt; `APP.defaultSystemId` = Madison when none is within `SYSTEM_DETECT.maxDistanceMeters`),
 in the same request that loads that city's stations; Settings → City switches it (the current ride plan is
@@ -36,7 +37,8 @@ cleared, since it belongs to the old city's stations).
 5. **Share a ride**: link with start dock, destination and route option (Web Share or clipboard).
 6. **Search**: local station match + Photon places; saved places (Home/Work/starred) and recents (clearable
    in Settings).
-7. **First-visit tip**: how to add the app to the home screen (iOS Safari / Android Chrome), shown once.
+7. **First-visit tip**: how to add the app to the home screen (iOS Safari / Android Chrome), shown once (never
+   in an installed app or the native apps).
 8. **About**: attributions, operator contact, "Report a map problem".
 
 **Non-goals**: unlocking bikes or accounts (the official BCycle app does that), turn-by-turn guidance
@@ -64,6 +66,8 @@ Browser (React app, static assets on Cloudflare)       Cloudflare Worker (/api/*
 - **Device**: map, UI, docks-along-route selection, Google Maps link building, ride progress.
 - **Usage dashboard** (`/analytics`, `analytics.html` + `src/analytics/`): a separate page and bundle that
   nothing in the app links to or loads; see §8a.
+- **Native apps** (`ios/`, `android/`, Capacitor; §12): the same React bundle in the platform's web view, loaded
+  from the phone. It calls the deployed Worker cross-origin; the Worker answers CORS for the apps' origins only.
 - **Shared pure modules** (`src/lib`, `src/data/gbfs.ts`, `src/geocode/photon.ts`, `src/routing`, `src/ride`
   except `rideStore.ts`) are runtime-agnostic: no DOM, no Node APIs, injected clocks. `tsconfig.worker.json`
   (no DOM lib) checks everything the Worker imports.
@@ -381,6 +385,10 @@ how, without tracking anyone. **No identifier leaves the device**, and nothing s
 - Usage counts (§8a) carry no identifier; reports are validated field by field (known kinds, events,
   platforms, languages; gap 1–90) and rate-limited per IP. Anyone can post fake counts — the usual limit of
   client-side analytics — but never text: the dashboard only renders numbers and names from fixed tables.
+- CORS: `/api/*` sends `Access-Control-Allow-Origin` (and answers preflights) only for the native apps' web-view
+  origins, `NATIVE_APP.origins` (`capacitor://localhost`, `https://localhost`); every other origin gets no CORS
+  headers, as before. The API uses no cookies or credentials, so this only lets those web views read responses
+  that any non-browser client could already fetch.
 
 ---
 
@@ -392,6 +400,10 @@ how, without tracking anyone. **No identifier leaves the device**, and nothing s
   router fallbacks and the busy rejection, route options, docks along the route, Google link building
   (snapping, via points, part splitting, labels), ride store persistence/progress, ride timer and end-dock
   watch, nearest open dock, URL params, gate core, worker endpoints (incl. the first-visit nearest city).
+- Native apps (§12): CORS for the apps' two origins only, preflights and errors included (`worker/worker.test.ts`);
+  telling the app from a browser tab, and offering the GPX file only where its web view can share it
+  (`src/ui/platform.test.ts`); the alerts guide's native case. No automated tests run the apps themselves: build
+  them with `npm run ios` / `npm run android`.
 - Background alerts: Web Push encryption against the RFC 8291 test vectors and decrypted as a browser would,
   the VAPID JWT verified with WebCrypto (`worker/webPush.test.ts`); the RideAlerts rules and the Durable
   Object end to end with fake storage and the captured Madison feed (`worker/rideAlerts.test.ts`); the
@@ -424,3 +436,58 @@ version against a changed API. It waits while a ride is in progress (a Google Ma
 the dock has been opened) and appears once the ride ends. The app asks the service worker to check for a new version on every return
 to the foreground and every `POLL.appUpdateCheckMs` while open (`src/ui/layout/appUpdateChecks.ts`): an
 installed app on iPhone is resumed rather than reloaded, so the browser's own load-time check would not run.
+The native apps (§12) call the deployed Worker, so a Worker change they depend on (such as their CORS) has to be
+deployed before builds that need it reach phones, and the API must keep answering older app versions, which
+update only through the stores.
+
+---
+
+## 12. Native apps (Capacitor: `capacitor.config.ts`, `ios/`, `android/`)
+
+The iOS and Android apps are this web app in a native shell (Capacitor 8): the same React bundle runs in the
+platform's web view (WKWebView, Android System WebView), loaded from the phone instead of from the site.
+
+- **Build**: `npm run build:native` = `tsc -b` + `vite build --mode native` + `cap sync`. Native mode
+  (`vite.config.ts`) builds into Capacitor's `webDir` (`<system temp>/bcycle-live-native`, outside the
+  cloud-synced folder like the web build) without the Cloudflare plugin (no Worker build, and
+  `.wrangler/deploy/config.json` is left alone, so a native bundle can't be deployed by mistake), without the
+  service worker and web manifest (`VitePWA({ disable })` turns `useRegisterSW` into a no-op, so the update prompt
+  never shows; app updates come from the stores), and without the usage dashboard. `cap sync` copies the bundle
+  into `ios/App/App/public` and `android/app/src/main/assets/public` (both gitignored). `npm run ios` /
+  `npm run android` build, then open Xcode / Android Studio. iOS uses Swift Package Manager (no CocoaPods).
+- **Server**: nothing serves `/api/*` next to the bundle, so the apps call the deployed site:
+  `NATIVE_APP.webOrigin`, from `VITE_WEB_ORIGIN` in `.env.native` (committed: `https://badgerbikes.app`;
+  `.env.native.local` overrides it, e.g. `http://localhost:5173` for a simulator against `npm run dev`). A native
+  build without a valid origin fails. In the web app it is empty, so `apiUrl` (`src/api/client.ts`) keeps URLs
+  relative. Share links use the same origin (`shareOrigin()`), because the page's own origin is the phone.
+- **CORS**: iOS serves the bundle from `capacitor://localhost`, Android from `https://localhost` (Capacitor's
+  defaults; `server.*` stays unset). Every API request is therefore cross-origin, and the JSON POSTs need a
+  preflight: the Worker answers both origins (`NATIVE_APP.origins`, `worker/app.ts`, §9), errors included so the
+  app can read their codes. The dev server leaves CORS to the Worker (`server.cors: false`), as production does.
+  Saved places, settings and the ride plan live in that origin's storage, separate from the browser's.
+- **Telling the app apart**: `isNativeApp()` (`src/ui/platform.ts`) reads `window.Capacitor`, which the native
+  bridge defines before the page runs, so the web bundle needs no `@capacitor/core`. The app counts as installed
+  (`isStandalone()`): no install tip and no "Add to Home Screen" alert steps.
+- **What the web view has** (iOS, checked in the simulator 2026-11-19): no Notification API, Push API or service
+  worker, and no `navigator.vibrate` on iOS. So the alerts guide says `appOnly` (alerts while the app is open) and
+  background alerts are off. Web Share with files works on iOS (the GPX export opens the share sheet); Android's
+  web view has neither Web Share nor downloads, so the GPX export is hidden there (`canHandOverFiles()`).
+  Location is the page's `navigator.geolocation`: the iOS purpose string is in `Info.plist`
+  (`NSLocationWhenInUseUsageDescription`), the Android permissions in `AndroidManifest.xml` (Capacitor asks for
+  them when the page first asks for a position, never at launch). Links to other sites (`target="_blank"`, Google
+  Maps) leave the web view: Capacitor hands them to the system, which opens the Google Maps app when installed.
+- **Look**: Android draws edge to edge with `env(safe-area-inset-*)` set as in a browser
+  (`SystemBars.insetsHandling: 'native'`; the page already pads itself, `viewport-fit=cover`). The native launch
+  screens, the web view's background and the page's launch screen share its teal gradient, so launching shows no
+  flash. Icons and launch images are rendered from the app's artwork by `scripts/generate-icons.mjs`.
+- **Identity**: `appId` `app.badgerbikes` (iOS bundle ID, Android application ID) and the name Badger Bikes;
+  the store identity can't change once published.
+- **Not built yet**: native notifications (local notifications for the ride timer, which need no server; APNs/FCM
+  from the Worker for "end dock full"), share links opening the app (universal links / app links), the Android
+  back button closing panels, haptics on iPhone, the GPX file on Android (a native share plugin), store listings.
+  Untested: the Android app (no Android SDK on the machine that set it up), and whether iOS adds WebKit's own
+  "localhost would like to use your location" prompt after the system one (if it does, the Geolocation plugin
+  avoids it).
+- **Cloud-synced folder**: Gradle writes `android/app/build`, `android/build` and `android/.gradle` inside the
+  project (gitignored, but OneDrive syncs them). They stay there because `cap run android` reads the APK from
+  `android/app/build`. Xcode's build products and Swift packages go to DerivedData, outside the project.

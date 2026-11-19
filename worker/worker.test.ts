@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { APP } from '../src/config'
+import { APP, NATIVE_APP } from '../src/config'
 import { resetHttpState, setFetchImpl } from '../src/lib/http'
 import type { PushRideRequest, StatsResponse, UsageRequest } from '../src/api/contract'
 import { makeSnapshot, makeStation } from '../src/test/factories'
@@ -105,6 +105,44 @@ describe('worker app', () => {
     const app = createApp(deps({ limiters: { route: { limit: async () => ({ success: false }) } as unknown as RateLimit } }))
     const res = await call(app, '/api/routes', { method: 'POST', body: routeBody })
     expect(res.status).toBe(429)
+  })
+})
+
+describe('the native apps (CORS)', () => {
+  const from = (origin: string, path = '/api/stations?system=bcycle_madison', init: { method?: string; body?: string; headers?: Record<string, string> } = {}) =>
+    call(createApp(deps()), path, { ...init, headers: { Origin: origin, ...init.headers } })
+  const preflight = { method: 'OPTIONS', headers: { 'Access-Control-Request-Method': 'POST', 'Access-Control-Request-Headers': 'content-type' } }
+
+  it('answers the iOS and Android apps’ preflights and requests, errors included', async () => {
+    expect(NATIVE_APP.origins).toEqual(['capacitor://localhost', 'https://localhost'])
+    for (const origin of NATIVE_APP.origins) {
+      const pre = await from(origin, '/api/routes', preflight)
+      expect(pre.status).toBe(204)
+      expect(Object.fromEntries(pre.headers)).toMatchObject({
+        'access-control-allow-origin': origin,
+        'access-control-allow-methods': 'GET, POST',
+        'access-control-allow-headers': 'Content-Type',
+        vary: 'Origin',
+      })
+      const ok = await from(origin)
+      expect([ok.status, ok.headers.get('Access-Control-Allow-Origin'), ok.headers.get('Vary')]).toEqual([200, origin, 'Origin'])
+      const route = await from(origin, '/api/routes', { method: 'POST', body: routeBody })
+      expect([route.status, route.headers.get('Access-Control-Allow-Origin')]).toEqual([200, origin])
+      // The app reads error codes (e.g. "busy, try again") from cross-origin errors too.
+      const bad = await from(origin, '/api/stations?system=../evil')
+      expect([bad.status, bad.headers.get('Access-Control-Allow-Origin')]).toEqual([404, origin])
+    }
+  })
+
+  it('gives every other origin no CORS headers and no preflight answer, as before', async () => {
+    for (const origin of ['https://evil.example', 'http://localhost', 'capacitor://evil', 'null']) {
+      const res = await from(origin)
+      expect([res.status, res.headers.get('Access-Control-Allow-Origin'), res.headers.get('Vary')]).toEqual([200, null, null])
+      const pre = await from(origin, '/api/routes', preflight)
+      expect([pre.status, pre.headers.get('Access-Control-Allow-Origin')]).toEqual([404, null])
+    }
+    // Same-origin requests (the web app) carry no Origin on GET.
+    expect((await call(createApp(deps()), '/api/stations?system=bcycle_madison')).headers.get('Access-Control-Allow-Origin')).toBeNull()
   })
 })
 

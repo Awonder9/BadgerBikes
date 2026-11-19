@@ -27,6 +27,7 @@ import { IconButton } from '../primitives/Button'
 import { Icon } from '../primitives/Icon'
 import { ShareButton } from '../primitives/ShareButton'
 import { Spinner } from '../primitives/Spinner'
+import { canHandOverFiles, shareOrigin } from '../platform'
 import { countUse } from '../usage'
 import { IosAlertsHint } from './AlertsHelp'
 import { RideStatusCard } from './RideProgress'
@@ -510,7 +511,7 @@ function FavoriteToggle({ systemId, place }: { systemId: string; place: Place })
 
 function ShareRideButton({ systemId, startId, destination, routeIndex }: { systemId: string; startId: string; destination: Place; routeIndex: number }) {
   const { t } = useI18n()
-  const url = () => buildRideShareUrl(window.location.origin, { systemId, startId, to: { coord: destination.coord, name: destination.name }, toStationId: destination.stationId ?? null, routeIndex })
+  const url = () => buildRideShareUrl(shareOrigin(), { systemId, startId, to: { coord: destination.coord, name: destination.name }, toStationId: destination.stationId ?? null, routeIndex })
   return <ShareButton title={t.shareTitle(destination.name)} url={url} className="flex min-h-11 items-center gap-1 px-2 text-sm font-medium text-brand-700 dark:text-brand-300" />
 }
 
@@ -524,7 +525,8 @@ function ExactRouteFile({ plan }: { plan: RidePlan }) {
   const [msg, setMsg] = useState<string | null>(null)
   const { t } = useI18n()
   const { start, chosen, rideParts, walkLink } = plan
-  if (!route || !start || chosen.length === 0) return null
+  // The Android app can neither share nor save the file yet: no button that would do nothing (and start the ride).
+  if (!route || !start || chosen.length === 0 || !canHandOverFiles()) return null
   const save = async () => {
     setMsg(null)
     const name = t.gpxName(destination?.name ?? chosen.at(-1)!.station.name)

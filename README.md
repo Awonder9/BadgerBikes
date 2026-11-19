@@ -94,6 +94,28 @@ itself so their operators can reach you before blocking it. The email is sent wi
 shown on the About page. For heavy traffic, point `VITE_VALHALLA_URL` / `VITE_OSRM_*` at a self-hosted or
 commercial Valhalla-compatible service.
 
+## iOS and Android apps
+
+The app also runs as a native iOS and Android app ([Capacitor](https://capacitorjs.com)): `ios/` and `android/`
+are the native projects and `capacitor.config.ts` their settings. The apps load the app from the phone and talk to
+the deployed site (`VITE_WEB_ORIGIN` in `.env.native`: https://badgerbikes.app), so deploy the Worker first. It
+answers the apps' cross-origin requests.
+
+```bash
+npm run ios            # build the app for the phones, copy it into ios/, open Xcode, then press Run
+npm run android        # the same, opening Android Studio
+npm run build:native   # only build and copy (after changing src/, before running from Xcode / Android Studio)
+```
+
+- iOS needs Xcode; Android needs Android Studio (Gradle uses the JDK 21 it ships with). To run on your own
+  iPhone, pick your Apple developer team once in Xcode → App target → Signing & Capabilities.
+- Live reload in the iOS Simulator: `npm run dev`, then `npx cap run ios --live-reload --host localhost --port 5173`.
+- To try a native build against your local Worker, put `VITE_WEB_ORIGIN=http://localhost:5173` in
+  `.env.native.local` (gitignored) while `npm run dev` runs.
+- `node scripts/generate-icons.mjs` renders the app icons and launch screens from the app's artwork.
+- Not in the apps yet: background ride alerts (alerts show while the app is open), share links opening the app,
+  and the GPX export on Android. Details: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) §12.
+
 ## Forking
 
 You're welcome to run your own copy (MIT license). Before deploying it, please make it yours:
@@ -101,7 +123,9 @@ You're welcome to run your own copy (MIT license). Before deploying it, please m
 - set **your own** `CONTACT_EMAIL` secret (above);
 - change `APP.repoUrl` and `APP.userAgent` in `src/config.ts` to your repository, so the public servers
   can tell your deployment apart from this one;
-- change `APP.name` (and the PWA name in `vite.config.ts`) and the custom domain in `wrangler.jsonc`.
+- change `APP.name` (and the PWA name in `vite.config.ts`) and the custom domain in `wrangler.jsonc`;
+- for the iOS/Android apps: your own `appId` and `appName` in `capacitor.config.ts` (an app ID can't be reused
+  in the App Store or Google Play) and your domain in `.env.native`.
 
 ## Checks
 
@@ -119,6 +143,8 @@ npm run e2e          # Playwright smoke tests (phone + desktop, network-free)
 - **Browser** (`src/`): MapLibre map and UI; `src/ride/` finds docks along the route, builds the Google
   Maps links (no API key needed) and keeps the ride plan and progress. `src/analytics/` is the separate
   `/analytics` page.
+- **iOS and Android apps** (`ios/`, `android/`): Capacitor shells around the same app, calling the deployed
+  Worker.
 - Design and rationale: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ## License and data

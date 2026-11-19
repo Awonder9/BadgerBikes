@@ -22,6 +22,8 @@ export type AlertsGuide =
 
 export interface AlertsGuideInput {
   platform: 'ios' | 'android' | 'desktop'
+  /** Inside the iOS/Android app (Capacitor): its web view has neither web notifications nor Web Push. */
+  nativeApp: boolean
   /** Running as an installed home-screen app. */
   standalone: boolean
   access: NotificationAccess
@@ -35,6 +37,9 @@ export interface AlertsGuideInput {
 
 export function alertsGuide(i: AlertsGuideInput): AlertsGuide {
   if (i.background.on) return 'on'
+  // Native notifications aren't built yet, and nothing the rider can do in the app changes that: no Home Screen
+  // steps, no "use Chrome", no "update iOS". Alerts show while the app is open.
+  if (i.nativeApp) return 'appOnly'
   const canPush = i.serverPush === true
   // Safari tabs on iPhone have no notifications at all; only the Home Screen app does (iOS 16.4+).
   if (i.platform === 'ios' && !i.standalone) return canPush ? 'iosInstall' : 'appOnly'

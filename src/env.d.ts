@@ -9,6 +9,8 @@ interface ImportMetaEnv {
   readonly VITE_PHOTON_URL?: string
   /** Override the GBFS base URL (default: https://gbfs.bcycle.com). */
   readonly VITE_GBFS_BASE?: string
+  /** The deployed web app the native apps talk to (`.env.native`; unset in the web app). See NATIVE_APP.webOrigin. */
+  readonly VITE_WEB_ORIGIN?: string
 }
 
 interface ImportMeta {

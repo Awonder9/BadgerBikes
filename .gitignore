@@ -12,6 +12,8 @@ coverage
 .env
 .env.*
 !.env.example
+# Public settings of the native build (the deployed site's address); local overrides go in .env.native.local.
+!.env.native
 
 # Playwright
 test-results
