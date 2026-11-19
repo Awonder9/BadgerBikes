@@ -60,14 +60,14 @@ describe('ride progress', () => {
     expect(useRideStore.getState()).toMatchObject({ openedParts: [], rideStartedAtMs: null })
   })
 
-  it('changing the plan clears progress', () => {
+  it('changing the stops mid-ride keeps the ride timer; a new destination clears progress', () => {
     const s = useRideStore.getState()
     s.markPartOpened(0, true)
-    s.toggleStop('x', ['x'])
-    expect(useRideStore.getState()).toMatchObject({ openedParts: [], rideStartedAtMs: null })
-    s.markPartOpened(0, true)
+    const t0 = useRideStore.getState().rideStartedAtMs
+    s.toggleStop('x', ['x']) // e.g. the end dock filled up and the rider picks another
+    expect(useRideStore.getState()).toMatchObject({ stopIds: ['x'], openedParts: [0], rideStartedAtMs: t0 })
     s.setDestination(dest)
-    expect(useRideStore.getState().openedParts).toEqual([])
+    expect(useRideStore.getState()).toMatchObject({ openedParts: [], rideStartedAtMs: null })
   })
 })
 

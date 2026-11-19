@@ -169,12 +169,14 @@ export const useRideStore = create<RideState>()(
       // Unchanged: the same state object, so nothing re-renders (the planner calls this on every count update).
       autoPickup: (id) => set((s) => (s.startId === id ? s : { startId: id, ...planReset(), finished: false })),
       setDestination: (destination) => set({ destination, ...planReset(), finished: false }),
+      // Keeps the ride's progress: mid-ride, a rider who switches to another dock (say the end dock filled up)
+      // is still on the same BCycle ride, so its timer and background alerts carry on.
       toggleStop: (id, routeOrder) =>
         set((s) => {
           const chosen = new Set(s.stopIds)
           if (chosen.has(id)) chosen.delete(id)
           else chosen.add(id)
-          return { stopIds: routeOrder.filter((x) => chosen.has(x)), openedParts: [], rideStartedAtMs: null, finished: false }
+          return { stopIds: routeOrder.filter((x) => chosen.has(x)), finished: false }
         }),
       markPartOpened: (index, fromDock, startTimer = true) =>
         set((s) => ({

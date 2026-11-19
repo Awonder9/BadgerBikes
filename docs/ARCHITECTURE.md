@@ -229,8 +229,9 @@ starts the ride like opening the Google parts (and finishes the saved plan when 
 stops, opened parts and ride start time, saved to `localStorage` (`bcycle.ride`) and validated on restore
 (`restoreRide`). `finishPlan()` stops saving it — called when the rider opens the trip's last link (the
 walk, or the last ride part) or arrives within `RIDE.arrivedMeters` of the destination (checked only when
-location permission was already granted; the app never prompts for this). Changing the plan clears
-progress and saves again. Opening a part that
+location permission was already granted; the app never prompts for this). Changing the start, destination
+or route option clears progress and saves again; changing the stops keeps it (mid-ride, a rider switching to
+another dock — say the end dock filled up — keeps the ride timer and background alerts). Opening a part that
 starts at a dock (the rider unlocks a bike there) restarts the ride timer.
 
 **Ride in progress** (`rideProgress.ts` pure; `useRideStatus.ts`, `RideProgress.tsx`): timer vs the pass's
