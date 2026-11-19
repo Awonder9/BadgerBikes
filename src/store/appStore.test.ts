@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { initialAppState, sanitizePersisted, useAppStore } from './appStore'
-import { DEFAULT_SETTINGS } from './validate'
+import { DEFAULT_SETTINGS, MAX_SAVED_PLACES } from './validate'
 
 const place = (name: string, lon = -89.4, lat = 43.07) => ({ kind: 'search' as const, name, coord: [lon, lat] as [number, number] })
 
@@ -61,6 +61,19 @@ describe('useAppStore actions', () => {
     useAppStore.getState().savePlace({ systemId: 'bcycle_madison', icon: 'home', label: 'Home', place: place('Old home') })
     useAppStore.getState().savePlace({ systemId: 'bcycle_madison', icon: 'home', label: 'Home', place: place('New home') })
     expect(useAppStore.getState().savedPlaces.map((p) => p.place.name)).toEqual(['New home'])
+  })
+
+  it('makes room for a new saved place when full: the oldest favorite goes, Home stays', () => {
+    const s = useAppStore.getState()
+    s.savePlace({ systemId: 'bcycle_madison', icon: 'home', label: 'Home', place: place('Home') })
+    for (let i = 0; i < MAX_SAVED_PLACES - 1; i++) s.savePlace({ systemId: 'bcycle_madison', icon: 'star', label: `F${i}`, place: place(`F${i}`, -89.4 + i * 0.001) })
+    expect(useAppStore.getState().savedPlaces).toHaveLength(MAX_SAVED_PLACES)
+    s.savePlace({ systemId: 'bcycle_madison', icon: 'star', label: 'Newest', place: place('Newest', -89.3) })
+    const names = useAppStore.getState().savedPlaces.map((p) => p.place.name)
+    expect(names).toHaveLength(MAX_SAVED_PLACES)
+    expect(names).toContain('Newest')
+    expect(names).toContain('Home')
+    expect(names).not.toContain('F0')
   })
 
   it('validates settings updates', () => {

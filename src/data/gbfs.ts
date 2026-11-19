@@ -119,21 +119,6 @@ export function normalizeHttpsUrl(raw: unknown): string | null {
   return url.href
 }
 
-/** Station deep links: https only, on bcycle.com or one of its subdomains. */
-function rentalUri(raw: unknown): string | null {
-  const s = text(raw)
-  if (s === null) return null
-  let url: URL
-  try {
-    url = new URL(s)
-  } catch {
-    return null
-  }
-  const host = url.hostname
-  const onBcycle = host === 'bcycle.com' || host.endsWith('.bcycle.com')
-  return url.protocol === 'https:' && onBcycle && url.username === '' && url.password === '' ? url.href : null
-}
-
 /** rental_apps.{ios,android} → AppLink when both the app scheme and the store link are safe. */
 function appLink(raw: unknown): AppLink | null {
   if (!isRecord(raw)) return null
@@ -152,21 +137,18 @@ function parseStationInfo(raw: unknown): StationInfo | null {
   const id = idOf(raw.station_id)
   const coord = coordOf(raw.lon, raw.lat)
   if (id === null || coord === null) return null
-  const uris = isRecord(raw.rental_uris) ? raw.rental_uris : {}
   return {
     id,
     name: text(raw.name) ?? id,
     address: text(raw.address),
     coord,
-    regionId: idOf(raw.region_id),
     hasKiosk: raw[STATION_TYPE_FIELD] === 'Kiosk and Station',
-    rentalUris: { ios: rentalUri(uris.ios), android: rentalUri(uris.android) },
   }
 }
 
 /**
- * station_information → StationInfo[] in feed order: trimmed names, [lon, lat], hasKiosk, rental URIs
- * restricted to https on bcycle.com. Stations without an id or with invalid/(0,0) coordinates are dropped;
+ * station_information → StationInfo[] in feed order: trimmed names, [lon, lat], hasKiosk (region_id and
+ * rental_uris are not used). Stations without an id or with invalid/(0,0) coordinates are dropped;
  * a repeated station id keeps its first occurrence. Throws AppError('bad_response') if the feed has no
  * station list.
  */

@@ -9,9 +9,24 @@ import { GateCore } from './gateCore'
 import { createUpstream, resetUpstreamState, type Gate } from './upstream'
 
 const snapshot = makeSnapshot([makeStation({ id: 's1' })])
+const maneuver = {
+  kind: 'left',
+  instruction: 'Turn left onto the Southwest Commuter Path.',
+  verbalPre: 'Turn left onto the Southwest Commuter Path.',
+  verbalPost: 'Continue for 1 mile.',
+  verbalAlert: 'Turn left onto the Southwest Commuter Path.',
+  verbalSuccinct: 'Turn left.',
+  verbalMultiCue: true,
+  streetNames: ['Southwest Commuter Path'],
+  distance: 1600,
+  duration: 360,
+  location: [-89.4, 43.07],
+  beginIndex: 0,
+  endIndex: 1,
+}
 const deps = (o: Partial<AppDeps> = {}): AppDeps => ({
   upstream: (async () => ({})) as never,
-  createRouter: () => ({ route: async () => ({}) as never, routeLadder: async (_r: unknown, levels: readonly number[]) => levels.map((useRoads) => ({ provider: 'valhalla', useRoads })) as never, routeDetails: async () => ({ breakdown: [{ kind: 'bikePath', meters: 100 }], elevation: null, segments: [] }) }),
+  createRouter: () => ({ route: async () => ({}) as never, routeLadder: async (_r: unknown, levels: readonly number[]) => levels.map((useRoads) => ({ provider: 'valhalla', useRoads, maneuvers: [maneuver] })) as never, routeDetails: async () => ({ breakdown: [{ kind: 'bikePath', meters: 100 }], elevation: null, segments: [] }) }),
   fetchStationsSnapshot: async () => snapshot,
   fetchSystemDetails: async () => ({}) as never,
   searchPlaces: async () => [],
@@ -79,8 +94,11 @@ describe('worker app', () => {
   it('returns the three route options: bike-friendly, balanced, fastest', async () => {
     const app = createApp(deps())
     const body = JSON.stringify({ systemId: 'bcycle_madison', role: 'ride', mode: 'bike', from: [-89.38, 43.07], to: [-89.41, 43.07], units: 'imperial' })
-    const res = (await (await call(app, '/api/routes', { method: 'POST', body })).json()) as { routes: Array<{ useRoads: number }> }
+    const res = (await (await call(app, '/api/routes', { method: 'POST', body })).json()) as { routes: Array<{ useRoads: number; maneuvers: unknown[] }> }
     expect(res.routes.map((r) => r.useRoads)).toEqual([0, 0.35, 1])
+    // Without the spoken-instruction text (unused by the app); what finds trail sections stays.
+    const { verbalPre: _p, verbalPost: _o, verbalAlert: _a, verbalSuccinct: _s, verbalMultiCue: _m, ...kept } = maneuver
+    expect(res.routes[0]?.maneuvers).toEqual([kept])
   })
 
   it('applies per-client rate limits', async () => {

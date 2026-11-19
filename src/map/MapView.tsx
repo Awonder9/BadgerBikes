@@ -17,6 +17,7 @@ import { useRideStore } from '../ride/rideStore'
 import { isDarkStyle, usePrefersDark } from '../ui/useMediaQuery'
 import { useRidePlan } from '../ui/ride/useRidePlan'
 import { AVAILABILITY_COLORS, PATH_COLORS, ROUTE_COLORS, STAR_GOLD, USER_PUCK } from './colors'
+import { markMapSettled } from './mapSettled'
 import { addSavedIcons, savedImageId } from './savedIcons'
 import { useRouteDetails } from '../data/routeDetails'
 import type { PathKind } from '../routing/details'
@@ -257,9 +258,11 @@ export function MapView({ ref, onStationClick, onBackgroundClick, onMapPick, onE
         canvasContextAttributes: { contextType: 'webgl2', preserveDrawingBuffer: typeof navigator !== 'undefined' && navigator.webdriver === true },
       })
     } catch (err) {
+      markMapSettled()
       emitError(new AppError('webgl_unavailable', err instanceof ml.GPUInitializationError ? 'WebGL2 is unavailable' : 'Map failed to start', { cause: err }))
       return
     }
+    map.once('load', markMapSettled)
     mapRef.current = map
     appliedStyle.current = styleUrl
     // What the rest of the app asked for while the runtime was loading.
@@ -350,6 +353,7 @@ export function MapView({ ref, onStationClick, onBackgroundClick, onMapPick, onE
         if (!cancelled) destroy = createMap(ml)
       },
       (err: unknown) => {
+        markMapSettled()
         if (!cancelled) emitError(new AppError('network', 'The map could not be loaded', { cause: err }))
       },
     )

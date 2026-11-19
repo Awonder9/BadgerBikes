@@ -1,11 +1,12 @@
 // Layout: the single MapView + overlays. Mobile: bottom sheet (peek/half/full). Desktop: side panel.
-import { useEffect, useEffectEvent, useRef, useState, type ReactNode } from 'react'
+import { Component, lazy, Suspense, useEffect, useEffectEvent, useRef, useState, type ReactNode } from 'react'
 import { useRegisterSW } from 'virtual:pwa-register/react'
 import { useShallow } from 'zustand/react/shallow'
 import { APP, UI } from '../../config'
 import { latestSnapshot, useStationsSnapshot } from '../../data/hooks'
 import { fleetComposition } from '../../lib/stationState'
 import { MapApiContext } from '../../map/mapApiContext'
+import { mapSettled } from '../../map/mapSettled'
 import { MapView } from '../../map/MapView'
 import type { MapApi } from '../../map/types'
 import { useAppStore } from '../../store/appStore'
@@ -18,8 +19,8 @@ import { AboutPanel, BrowsePanel, PinCard, SettingsPanel, StationList } from '..
 import { StationCard } from '../browse/StationCard'
 import { Button, IconButton } from '../primitives/Button'
 import { Icon } from '../primitives/Icon'
+import { Spinner } from '../primitives/Spinner'
 import { useBackgroundRideAlerts } from '../ride/backgroundAlerts'
-import { RidePlannerPanel } from '../ride/RidePlannerPanel'
 import { rideMapTap } from '../ride/rideActions'
 import { RideBanner } from '../ride/RideProgress'
 import { useRidePlan } from '../ride/useRidePlan'
@@ -40,6 +41,62 @@ function useIsDesktop(): boolean {
   return desktop
 }
 
+/**
+ * The ride planner is the largest panel and isn't needed for the first screen, so its code loads on its own:
+ * fetched in the background once startup has settled (AfterStartup), or when the planner opens first.
+ */
+const loadRidePlanner = () => import('../ride/RidePlannerPanel').then((m) => ({ default: m.RidePlannerPanel }))
+let RidePlannerPanel = lazy(loadRidePlanner)
+
+/**
+ * The planner, once its code is here. If the download failed (offline before it was fetched) it says so, with
+ * Try again (a fresh download: React keeps a failed lazy component failed).
+ */
+class RidePlannerHost extends Component<object, { failed: boolean }> {
+  state = { failed: false }
+  static getDerivedStateFromError() {
+    return { failed: true }
+  }
+  render() {
+    if (this.state.failed) {
+      return (
+        <PanelLoadFailed
+          onRetry={() => {
+            RidePlannerPanel = lazy(loadRidePlanner)
+            this.setState({ failed: false })
+          }}
+        />
+      )
+    }
+    return (
+      <Suspense fallback={<PanelLoading />}>
+        <RidePlannerPanel />
+      </Suspense>
+    )
+  }
+}
+
+function PanelLoadFailed({ onRetry }: { onRetry: () => void }) {
+  const { t } = useI18n()
+  return (
+    <div role="alert" className="space-y-3 p-4">
+      <p className="font-medium">{t.somethingWrong}</p>
+      <p className="text-sm text-slate-500">{t.checkConnection}</p>
+      <Button size="sm" onClick={onRetry}>
+        {t.tryAgain}
+      </Button>
+    </div>
+  )
+}
+
+function PanelLoading() {
+  return (
+    <div className="flex justify-center p-6">
+      <Spinner className="text-brand-600" />
+    </div>
+  )
+}
+
 function PanelHost({ panel }: { panel: Panel }) {
   switch (panel) {
     case 'station':
@@ -47,7 +104,7 @@ function PanelHost({ panel }: { panel: Panel }) {
     case 'pin':
       return <PinCard />
     case 'ride':
-      return <RidePlannerPanel />
+      return <RidePlannerHost />
     case 'list':
       return <StationList />
     case 'settings':
@@ -183,6 +240,42 @@ function UpdatePrompt() {
       </Button>
     </div>
   )
+}
+
+/**
+ * True once startup has settled: the first station counts have arrived and the map has drawn (or can't), or
+ * UI.deferredStartMaxMs after the wait began. On a first visit the service worker precaches the whole app
+ * (~2 MB, the map runtime included); registered at launch it downloaded the map runtime a second time while
+ * the page was still fetching it, slowing the first counts and the map on phones. Registered after, it finds
+ * those files in the browser's HTTP cache.
+ */
+function useStartupSettled(): boolean {
+  const systemId = useAppStore((s) => s.systemId)
+  const hasData = useStationsSnapshot(systemId).snapshot !== undefined
+  const [settled, setSettled] = useState(false)
+  useEffect(() => {
+    if (settled) return
+    let cancelled = false
+    const done = () => {
+      if (!cancelled) setSettled(true)
+    }
+    const timer = setTimeout(done, UI.deferredStartMaxMs)
+    if (hasData) void mapSettled.then(done)
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
+  }, [hasData, settled])
+  return settled
+}
+
+/** Startup work that can wait (a leaf, so station polls re-render only this): the service worker, the planner's code. */
+function AfterStartup() {
+  const settled = useStartupSettled()
+  useEffect(() => {
+    if (settled) loadRidePlanner().catch(() => {}) // opening the planner later is instant
+  }, [settled])
+  return settled ? <UpdatePrompt /> : null
 }
 
 /** A message over the map with a dismiss button; `autoHideMs` hides it on its own (key it by the message). */
@@ -350,7 +443,7 @@ export function AppShell() {
           <RideBanner />
         </div>
         <RideWatchers />
-        <UpdatePrompt />
+        <AfterStartup />
         <InstallTip />
         <LoadingScreen />
         <StationWatchToast />

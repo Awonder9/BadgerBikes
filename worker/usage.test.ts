@@ -141,6 +141,10 @@ describe('Usage Durable Object', () => {
     expect([...fake.data.keys()].sort()).toEqual(['d:2026-11-19', 'd:2026-11-20', 'total', 'window'])
   })
 
+  it('keeps enough days for the longest report: its first day still needs the 89 days before it', () => {
+    expect(USAGE.keepDays).toBeGreaterThanOrEqual(USAGE.maxReportDays + USAGE.maxGapDays - 1)
+  })
+
   it('deletes days older than USAGE.keepDays when a new day starts', async () => {
     const fake = fakeStorage()
     const today = dayKey(T0, USAGE.timeZone)

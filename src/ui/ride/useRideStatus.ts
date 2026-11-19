@@ -22,7 +22,7 @@ export function useRideStatus(plan: RidePlan) {
   const dock = endDockState(endStation, partySize)
   const near = destination?.coord ?? endStation?.coord
   const replacements = active && endStation && near && snapshot && dock !== 'ok' ? replacementDocks(snapshot.stations, endStation.id, near, partySize) : []
-  return { active, timer, endStation, dock, replacements }
+  return { active, startedAt, timer, endStation, dock, replacements }
 }
 
 /**
@@ -61,7 +61,7 @@ export function useArrivalCheck(): void {
  * so one replaces the other instead of both showing.
  */
 export function useRideAlerts(plan: RidePlan): void {
-  const { active, timer, endStation, dock } = useRideStatus(plan)
+  const { active, startedAt, timer, endStation, dock } = useRideStatus(plan)
   const fired = useRef(new Set<string>())
   useEffect(() => {
     if (!active) {
@@ -70,8 +70,9 @@ export function useRideAlerts(plan: RidePlan): void {
     }
     const t = currentMessages()
     const alerts: Array<[key: string, tag: string, title: string, body: string]> = []
-    if (timer?.state === 'warn') alerts.push(['warn', ALERT_TAGS.warn, t.notifyWarnTitle, t.notifyWarnBody(Math.ceil((timer.leftS ?? 0) / 60))])
-    if (timer?.state === 'over') alerts.push(['over', ALERT_TAGS.over, t.notifyOverTitle, t.extraFees])
+    // Keyed by the timer's start: re-docking starts a new BCycle ride (a new timer), which warns again.
+    if (timer?.state === 'warn') alerts.push([`warn:${startedAt}`, ALERT_TAGS.warn, t.notifyWarnTitle, t.notifyWarnBody(Math.ceil((timer.leftS ?? 0) / 60))])
+    if (timer?.state === 'over') alerts.push([`over:${startedAt}`, ALERT_TAGS.over, t.notifyOverTitle, t.extraFees])
     if (endStation && dock === 'full') alerts.push([`full:${endStation.id}`, ALERT_TAGS.full, t.notifyFullTitle, t.notifyFullBody(endStation.name)])
     else if (endStation && dock === 'low') alerts.push([`low:${endStation.id}`, ALERT_TAGS.low, t.notifyLowTitle, t.notifyLowBody(endStation.name, endStation.status?.docks ?? 0)])
     for (const [key, tag, title, body] of alerts) {
@@ -79,7 +80,7 @@ export function useRideAlerts(plan: RidePlan): void {
       fired.current.add(key)
       notify(title, body, tag)
     }
-  }, [active, timer?.state, timer?.leftS, endStation, dock])
+  }, [active, startedAt, timer?.state, timer?.leftS, endStation, dock])
 }
 
 function notify(title: string, body: string, tag: string): void {

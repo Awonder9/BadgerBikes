@@ -14,9 +14,7 @@ const station = (id: string, name: string, coord: [number, number], bikes: numbe
   name,
   address: null,
   coord,
-  regionId: null,
   hasKiosk: true,
-  rentalUris: { ios: null, android: null },
   status: { bikes, docks, ebikes, classic, isInstalled: true, isRenting: true, isReturning: true },
 })
 const stations = () => ({

@@ -69,10 +69,13 @@ export function validateSettings(v: unknown): Settings {
   }
 }
 
+/** Saved places kept on the device (Home, Work and favorites, all cities together). */
+export const MAX_SAVED_PLACES = 20
+
 export function validateSavedPlaces(v: unknown): SavedPlace[] {
   if (!Array.isArray(v)) return []
   const out: SavedPlace[] = []
-  for (const item of v.slice(0, 20)) {
+  for (const item of v.slice(0, MAX_SAVED_PLACES)) {
     if (!isObj(item)) continue
     const place = validatePlace(item.place)
     const id = typeof item.id === 'string' && ID_RE.test(item.id) ? item.id : null

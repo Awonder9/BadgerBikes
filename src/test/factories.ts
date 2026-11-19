@@ -51,9 +51,7 @@ export function makeStation(o: StationOverrides = {}): Station {
     name: o.name ?? `Station ${n}`,
     address: null,
     coord: o.coord ?? MADISON.capitol,
-    regionId: null,
     hasKiosk: o.hasKiosk ?? true,
-    rentalUris: { ios: null, android: null },
     status: {
       bikes,
       docks: o.docks ?? 5,

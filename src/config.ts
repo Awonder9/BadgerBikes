@@ -189,6 +189,12 @@ export const UI = {
   trendSnapshots: 20,
   /** A notice over the map (e.g. "Location is off for this site") hides itself after this long. */
   noticeMs: 6000,
+  /**
+   * Startup work that can wait — registering the service worker (its precache downloads the whole app, ~2 MB)
+   * and fetching the ride planner's code — starts once the first counts and the map have loaded, or at the
+   * latest this long after they were first awaited.
+   */
+  deferredStartMaxMs: 15_000,
 } as const
 
 /** Path breakdown / elevation requests (src/data/routeDetails.ts, POST /api/route-details). */
@@ -269,8 +275,11 @@ export const USAGE = {
   beatJitterMs: 10_000,
   /** Gaps between a device's active days are told apart up to this many days (unique users up to 90 days). */
   maxGapDays: 90,
-  /** Day records the server keeps; older ones are deleted (the all-time total is kept separately). */
-  keepDays: 400,
+  /**
+   * Day records the server keeps; older ones are deleted (the all-time total is kept separately). At least
+   * maxReportDays + maxGapDays − 1, so the oldest day of the longest report still has its full 90-day count.
+   */
+  keepDays: 460,
   /** Most days the dashboard can show (each needs `maxGapDays` before it for its 90-day count). */
   maxReportDays: 365,
   /** What the app counts (each once per use). */

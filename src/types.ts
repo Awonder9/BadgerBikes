@@ -70,11 +70,10 @@ export interface StationInfo {
   name: string
   address: string | null
   coord: LngLat
-  regionId: string | null
   /** _bcycle_station_type === 'Kiosk and Station'. Kiosk-less stations can only be rented via the app. */
   hasKiosk: boolean
-  /** Station deep links (https://www.bcycle.com/applink?...). Best-effort only: they currently redirect. */
-  rentalUris: { ios: string | null; android: string | null }
+  // No region_id or rental_uris: nothing uses them (the rental links redirect to a marketing page; the app
+  // hand-off uses system_information.rental_apps), and they were half of every /api/stations response.
 }
 
 export interface StationStatus {

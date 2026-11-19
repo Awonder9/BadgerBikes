@@ -20,6 +20,7 @@ import { AppError, toAppError, type AppErrorCode } from '../src/lib/errors'
 
 import type { UpstreamFetch } from '../src/lib/upstream'
 import type { AltRouter } from '../src/routing/types'
+import type { RouteLeg } from '../src/types'
 import { geocodeQuery, latLonParams, pushCancelRequest, pushRideRequest, readJsonBody, reportDays, requireSystem, routeDetailsRequest, routeRequest, usageRequest } from './validate'
 
 /** One device's background ride alerts (the RideAlerts Durable Object's RPC methods). */
@@ -71,6 +72,15 @@ export function resetAnalyticsCache(): void {
 }
 
 const BASE_HEADERS = { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' }
+
+/**
+ * A route option as the app gets it: without the spoken-instruction text Valhalla adds to every maneuver
+ * (verbal*), which nothing has read since turn-by-turn moved to Google Maps. It was about half of each maneuver,
+ * sent three times per plan and saved on the device with the plan.
+ */
+export function routeForApp(leg: RouteLeg): RouteLeg {
+  return { ...leg, maneuvers: leg.maneuvers.map(({ verbalAlert: _a, verbalPre: _p, verbalPost: _o, verbalSuccinct: _s, verbalMultiCue: _m, ...m }) => m) }
+}
 
 /** The BCycle city nearest Cloudflare's city-level estimate of where a request came from (no browser permission). */
 function systemNear(request: Request) {
@@ -191,7 +201,7 @@ export function createApp(deps: AppDeps) {
       try {
         const routes = await router.routeLadder(routeReq, BIKE_ROUTING.options.map((o) => o.useRoads), { signal, priority: priority ?? 'interactive' })
         count('routes')
-        return json({ routes })
+        return json({ routes: routes.map(routeForApp) })
       } catch (err) {
         const code = toAppError(err).code
         if (code === 'upstream_unavailable' || code === 'rate_limited') count('routes_busy') // the rider was asked to try again

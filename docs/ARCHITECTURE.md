@@ -133,7 +133,8 @@ and the planner shows "Route server busy … try again in a few seconds" with a 
 ## 5. Data (`src/data`, `src/geocode`, `scripts/update-systems.mjs`)
 
 - `normalizeStationInformation`: trim names; `coord = [lon, lat]`; drop invalid/0,0 coords; `hasKiosk =
-  _bcycle_station_type === 'Kiosk and Station'`; keep only `https://` rental URIs on `bcycle.com` or a subdomain.
+  _bcycle_station_type === 'Kiosk and Station'`. `region_id` and `rental_uris` are not passed on (unused; they
+  were about half of every `/api/stations` response).
 - `normalizeStationStatus`: counts as non-negative integers; `ebikes/classic` from `num_bikes_available_types`
   or `null` when absent; flags via `toBool`; `lastUpdatedMs = last_updated × 1000`.
 - `mergeStations`: info order; status `null` when missing. `buildSnapshot` builds `byId`.
@@ -166,7 +167,8 @@ and the UI marks them "Same as …".
 
 **Normalization** (both providers satisfy the `RouteLeg` invariants in `src/types.ts`): lengths → meters;
 polyline6 → `[lon, lat]`; connectors when snapped > 3 m; duplicate points removed; Valhalla maneuver types →
-`ManeuverKind` (street names are used to find trail sections, §7).
+`ManeuverKind` (street names are used to find trail sections, §7). `POST /api/routes` leaves out Valhalla's
+spoken-instruction text (`verbal*`, unused since navigation moved to Google Maps; `routeForApp` in `worker/app.ts`).
 
 **Fallbacks**: Valhalla → OSRM route (never `/table`) → straight line. `route()` rejects only with `aborted`
 or `location_unroutable`; `routeLadder()` also rejects with `upstream_unavailable` when any option is a
@@ -315,6 +317,12 @@ like Settings → City), then removed from the address bar.
 - **Launch screen**: a static copy in `index.html` (inline CSS, no JavaScript) paints as soon as the page
   arrives; `LoadingScreen.tsx` replaces it on the first render with the same layout (status lines reserve two
   lines in every language, so nothing shifts) and stays until the first snapshot; the install tip waits for it.
+- **Startup order**: the first station request leaves before React renders; maplibre and the ride planner
+  (`RidePlannerPanel`, its own chunk) load on demand. Work that can wait starts once the first counts are in and
+  the map has drawn (`src/map/mapSettled.ts`), or `UI.deferredStartMaxMs` at the latest (`AfterStartup` in
+  `AppShell.tsx`): the service worker is registered then — its precache (~2 MB) would otherwise download the map
+  runtime a second time alongside the page on a first visit; registered later it reads those files from the
+  HTTP cache — and the planner's code is fetched in the background.
 - **Search**: place search (the public geocoder) runs only for text the rider typed, never for a prefilled
   name, a picked result or "My location".
 

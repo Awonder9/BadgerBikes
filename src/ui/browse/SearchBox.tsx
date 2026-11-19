@@ -105,7 +105,7 @@ export function SearchBox({ label, placeholder, initialValue = '', autoFocus, in
             setOpen(true)
           }}
           onKeyDown={(e) => {
-            if (e.key === 'ArrowDown') setActive((a) => Math.min(options.length - 1, a + 1))
+            if (e.key === 'ArrowDown') setActive((a) => Math.max(0, Math.min(options.length - 1, a + 1)))
             else if (e.key === 'ArrowUp') setActive((a) => Math.max(0, a - 1))
             else if (e.key === 'Enter') choose(options[active])
             else if (e.key === 'Escape') {

@@ -6,7 +6,7 @@ import { SYSTEM_IDS } from '../data/systems'
 import { safeStorage } from '../lib/storage'
 import type { LngLat, Place } from '../types'
 import type { AppActions, AppState, SavedPlace } from './types'
-import { DEFAULT_SETTINGS, validatePlaces, validateSavedPlaces, validateSettings, validateStringIds } from './validate'
+import { DEFAULT_SETTINGS, MAX_SAVED_PLACES, validatePlaces, validateSavedPlaces, validateSettings, validateStringIds } from './validate'
 
 const MAX_RECENT = 8
 
@@ -82,7 +82,14 @@ export const useAppStore = create<AppState & AppActions>()(
       savePlace: (place) =>
         set((s) => {
           const others = place.icon === 'star' ? s.savedPlaces : s.savedPlaces.filter((p) => !(p.systemId === place.systemId && p.icon === place.icon))
-          return { savedPlaces: validateSavedPlaces([...others, { ...place, id: newId() }]) }
+          // Full: the oldest favorite makes room (else the oldest place), never the one being saved — the cap
+          // used to cut the newest, so "Save" silently did nothing.
+          const kept = [...others]
+          while (kept.length >= MAX_SAVED_PLACES) {
+            const oldestFavorite = kept.findIndex((p) => p.icon === 'star')
+            kept.splice(oldestFavorite >= 0 ? oldestFavorite : 0, 1)
+          }
+          return { savedPlaces: validateSavedPlaces([...kept, { ...place, id: newId() }]) }
         }),
       removeSavedPlace: (id) => set((s) => ({ savedPlaces: s.savedPlaces.filter((p) => p.id !== id) })),
       toggleStar: (systemId, stationId) =>

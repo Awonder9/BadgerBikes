@@ -453,11 +453,19 @@ function QuickDestinations() {
 }
 
 function RouteError({ error }: { error: { kind: 'busy' | 'unroutable' | 'other'; message: string } }) {
-  const [shownAt] = useState(() => Date.now())
-  const now = useNow(500)
+  const [until] = useState(() => Date.now() + RIDE.busyRetrySeconds * 1000)
+  // The countdown clock runs only until "Try again" is enabled (it used to re-render twice a second for as
+  // long as the message stayed on screen).
+  const [counting, setCounting] = useState(error.kind === 'busy')
+  useEffect(() => {
+    if (!counting) return
+    const id = setTimeout(() => setCounting(false), Math.max(0, until - Date.now()))
+    return () => clearTimeout(id)
+  }, [counting, until])
+  const now = useNow(500, counting)
   const { t } = useI18n()
   const message = error.kind === 'busy' ? t.errorBusy : error.kind === 'unroutable' ? t.errorUnroutable : error.message
-  const wait = error.kind === 'busy' ? Math.max(0, Math.ceil((shownAt + RIDE.busyRetrySeconds * 1000 - now) / 1000)) : 0
+  const wait = counting ? Math.max(1, Math.ceil((until - now) / 1000)) : 0
   return (
     <div role="alert" className={`space-y-2 rounded-xl p-3 ${error.kind === 'busy' ? 'bg-amber-50 text-amber-950 dark:bg-amber-950 dark:text-amber-100' : 'bg-red-50 text-red-900 dark:bg-red-950 dark:text-red-200'}`}>
       {error.kind === 'busy' && <p className="font-semibold">{t.routeServerBusy}</p>}

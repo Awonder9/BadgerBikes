@@ -7,6 +7,7 @@ import { GEOCODE } from '../config'
 import { qk } from '../data/hooks'
 import { AppError, toAppError } from '../lib/errors'
 import type { LngLat, Place } from '../types'
+import { normalizeQuery } from './photon'
 
 export function useDebouncedValue<T>(value: T, delayMs: number): T {
   const [debounced, setDebounced] = useState(value)
@@ -17,9 +18,7 @@ export function useDebouncedValue<T>(value: T, delayMs: number): T {
   return debounced
 }
 
-export function normalizeQuery(q: string): string {
-  return q.trim().replace(/\s+/g, ' ').slice(0, GEOCODE.maxQueryLength)
-}
+export { normalizeQuery }
 
 /**
  * Places matching `query` in/near the system. Waits GEOCODE.debounceMs and GEOCODE.minChars; `near`

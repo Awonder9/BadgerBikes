@@ -17,8 +17,23 @@ export function thinRoute(coords: readonly LngLat[], minMeters: number = ROUTE_D
   return out
 }
 
+/**
+ * The route as the polyline6 sent to POST /api/route-details: thinned to ROUTE_DETAILS.thinMeters, or coarser
+ * for a long route until it fits the server's limits (ROUTE_DETAILS.maxPoints / maxPolylineChars) — a request
+ * over them is refused every time, so its path details could never load.
+ */
+export function detailsPolyline(coords: readonly LngLat[]): string {
+  let minMeters: number = ROUTE_DETAILS.thinMeters
+  for (;;) {
+    const thinned = thinRoute(coords, minMeters)
+    const encoded = encodePolyline(thinned, 6)
+    if ((thinned.length <= ROUTE_DETAILS.maxPoints && encoded.length <= ROUTE_DETAILS.maxPolylineChars) || thinned.length <= 2) return encoded
+    minMeters *= 2
+  }
+}
+
 export function useRouteDetails(systemId: string | null, route: RouteLeg | null) {
-  const polyline = useMemo(() => (route ? encodePolyline(thinRoute(route.geometry), 6) : null), [route])
+  const polyline = useMemo(() => (route ? detailsPolyline(route.geometry) : null), [route])
   const enabled = !!systemId && !!polyline
   const q = useQuery({
     queryKey: ['routeDetails', systemId, polyline],

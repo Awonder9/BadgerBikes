@@ -66,12 +66,7 @@ describe('normalizeStationInformation', () => {
       name: 'Wisconsin & E. Mifflin',
       address: '117 Wisconsin Avenue',
       coord: [-89.38527, 43.07571],
-      regionId: 'bcycle_madison_region_42',
       hasKiosk: true,
-      rentalUris: {
-        ios: 'https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_1874&platform=iOS',
-        android: 'https://www.bcycle.com/applink?system_id=bcycle_madison&station_id=bcycle_madison_1874&platform=android',
-      },
     })
   })
 
@@ -89,11 +84,6 @@ describe('normalizeStationInformation', () => {
     const types = new Map(madisonInfo.data.stations.map((s) => [s.station_id, s['_bcycle_station_type']]))
     expect(madison.some((s) => !s.hasKiosk)).toBe(true)
     for (const s of madison) expect(s.hasKiosk).toBe(types.get(s.id) === 'Kiosk and Station')
-  })
-
-  it('maps a missing region_id (LA Metro) to null', () => {
-    const la = normalizeStationInformation(laInfo)
-    expect(la.find((s) => s.id === 'bcycle_lametro_4734')?.regionId).toBeNull()
   })
 
   it('drops stations with invalid or (0, 0) coordinates and without an id', () => {
@@ -133,28 +123,11 @@ describe('normalizeStationInformation', () => {
     expect(normalizeStationInformation(feed)[0]).toMatchObject({ name: 'bcycle_madison_1874', address: null })
   })
 
-  it.each([
-    ['https://www.bcycle.com/applink?station_id=1', 'https://www.bcycle.com/applink?station_id=1'],
-    ['https://bcycle.com/applink', 'https://bcycle.com/applink'],
-    ['https://madison.bcycle.com/x', 'https://madison.bcycle.com/x'],
-    ['http://www.bcycle.com/applink', null],
-    ['https://evilbcycle.com/applink', null],
-    ['https://bcycle.com.evil.example/applink', null],
-    ['https://user:pw@www.bcycle.com/applink', null],
-    ['javascript:alert(1)', null],
-    ['bcycle://station/1', null],
-    ['not a url', null],
-    [42, null],
-  ])('keeps only https rental URIs on bcycle.com: %s', (uri, expected) => {
+  it('passes on no feed URLs (rental_uris) or region ids: only the fields the app uses', () => {
     const base = firstStation(madisonInfo)
-    const feed = withStations(madisonInfo, () => [{ ...base, rental_uris: { ios: uri, android: uri } }])
-    expect(normalizeStationInformation(feed)[0]?.rentalUris).toEqual({ ios: expected, android: expected })
-  })
-
-  it('handles a missing rental_uris object', () => {
-    const base = firstStation(madisonInfo)
-    const feed = withStations(madisonInfo, () => [{ ...base, rental_uris: undefined }])
-    expect(normalizeStationInformation(feed)[0]?.rentalUris).toEqual({ ios: null, android: null })
+    const feed = withStations(madisonInfo, () => [{ ...base, rental_uris: { ios: 'javascript:alert(1)', android: 'https://evil.example/' } }])
+    const st = normalizeStationInformation(feed)[0]
+    expect(Object.keys(st ?? {}).sort()).toEqual(['address', 'coord', 'hasKiosk', 'id', 'name'])
   })
 
   it('returns [] for a seasonal system with no stations (bcycle_truckee)', () => {
