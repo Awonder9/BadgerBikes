@@ -22,7 +22,7 @@ export const PHOTON_URL = 'https://photon.komoot.io'
  * The app's User-Agent (APP.userAgent in src/config.ts, which Node cannot import because it reads
  * import.meta.env); scripts/update-systems.test.mjs keeps the two equal.
  */
-export const USER_AGENT = 'badger-bikes/0.1 (+https://github.com/Awonder9/BadgerBikes)'
+export const USER_AGENT = 'badger-bikes/1.0 (+https://github.com/Awonder9/BadgerBikes)'
 /** Half-size of the box around a geocoded city for a system that has never listed a station. */
 export const GEOCODED_BBOX_HALF_KM = 5
 /** Feeds the app reads at runtime; all must answer HTTP 200 (plus the catalog's auto-discovery URL). */

@@ -6,7 +6,7 @@ interface __BaseEnv_Env {
 	GEOCODE_LIMITER: RateLimit;
 	PUSH_LIMITER: RateLimit;
 	USAGE_LIMITER: RateLimit;
-	APP_VERSION: "0.1.0";
+	APP_VERSION: "1.0.0";
 	CONTACT_EMAIL: string;
 	UPSTREAM_GATE: DurableObjectNamespace<import("./worker/index").UpstreamGate>;
 	RIDE_ALERTS: DurableObjectNamespace<import("./worker/index").RideAlerts>;

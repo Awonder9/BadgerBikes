@@ -2,7 +2,7 @@
   "name": "bcycle-live-map-navigation",
   "private": true,
   "license": "MIT",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "type": "module",
   "description": "Live BCycle station availability map with ride planning handed off to Google Maps",
   "scripts": {

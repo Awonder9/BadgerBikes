@@ -18,7 +18,7 @@ export const APP = {
   repoUrl: 'https://github.com/Awonder9/BadgerBikes',
   /** Identifies the app to upstream services (FOSSGIS/Photon usage policies require it). */
   // Forks: change repoUrl (and so this) to your own repository.
-  userAgent: 'badger-bikes/0.1 (+https://github.com/Awonder9/BadgerBikes)',
+  userAgent: 'badger-bikes/1.0 (+https://github.com/Awonder9/BadgerBikes)',
   language: 'en-US',
   /** City used when the rider's approximate location is not near any BCycle system. */
   defaultSystemId: 'bcycle_madison',
@@ -103,6 +103,13 @@ export const POLL = {
   /** Feed older than this is "stale" (badge warns; availability alerts pause). */
   staleAfterMs: 180_000,
   systemDetailsStaleMs: 60 * 60_000,
+  /**
+   * Check for a newly deployed app version this often while the app is open, and whenever it returns to
+   * the foreground (a home-screen app on iPhone is resumed, not reloaded, so the load-time check never reruns).
+   */
+  appUpdateCheckMs: 60_000,
+  /** Foreground returns closer together than this don't check again. */
+  appUpdateMinGapMs: 30_000,
 } as const
 
 /** One speed model for matrices, routes, estimates and the simulator (sent to Valhalla as costing options). */

@@ -12,6 +12,7 @@ import { useAppStore } from '../../store/appStore'
 import { currentMessages, useI18n } from '../../i18n/useT'
 import { useLocationStore, waitForFix } from '../../location/locationStore'
 import type { Panel } from '../../store/types'
+import { startAppUpdateChecks } from './appUpdateChecks'
 import { InstallTip } from './InstallTip'
 import { AboutPanel, BrowsePanel, PinCard, SettingsPanel, StationList } from '../browse/panels'
 import { StationCard } from '../browse/StationCard'
@@ -145,16 +146,29 @@ function BottomSheet({ children, onHeight }: { children: ReactNode; onHeight: (p
 
 /**
  * A new version was deployed: stays on screen until the rider refreshes (no "Later"), so nobody keeps
- * running an old version against a changed API.
+ * running an old version against a changed API. Held back while a ride is in progress (the same rule as the
+ * ride banner) so it never interrupts a rider at a dock; it appears as soon as the ride ends.
  */
 function UpdatePrompt() {
+  const [registration, setRegistration] = useState<ServiceWorkerRegistration>()
   const {
     needRefresh: [needRefresh],
     updateServiceWorker,
-  } = useRegisterSW()
+  } = useRegisterSW({ onRegisteredSW: (_url, reg) => setRegistration(reg) })
+  // Keep looking for new deployments while the app is open or resumed from the background.
+  useEffect(() => {
+    if (!registration) return
+    return startAppUpdateChecks(registration, {
+      document,
+      window,
+      isOnline: () => navigator.onLine,
+      now: () => Date.now(),
+    })
+  }, [registration])
+  const riding = useRideStore((s) => s.openedParts.length > 0 || s.walkToDockOpened)
   const [refreshing, setRefreshing] = useState(false)
   const { t } = useI18n()
-  if (!needRefresh) return null
+  if (!needRefresh || riding) return null
   const refresh = () => {
     setRefreshing(true)
     void updateServiceWorker(true)

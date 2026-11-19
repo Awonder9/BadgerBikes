@@ -121,12 +121,6 @@ npm run e2e          # Playwright smoke tests (phone + desktop, network-free)
   `/analytics` page.
 - Design and rationale: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
-## Note on cloud-synced folders
-
-Vite's cache and build output live in your OS temp folder, not the project, because OneDrive/iCloud
-corrupt them while syncing (`BUILD_OUT_DIR=dist` overrides, e.g. for CI). Keeping the repo outside a
-synced folder avoids syncing `node_modules` too.
-
 ## License and data
 
 Code: [MIT](LICENSE). Not affiliated with BCycle or Revolution; "BCycle" is their trademark and is used

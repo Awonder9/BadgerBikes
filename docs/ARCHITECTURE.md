@@ -411,4 +411,7 @@ nothing to set up (the `Usage` Durable Object comes with the deploy); the dashbo
 (I/O-bound requests). For heavier traffic than FOSSGIS allows, point `VITE_VALHALLA_URL` / `VITE_OSRM_*` at a
 self-hosted or commercial Valhalla-compatible service. PWA: `registerType: 'prompt'`, no runtime caching of live data. When a new version is deployed, a
 "Refresh" prompt stays on screen until the rider taps it (no "Later"), so nobody keeps running an old
-version against a changed API.
+version against a changed API. It waits while a ride is in progress (a Google Maps part or the walk to
+the dock has been opened) and appears once the ride ends. The app asks the service worker to check for a new version on every return
+to the foreground and every `POLL.appUpdateCheckMs` while open (`src/ui/layout/appUpdateChecks.ts`): an
+installed app on iPhone is resumed rather than reloaded, so the browser's own load-time check would not run.
