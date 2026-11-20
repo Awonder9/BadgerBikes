@@ -9,7 +9,7 @@ import { RIDE } from '../../config'
 import { estimateBetween } from '../../routing/estimates'
 import { directionsUrl, guidePoints, rideLinks, trailRangesOf, type RideLink } from '../../ride/googleMaps'
 import { pickupOptions, type PickupOption } from '../../ride/pickup'
-import { docksAlong, optimizedFor, routePace, useRideStore } from '../../ride/rideStore'
+import { docksAlong, optimizedFor, routePace, useRideStore, rideActive } from '../../ride/rideStore'
 import { rideSeconds, rideSegments, type RouteDock } from '../../ride/stationsAlongRoute'
 import { useAppStore } from '../../store/appStore'
 import type { Place, RouteLeg, Station, StationsSnapshot } from '../../types'
@@ -99,7 +99,7 @@ export function useRidePlan(): RidePlan {
   // Faster polling only while it matters (planner open or a ride under way); this hook is also used by
   // always-mounted pieces (ride banner, alerts, map), which must not keep the app polling fast.
   const panelOpen = useAppStore((s) => s.panel === 'ride')
-  const riding = useRideStore((s) => s.openedParts.length > 0 || s.walkToDockOpened)
+  const riding = useRideStore(rideActive)
   const { snapshot } = useStationsSnapshot(systemId, { active: panelOpen || riding })
   const includedMinutes = useIncludedMinutes(ride.route !== null)
   const route = ride.route

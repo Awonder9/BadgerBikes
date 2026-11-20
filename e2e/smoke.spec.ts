@@ -188,7 +188,7 @@ test('a ride plan is saved until the last Google Maps link is opened', async ({ 
   await expect(page.getByRole('heading', { name: 'Your ride' })).toHaveCount(0)
 })
 
-test('a trip with several stops: each leg is planned as its own ride, and the next leg follows the finished one', async ({ page, context }) => {
+test('a trip with several stops: each leg is planned as its own ride, and a finished leg asks whether it is done and docked', async ({ page, context }) => {
   await mockApi(context, { routes: 'ok' })
   await skipInstallTip(page)
   await page.goto(`/?start=st_a&to=${C[1]},${C[0]}&toName=Charlie%20Square&toStation=st_c`)
@@ -211,21 +211,55 @@ test('a trip with several stops: each leg is planned as its own ride, and the ne
   await stops.getByRole('button', { name: 'Plan leg 1, to Charlie Square' }).click()
   await expect(page.getByRole('combobox', { name: 'Destination' })).toHaveValue('Charlie Square')
 
-  // Opening leg 1's last link finishes it: the next leg is offered, and comes back after a reload too.
+  // Opening leg 1's last link finishes it: the planner asks whether it's done and the bike docked, also after a
+  // reload (the plan and its ride timer stay saved until then). Meanwhile the leg can't be switched away from.
   const popup = context.waitForEvent('page')
   await page.getByRole('link', { name: /Open in Google Maps|Part 1/ }).last().click()
   await (await popup).close()
-  await expect(page.getByRole('button', { name: 'Next leg: ride to Bravo Park' })).toBeVisible()
-  await expect(stops.getByRole('button', { name: 'Plan leg 2, to Bravo Park' })).toBeEnabled()
+  const question = page.getByRole('region', { name: 'Finished leg 1 at Charlie Square?' })
+  await expect(question).toBeVisible()
+  await expect(stops.getByRole('button', { name: 'Plan leg 2, to Bravo Park' })).toBeDisabled()
   await page.reload()
-  await expect(page.getByText('Leg 2 of 2', { exact: true })).toBeVisible()
-  await expect(page.getByRole('combobox', { name: 'Destination' })).toHaveValue('Bravo Park')
+  await expect(question).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Ride in progress' })).toContainText('Riding')
 
-  // Down to one stop it is an ordinary ride again; Clear ends the trip.
-  await page.getByRole('region', { name: 'Stops' }).getByRole('button', { name: 'Remove Charlie Square' }).click()
+  // Docked: leg 1 leaves the trip, the timer stops, and what's left (one stop) is an ordinary ride from that dock.
+  await question.getByRole('checkbox', { name: 'I’ve docked my bike' }).check()
+  await expect(question).toContainText('The ride timer stops')
+  await question.getByRole('button', { name: 'Finish leg 1' }).click()
+  await expect(question).toHaveCount(0)
   await expect(page.getByRole('region', { name: 'Stops' })).toHaveCount(0)
   await expect(page.getByText(/Leg \d of \d/)).toHaveCount(0)
+  await expect(page.getByRole('region', { name: 'Ride in progress' })).toHaveCount(0)
   await expect(page.getByRole('combobox', { name: 'Destination' })).toHaveValue('Bravo Park')
+  await expect(page.getByText('On your bike from the last leg')).toHaveCount(0)
+})
+
+test('finishing a trip leg without docking keeps the same ride and its timer going into the next leg', async ({ page, context }) => {
+  await mockApi(context, { routes: 'ok' })
+  await skipInstallTip(page)
+  await page.goto(`/?system=bcycle_madison&start=st_a&stop=${B[1]},${B[0]},st_b,Bravo_Park&stop=${A[1]},${A[0]},st_a,Alpha_Home&toName=Charlie_Square&to=${C[1]},${C[0]}&toStation=st_c`)
+  const popup = context.waitForEvent('page')
+  await page.getByRole('link', { name: /Open in Google Maps|Part 1/ }).last().click()
+  await (await popup).close()
+  const question = page.getByRole('region', { name: 'Finished leg 1 at Charlie Square?' })
+  await expect(question.getByRole('checkbox', { name: 'I’ve docked my bike' })).not.toBeChecked()
+  await expect(question).toContainText('ride timer keeps running')
+  await question.getByRole('button', { name: 'Finish leg 1' }).click()
+
+  // Only the legs left are shown, numbered from the new start; the ride is still under way on the same bike.
+  const stops = page.getByRole('region', { name: 'Stops' })
+  await expect(stops.getByRole('listitem')).toHaveCount(2)
+  await expect(stops).not.toContainText('Charlie Square')
+  await expect(stops.getByRole('listitem').first()).toContainText('Bravo Park')
+  await expect(page.getByText('Leg 1 of 2', { exact: true })).toBeVisible()
+  await expect(page.getByRole('combobox', { name: 'Destination' })).toHaveValue('Bravo Park')
+  await expect(page.getByText('On your bike from the last leg: the ride timer keeps running.')).toBeVisible()
+  const ride = page.getByRole('region', { name: 'Ride in progress' })
+  await expect(ride).toContainText(/Riding \d+:\d\d/)
+  await page.reload()
+  await expect(ride).toContainText(/Riding \d+:\d\d/)
+  await expect(page.getByText('On your bike from the last leg: the ride timer keeps running.')).toBeVisible()
 })
 
 test('a shared trip link carries every stop and the leg shown, and Share sends the whole trip again', async ({ page, context }) => {

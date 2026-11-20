@@ -15,7 +15,9 @@ location — no location prompt; Madison if none is near), and Settings → City
 2. **Pick where you're going** — any place or a dock, or a one-tap chip for a saved or recent place.
    Going to several places? *Add a stop* (up to 10): each leg is its own ride — dock near a stop, then pick up
    a bike there for the next leg. The planner shows one leg at a time (*Leg 2 of 3*); tap a stop to plan its
-   leg, reorder or remove stops, and once a leg is done *Next leg* plans the next one from that stop. *Share*
+   leg, reorder or remove stops. After a leg's last Google Maps link (or arriving), the app asks whether the leg
+   is done and whether you docked: *Finish leg* drops it and plans the next one — after docking with the ride
+   timer stopped, or on the same bike with the timer still running. *Share*
    sends the whole trip, opening on the leg you're looking at.
 3. **Choose a route** — three options side by side: *Bike-friendly* (as few cars as possible),
    *Balanced*, and *Fastest* (the quickest of the three), each with time and distance. When two

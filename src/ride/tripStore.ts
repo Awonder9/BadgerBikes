@@ -6,6 +6,10 @@
 //
 // Only the leg on screen lives in the ride store; this store keeps the list of stops, which leg is shown, and
 // leg 1's start (to come back to it). Persisted like the ride plan, so it survives the trip to Google Maps.
+//
+// Finishing a leg (its last link opened, or arrived) asks the rider whether it is done and whether they docked
+// (completeLeg): the finished stop and everything before it leave the trip, and the next leg is planned from
+// there — after docking with the timer stopped, on the kept bike with the same BCycle ride's timer running on.
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 import { RIDE } from '../config'
@@ -28,7 +32,10 @@ export interface TripState {
   leg: number
   /** Leg 1's start, saved when the rider moves on to a later leg. */
   firstStart: LegStart | null
-  /** The last leg the rider finished (opened its last link or arrived), or -1. */
+  /**
+   * The last leg the rider finished (opened its last link or arrived), or -1. A finished leg with a next one waits
+   * for completeLeg; its plan stays saved meanwhile (the ride timer may still be running).
+   */
   finishedLeg: number
   /** Adds a stop at the end (the current destination becomes stop 1 when this starts a trip). */
   addStop(place: Place): void
@@ -37,6 +44,13 @@ export interface TripState {
   moveStopUp(index: number): void
   /** Shows leg `leg` in the planner (a fresh plan for it). */
   goToLeg(leg: number): void
+  /**
+   * The leg on screen is done: its stop and every earlier one leave the trip, and the next leg is planned from that
+   * stop. `docked`: the BCycle ride ended there (timer stops; the next leg picks up a bike at or near the stop).
+   * Otherwise the rider kept the bike: the next leg starts at `bikeDock` (the stop's dock, or the dock nearest it,
+   * as the route's start) and the ride timer keeps running.
+   */
+  completeLeg(docked: boolean, bikeDock?: Place | null): void
   clear(): void
 }
 
@@ -120,9 +134,25 @@ export const useTripStore = create<TripState>()(
           edited(next, leg)
         },
         goToLeg: (leg) => {
-          const { stops } = get()
+          const { stops, finishedLeg } = get()
           if (!isTrip(get()) || leg < 0 || leg >= stops.length) return
+          // A leg planned again isn't finished any more.
+          if (finishedLeg >= leg) set({ finishedLeg: leg - 1 })
           show(stops, leg)
+        },
+        completeLeg: (docked, bikeDock = null) => {
+          const { stops, leg } = get()
+          const done = stops[leg]
+          const rest = stops.slice(leg + 1)
+          const next = rest[0]
+          if (!done || !next) return
+          const r = useRideStore.getState()
+          const timer = docked ? null : r.rideStartedAtMs
+          const start: LegStart = !docked && bikeDock?.stationId ? { origin: bikeDock, startId: bikeDock.stationId, pickupPinned: true } : legStartAt(done)
+          // The stops left: still a trip with 2 or more, else an ordinary one-stop ride to the last one.
+          set(rest.length >= 2 ? { stops: rest, leg: 0, firstStart: null, finishedLeg: -1 } : emptyTrip)
+          useRideStore.getState().planLeg({ ...start, destination: next })
+          if (timer !== null) useRideStore.setState({ rideStartedAtMs: timer, continuingRide: true })
         },
         clear: () => set(emptyTrip),
       }
@@ -158,12 +188,17 @@ export function restoreTrip(raw: unknown): Partial<TripState> {
 /**
  * Keeps the trip in step with the planner: a new destination typed for the leg on screen becomes that stop;
  * finishing the leg (last link opened, or arrived) is remembered; clearing the plan ends the trip.
+ * A finished leg with a next one isn't a finished plan yet: it stays saved (with its ride timer) until the rider
+ * answers whether the leg is done (completeLeg) — a reload or the trip to Google Maps must not lose either.
  */
 useRideStore.subscribe((s, prev) => {
   const trip = useTripStore.getState()
   if (!isTrip(trip)) return
   if (!s.origin && !s.startId && !s.destination) return trip.clear()
-  if (s.finished && !prev.finished && trip.finishedLeg < trip.leg) useTripStore.setState({ finishedLeg: trip.leg })
+  if (s.finished && !prev.finished) {
+    if (trip.finishedLeg < trip.leg) useTripStore.setState({ finishedLeg: trip.leg })
+    if (trip.leg < trip.stops.length - 1) useRideStore.setState({ finished: false })
+  }
   if (s.destination && s.destination !== prev.destination && !samePlace(s.destination, trip.stops[trip.leg])) {
     const stops = [...trip.stops]
     stops[trip.leg] = s.destination
@@ -172,9 +207,9 @@ useRideStore.subscribe((s, prev) => {
 })
 
 /**
- * At launch: the saved trip must match the saved plan. A finished leg isn't saved (rideStore.finishPlan), so
- * coming back from Google Maps after it finds no plan: the next leg is shown. Anything else that doesn't fit
- * (the plan was cleared or replaced) ends the trip.
+ * At launch: the saved trip must match the saved plan. A finished leg waiting for "is it done?" is saved with its
+ * plan; one finished before that existed wasn't (rideStore.finishPlan), so no plan with a finished leg shows the
+ * next leg. Anything else that doesn't fit (the plan was cleared or replaced) ends the trip.
  */
 export function reconcileTrip(): boolean {
   const trip = useTripStore.getState()

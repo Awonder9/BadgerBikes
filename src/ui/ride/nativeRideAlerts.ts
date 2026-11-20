@@ -9,14 +9,14 @@ import { MESSAGES } from '../../i18n'
 import { useLang } from '../../i18n/useT'
 import { scheduleTimerAlerts } from '../../native/notifications'
 import { upcomingTimerAlerts } from '../../ride/rideProgress'
-import { useRideStore } from '../../ride/rideStore'
+import { useRideStore, rideActive } from '../../ride/rideStore'
 import { useExactAlarmAccess, useNotificationAccess } from '../notifications'
 import { isNativeApp } from '../platform'
 import type { RidePlan } from './useRidePlan'
 
 /** Mounted once (AppShell's RideWatchers). Does nothing in the web app (backgroundAlerts.ts covers it there). */
 export function useNativeRideAlerts(plan: RidePlan): void {
-  const { active, startedAt } = useRideStore(useShallow((s) => ({ active: s.openedParts.length > 0 || s.walkToDockOpened, startedAt: s.rideStartedAtMs })))
+  const { active, startedAt } = useRideStore(useShallow((s) => ({ active: rideActive(s), startedAt: s.rideStartedAtMs })))
   const allowed = useNotificationAccess() === 'granted'
   // Turned on mid-ride: the alerts are scheduled again, on time this time.
   const exactAlarms = useExactAlarmAccess()

@@ -1,5 +1,5 @@
 // Entry points into the ride planner from anywhere in the UI.
-import { useRideStore } from '../../ride/rideStore'
+import { useRideStore, rideActive } from '../../ride/rideStore'
 import { useAppStore } from '../../store/appStore'
 import type { LngLat, Place } from '../../types'
 
@@ -17,7 +17,7 @@ function openRide() {
  */
 export function rideMapTap(stationId: string, name: string, coord: LngLat): void {
   const ride = useRideStore.getState()
-  if (ride.openedParts.length > 0 || ride.walkToDockOpened) useAppStore.getState().selectStation(stationId)
+  if (rideActive(ride)) useAppStore.getState().selectStation(stationId)
   else if (!ride.origin && !ride.startId) ride.setOrigin({ kind: 'station', name, coord, stationId })
   else if (stationId !== ride.startId) ride.setDestination({ kind: 'station', name, coord, stationId })
 }

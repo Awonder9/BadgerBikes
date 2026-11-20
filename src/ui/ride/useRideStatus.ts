@@ -8,7 +8,8 @@ import { locationAllowed } from '../../location/geoSource'
 import { useLocationStore } from '../../location/locationStore'
 import { showAlertNow } from '../../native/notifications'
 import { ALERT_TAGS, endDockState, replacementDocks, rideTimer, type AlertKind } from '../../ride/rideProgress'
-import { useRideStore } from '../../ride/rideStore'
+import { useRideStore, rideActive } from '../../ride/rideStore'
+import { isTrip, useTripStore } from '../../ride/tripStore'
 import { useAppStore } from '../../store/appStore'
 import { currentMessages } from '../../i18n/useT'
 import { notificationAccess } from '../notifications'
@@ -17,7 +18,7 @@ import type { RidePlan } from './useRidePlan'
 
 export function useRideStatus(plan: RidePlan) {
   const { systemId, partySize } = useAppStore(useShallow((s) => ({ systemId: s.systemId, partySize: s.settings.partySize })))
-  const { startedAt, destination, active } = useRideStore(useShallow((s) => ({ startedAt: s.rideStartedAtMs, destination: s.destination, active: s.openedParts.length > 0 || s.walkToDockOpened })))
+  const { startedAt, destination, active } = useRideStore(useShallow((s) => ({ startedAt: s.rideStartedAtMs, destination: s.destination, active: rideActive(s) })))
   const { snapshot } = useStationsSnapshot(systemId, { active })
   // The clock ticks only while a ride timer runs (this hook is used by always-mounted pieces).
   const now = useNow(1000, active && startedAt !== null)
@@ -50,6 +51,13 @@ export function useArrivalCheck(): void {
   useEffect(() => {
     if (!active || !fix || !destination) return
     if (haversine(fix.coord, destination.coord) <= RIDE.arrivedMeters + Math.min(fix.accuracy, 50)) {
+      // A trip's stop with a leg after it: the planner asks whether the leg is done and the bike docked (the rider
+      // may ride on with it), so the ride and its timer stay as they are until then.
+      const trip = useTripStore.getState()
+      if (isTrip(trip) && trip.leg < trip.stops.length - 1) {
+        if (trip.finishedLeg < trip.leg) useRideStore.getState().finishPlan()
+        return
+      }
       useRideStore.getState().finishPlan()
       useRideStore.getState().endRide()
     }

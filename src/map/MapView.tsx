@@ -13,7 +13,7 @@ import { useAppStore } from '../store/appStore'
 import { useT } from '../i18n/useT'
 import { useLocationStore } from '../location/locationStore'
 import type { BBox, LngLat, MapMode } from '../types'
-import { useRideStore } from '../ride/rideStore'
+import { useRideStore, rideActive } from '../ride/rideStore'
 import { useTripStore } from '../ride/tripStore'
 import { isDarkStyle, usePrefersDark } from '../ui/useMediaQuery'
 import { useRidePlan } from '../ui/ride/useRidePlan'
@@ -164,7 +164,7 @@ export function MapView({ ref, onStationClick, onBackgroundClick, onMapPick, onE
   // dock, the chosen stops and the other docks offered along the route. During the ride every dock shows
   // again (the rider may need another one). Uses the planner's own list, so the two never disagree.
   const panel = useAppStore((s) => s.panel)
-  const riding = useRideStore((s) => s.openedParts.length > 0 || s.walkToDockOpened)
+  const riding = useRideStore(rideActive)
   const plan = useRidePlan()
   const routeDockIds = useMemo(
     () => (panel === 'ride' && !riding && ride.route && ride.startId ? [...new Set([ride.startId, ...ride.stopIds, ...plan.along.map((d) => d.station.id)])] : null),

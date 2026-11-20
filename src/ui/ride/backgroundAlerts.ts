@@ -11,7 +11,7 @@ import type { PushRideRequest, PushSubscriptionJson } from '../../api/contract'
 import { useMeta, useSystemDetails } from '../../data/hooks'
 import { useLang } from '../../i18n/useT'
 import { base64urlToBytes } from '../../lib/base64url'
-import { useRideStore } from '../../ride/rideStore'
+import { useRideStore, rideActive } from '../../ride/rideStore'
 import { useAppStore } from '../../store/appStore'
 import { useNotificationAccess } from '../notifications'
 import { countUse } from '../usage'
@@ -64,7 +64,7 @@ export function useBackgroundRideAlerts(plan: RidePlan): void {
   const { systemId, partySize, pass } = useAppStore(
     useShallow((s) => ({ systemId: s.systemId, partySize: s.settings.partySize, pass: s.systemId ? s.settings.passBySystem[s.systemId] : undefined })),
   )
-  const { active, startedAt } = useRideStore(useShallow((s) => ({ active: s.openedParts.length > 0 || s.walkToDockOpened, startedAt: s.rideStartedAtMs })))
+  const { active, startedAt } = useRideStore(useShallow((s) => ({ active: rideActive(s), startedAt: s.rideStartedAtMs })))
   const lang = useLang()
   const allowed = useNotificationAccess() === 'granted' && pushSupported()
   const publicKey = useMeta(active && allowed)?.pushPublicKey ?? null

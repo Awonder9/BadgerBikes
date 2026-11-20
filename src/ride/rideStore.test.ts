@@ -37,6 +37,13 @@ describe('ride plan persistence', () => {
     expect(r.route?.distance).toBe(leg.distance)
   })
 
+  it('keeps the timer of a ride carried over from a trip’s previous leg, even before this leg is routed', () => {
+    const carried = { startId: 'bcycle_madison_1', destination: dest, routes: [], continuingRide: true, rideStartedAtMs: now - 60_000 }
+    expect(restoreRide(carried, now)).toMatchObject({ status: 'idle', continuingRide: true, rideStartedAtMs: now - 60_000 })
+    expect(restoreRide({ ...carried, rideStartedAtMs: null }, now)).toMatchObject({ continuingRide: false, rideStartedAtMs: null })
+    expect(restoreRide({ ...carried, continuingRide: false }, now)).toMatchObject({ continuingRide: false, rideStartedAtMs: null })
+  })
+
   it('drops malformed or partial plans', () => {
     expect(restoreRide({ ...saved, startId: '<script>' }, now)).toEqual({})
     expect(restoreRide('garbage', now)).toEqual({})

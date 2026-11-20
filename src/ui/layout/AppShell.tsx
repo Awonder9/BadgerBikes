@@ -27,7 +27,7 @@ import { RideBanner } from '../ride/RideProgress'
 import { useRidePlan } from '../ride/useRidePlan'
 import { useArrivalCheck, useRideAlerts } from '../ride/useRideStatus'
 import { useOnline } from '../useOnline'
-import { useRideStore } from '../../ride/rideStore'
+import { useRideStore, rideActive } from '../../ride/rideStore'
 import { tripResumedAtLaunch } from '../../ride/tripStore'
 import { LoadingScreen } from './LoadingScreen'
 
@@ -224,7 +224,7 @@ function UpdatePrompt() {
       now: () => Date.now(),
     })
   }, [registration])
-  const riding = useRideStore((s) => s.openedParts.length > 0 || s.walkToDockOpened)
+  const riding = useRideStore(rideActive)
   const [refreshing, setRefreshing] = useState(false)
   const { t } = useI18n()
   if (!needRefresh || riding) return null
@@ -381,7 +381,7 @@ export function AppShell() {
   // Coming back mid-ride (e.g. after Google Maps, or the page was reloaded), or to a trip's next leg: show the
   // plan right away.
   useEffect(() => {
-    if (useRideStore.getState().openedParts.length > 0 || tripResumedAtLaunch()) {
+    if (rideActive(useRideStore.getState()) || tripResumedAtLaunch()) {
       useAppStore.getState().setPanel('ride')
       useAppStore.getState().setSheet('half')
     }

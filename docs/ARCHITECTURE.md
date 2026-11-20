@@ -205,11 +205,22 @@ ride: the rider docks near each stop, so legs share no bike, timer or docks. Onl
 ride store (`planLeg` sets its start and destination as a fresh plan) and is planned exactly like a one-stop
 ride — route options, docks along the route and their add/remove all unchanged; the trip store only keeps the
 stops, the leg shown, leg 1's start (to come back to it) and the last finished leg. It follows the ride store:
-a destination typed for the leg becomes that stop, `finishPlan` marks the leg finished (*Next leg* appears),
-and clearing the plan (Clear, a share link, a city change) ends the trip. Editing stops re-plans the leg on
-screen only when its two ends change; mid-ride (`rideUnderWay`, not finished) the edits that would are
-disabled, as is switching legs. A finished plan isn't saved, so at launch (`reconcileTrip`) a trip whose leg
-was finished opens the planner on the next leg; a trip that doesn't match the saved plan is dropped. The
+a destination typed for the leg becomes that stop, and clearing the plan (Clear, a share link, a city change)
+ends the trip. Editing stops re-plans the leg on screen only when its two ends change; while a ride is under way
+(`rideUnderWay`) the edits that would are disabled, as is switching legs.
+- **Finishing a leg**: `finishPlan` (its last link opened) or arriving at its stop marks the leg finished; when
+  another leg follows, the plan is *not* marked finished (it stays saved, timer included) and arrival doesn't end
+  the ride. The planner asks "Finished leg *n* at *stop*?" with *I've docked my bike* (unchecked by default; shown
+  only while the ride timer runs). *Finish leg* (`completeLeg`) drops that stop and every earlier one from the
+  trip (one stop left: an ordinary ride) and plans the next leg from it. Docked: the timer stops and the leg
+  starts like any later leg (that dock, or the best pickup near the stop). Not docked: the rider keeps the bike —
+  the leg starts at the stop's dock (or the dock nearest it, only as the route's start: the start card shows
+  *On your bike from the last leg* instead of its counts, and can't be changed) and `continuingRide` carries the
+  same BCycle ride's timer: re-routing, other route options and a new destination keep it, and opening the leg's
+  first link doesn't restart it (a later re-dock does). `rideActive` (ride card, banner, alerts, live counts,
+  arrival) includes such a ride before any of the leg's links is opened. *End ride* clears it. Planning a
+  finished leg again un-finishes it. Plans from before this (a finished leg not saved) still open on the next
+  leg at launch (`reconcileTrip`); a trip that doesn't match the saved plan is dropped. The
 trip's other stops are violet dots on the map. Share links carry the whole trip (below); the GPX file covers the leg on screen.
 
 **Path breakdown + elevation** (`details.ts`, `POST /api/route-details`): one Valhalla `/trace_attributes`

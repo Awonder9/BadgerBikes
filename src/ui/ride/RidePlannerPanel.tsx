@@ -32,7 +32,7 @@ import { isNativeApp, shareOrigin } from '../platform'
 import { countUse } from '../usage'
 import { IosAlertsHint } from './AlertsHelp'
 import { RideStatusCard } from './RideProgress'
-import { LegIndicator, NextLegCard, TripStops } from './TripStops'
+import { LegCompleteCard, LegIndicator, TripStops } from './TripStops'
 import { isTrip, useTripStore } from '../../ride/tripStore'
 import { useRidePlan, type RidePlan } from './useRidePlan'
 
@@ -103,12 +103,12 @@ export function RidePlannerPanel() {
       </header>
 
       <LegIndicator />
-      <NextLegCard />
+      <LegCompleteCard />
       <RideStatusCard plan={plan} />
 
       <div className="space-y-1">
         <p className="text-sm font-medium text-slate-500">{t.stepStart}</p>
-        {ride.origin && !ride.origin.stationId ? <StartFromPlace plan={plan} partySize={partySize} units={units} /> : start ? <StartDock station={start} partySize={partySize} /> : <StartPicker />}
+        {ride.origin && !ride.origin.stationId ? <StartFromPlace plan={plan} partySize={partySize} units={units} /> : start ? <StartDock station={start} partySize={partySize} onBike={ride.continuingRide} canChange={!ride.continuingRide} /> : <StartPicker />}
       </div>
 
       <div className="space-y-1">
@@ -287,7 +287,8 @@ export function RidePlannerPanel() {
   )
 }
 
-function StartDock({ station, partySize, canChange = true }: { station: Station; partySize: number; canChange?: boolean }) {
+/** `onBike`: the rider is on the bike kept from the previous leg of a trip — the dock is only where this leg starts. */
+function StartDock({ station, partySize, canChange = true, onBike = false }: { station: Station; partySize: number; canChange?: boolean; onBike?: boolean }) {
   const { t, lang } = useI18n()
   const s = station.status
   const mix = s && s.ebikes !== null && s.classic !== null && s.bikes > 0 ? bikeMix(s.ebikes, s.classic, lang) : null
@@ -297,16 +298,16 @@ function StartDock({ station, partySize, canChange = true }: { station: Station;
         <Icon name="bike" size={20} className="shrink-0 text-brand-700" />
         <span className="min-w-0 flex-1">
           <span className="line-clamp-2 font-medium leading-snug">{station.name}</span>
-          {mix && <span className="block text-sm text-slate-500">{mix}</span>}
+          {onBike ? <span className="block text-sm text-slate-500">{t.onBikeFromLastLeg}</span> : mix && <span className="block text-sm text-slate-500">{mix}</span>}
         </span>
-        <AvailabilityPill kind="bikes" count={s?.bikes ?? 0} state={classifyStation(station, partySize).bikeState} size="sm" />
+        {!onBike && <AvailabilityPill kind="bikes" count={s?.bikes ?? 0} state={classifyStation(station, partySize).bikeState} size="sm" />}
         {canChange && (
           <button type="button" className="min-h-11 px-2 text-sm text-brand-700 dark:text-brand-300" onClick={() => useRideStore.getState().setStart(null)}>
             {t.change}
           </button>
         )}
       </div>
-      {!canRent(station, partySize) && <p className="text-sm text-amber-800 dark:text-amber-300">{t.noBikesAtDock}</p>}
+      {!onBike && !canRent(station, partySize) && <p className="text-sm text-amber-800 dark:text-amber-300">{t.noBikesAtDock}</p>}
     </>
   )
 }

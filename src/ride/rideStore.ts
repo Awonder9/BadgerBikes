@@ -48,6 +48,12 @@ export interface RideState {
   stopsForMaxRide: number | null
   /** The rider opened the last link or arrived: the plan stays usable now but is no longer saved. */
   finished: boolean
+  /**
+   * A multi-stop trip's leg ridden on the bike kept from the previous leg (tripStore.completeLeg): that BCycle
+   * ride goes on, so its timer carries over — re-routing, another route option or a new destination keep it, and
+   * opening the leg's first link (which starts at a dock) doesn't restart it.
+   */
+  continuingRide: boolean
   /** Start from a place or a dock (a dock is also the pickup); null clears the start. */
   setOrigin(place: Place | null): void
   /** Pick up at this dock (pins it); null clears the start entirely. */
@@ -76,6 +82,13 @@ export interface RideState {
  */
 export const rideUnderWay = (s: Pick<RideState, 'openedParts' | 'rideStartedAtMs'>): boolean => s.openedParts.length > 0 || s.rideStartedAtMs !== null
 
+/**
+ * The ride card, banner, alerts and live counts are on: a link was opened (or the walk to the dock), or the rider
+ * is on the bike kept from the previous leg of a trip (its timer runs before this leg's first link is opened).
+ */
+export const rideActive = (s: Pick<RideState, 'openedParts' | 'walkToDockOpened' | 'continuingRide' | 'rideStartedAtMs'>): boolean =>
+  s.openedParts.length > 0 || s.walkToDockOpened || (s.continuingRide && s.rideStartedAtMs !== null)
+
 let inflight: AbortController | null = null
 
 /** Drops a route request for the previous start/destination, so its late answer can't come back as the plan. */
@@ -86,8 +99,12 @@ function abortRouting(): void {
 
 const planReset = (): Partial<RideState> => {
   abortRouting()
-  return { routes: [], route: null, stopIds: [], status: 'idle', error: null, openedParts: [], rideStartedAtMs: null, walkToDockOpened: false }
+  return { routes: [], route: null, stopIds: [], status: 'idle', error: null, openedParts: [], rideStartedAtMs: null, walkToDockOpened: false, continuingRide: false }
 }
+
+/** What a fresh plan keeps of a ride carried over from the previous leg: its timer. */
+const carried = (s: Pick<RideState, 'continuingRide' | 'rideStartedAtMs'>): Partial<RideState> =>
+  s.continuingRide && s.rideStartedAtMs !== null ? { continuingRide: true, rideStartedAtMs: s.rideStartedAtMs } : {}
 
 type RideActions = 'setOrigin' | 'setStart' | 'autoPickup' | 'setDestination' | 'planLeg' | 'toggleStop' | 'markPartOpened' | 'openWalkToDock' | 'startRideTimer' | 'endRide' | 'finishPlan' | 'reset'
 const empty = (): Omit<RideState, RideActions> => ({
@@ -107,9 +124,10 @@ const empty = (): Omit<RideState, RideActions> => ({
   openedParts: [],
   rideStartedAtMs: null,
   finished: false,
+  continuingRide: false,
 })
 
-type Persisted = Partial<Pick<RideState, 'origin' | 'pickupPinned' | 'walkToDockOpened' | 'stopsForMaxRide' | 'startId' | 'destination' | 'routes' | 'routeIndex' | 'stopIds' | 'openedParts' | 'rideStartedAtMs'>>
+type Persisted = Partial<Pick<RideState, 'origin' | 'pickupPinned' | 'walkToDockOpened' | 'stopsForMaxRide' | 'startId' | 'destination' | 'routes' | 'routeIndex' | 'stopIds' | 'openedParts' | 'rideStartedAtMs' | 'continuingRide'>>
 
 const ID_RE = /^[A-Za-z0-9_.:-]{1,120}$/
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v)
@@ -155,7 +173,9 @@ export function restoreRide(raw: unknown, nowMs: number): Partial<RideState> {
     status: routes.length ? 'ready' : 'idle',
     stopIds: routes.length ? ids(raw.stopIds) : [],
     openedParts: routes.length ? parts : [],
-    rideStartedAtMs: routes.length ? started : null,
+    // A ride carried over from the previous leg keeps its timer even before this leg is routed.
+    rideStartedAtMs: routes.length || raw.continuingRide === true ? started : null,
+    continuingRide: raw.continuingRide === true && started !== null,
   }
 }
 
@@ -177,7 +197,8 @@ export const useRideStore = create<RideState>()(
         ),
       // Unchanged: the same state object, so nothing re-renders (the planner calls this on every count update).
       autoPickup: (id) => set((s) => (s.startId === id ? s : { startId: id, ...planReset(), finished: false })),
-      setDestination: (destination) => set({ destination, ...planReset(), finished: false }),
+      // On the bike from the previous leg, a new destination is still the same BCycle ride: its timer goes on.
+      setDestination: (destination) => set((s) => ({ destination, ...planReset(), ...carried(s), finished: false })),
       planLeg: ({ origin, startId, pickupPinned, destination }) => set({ origin, startId, pickupPinned, destination, ...planReset(), finished: false }),
       // Keeps the ride's progress: mid-ride, a rider who switches to another dock (say the end dock filled up)
       // is still on the same BCycle ride, so its timer and background alerts carry on.
@@ -193,11 +214,17 @@ export const useRideStore = create<RideState>()(
           openedParts: s.openedParts.includes(index) ? s.openedParts : [...s.openedParts, index].sort((a, b) => a - b),
           // Opening a part that starts at a dock = unlocking a bike there: a new BCycle ride (timer restarts).
           // Not when the rider still has to walk to the dock: they start the timer once they've unlocked.
-          rideStartedAtMs: !startTimer ? s.rideStartedAtMs : fromDock && !s.openedParts.includes(index) ? Date.now() : (s.rideStartedAtMs ?? Date.now()),
+          // The first part of a leg ridden on the bike kept from the previous leg: no new BCycle ride.
+          rideStartedAtMs:
+            !startTimer || (index === 0 && s.continuingRide && s.rideStartedAtMs !== null)
+              ? s.rideStartedAtMs
+              : fromDock && !s.openedParts.includes(index)
+                ? Date.now()
+                : (s.rideStartedAtMs ?? Date.now()),
         })),
       openWalkToDock: () => set({ walkToDockOpened: true }),
       startRideTimer: () => set({ rideStartedAtMs: Date.now() }),
-      endRide: () => set({ openedParts: [], rideStartedAtMs: null, walkToDockOpened: false }),
+      endRide: () => set({ openedParts: [], rideStartedAtMs: null, walkToDockOpened: false, continuingRide: false }),
       finishPlan: () => set({ finished: true }),
       reset: () => {
         abortRouting()
@@ -221,6 +248,7 @@ export const useRideStore = create<RideState>()(
         stopIds: s.stopIds,
         openedParts: s.openedParts,
         rideStartedAtMs: s.rideStartedAtMs,
+        continuingRide: s.continuingRide,
       }),
       merge: (persisted, current) => ({ ...current, ...restoreRide(persisted, Date.now()) }),
     },
@@ -266,7 +294,7 @@ export function chooseRoute(index: number, snapshot: StationsSnapshot, partySize
     route,
     stopIds: optimizedFor(docksAlong(route, snapshot, startId, destination, partySize), route, snapshot, destination, partySize),
     openedParts: [],
-    rideStartedAtMs: null,
+    ...(useRideStore.getState().continuingRide ? {} : { rideStartedAtMs: null }),
     finished: false,
     stopsForMaxRide: useAppStore.getState().settings.maxRideMinutes,
   })
@@ -312,7 +340,7 @@ export async function loadRideRoute(systemId: string, snapshot: StationsSnapshot
   inflight?.abort()
   const ctrl = new AbortController()
   inflight = ctrl
-  useRideStore.setState({ status: 'routing', error: null, routes: [], route: null, stopIds: [], openedParts: [], rideStartedAtMs: null })
+  useRideStore.setState((s) => ({ status: 'routing', error: null, routes: [], route: null, stopIds: [], openedParts: [], rideStartedAtMs: null, ...carried(s) }))
   try {
     const routes = await api.routes(
       {

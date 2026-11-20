@@ -131,3 +131,62 @@ describe('editing a trip mid-ride', () => {
     expect(ride()).toMatchObject({ origin: arb, destination: dock, stopIds: ['x'], openedParts: [0], rideStartedAtMs: 1 })
   })
 })
+
+describe('finishing a leg', () => {
+  const T0 = Date.now() - 10 * 60_000 // ten minutes into the ride
+  beforeEach(() => {
+    trip().addStop(arb)
+    trip().addStop(dock)
+    // Leg 1 under way: its link opened, the BCycle ride timer running.
+    useRideStore.setState({ status: 'ready', startId: 'bcycle_madison_1', openedParts: [0], rideStartedAtMs: T0 })
+  })
+
+  it('stays saved, waiting for "is it done?", when another leg follows', () => {
+    ride().finishPlan()
+    expect(trip().finishedLeg).toBe(0)
+    expect(ride()).toMatchObject({ finished: false, openedParts: [0], rideStartedAtMs: T0, destination: union })
+  })
+
+  it('docked: the leg leaves the trip, the timer stops, and the next leg picks up a bike near the stop', () => {
+    ride().finishPlan()
+    trip().completeLeg(true)
+    expect(trip().stops).toEqual([arb, dock])
+    expect(trip()).toMatchObject({ leg: 0, finishedLeg: -1 })
+    expect(ride()).toMatchObject({ origin: union, startId: null, destination: arb, rideStartedAtMs: null, openedParts: [], continuingRide: false })
+  })
+
+  it('kept the bike: the next leg starts at the given dock and the same ride’s timer runs on', () => {
+    ride().finishPlan()
+    trip().completeLeg(false, place('Union South', -89.41, 'bcycle_madison_5'))
+    expect(ride()).toMatchObject({ startId: 'bcycle_madison_5', pickupPinned: true, destination: arb, rideStartedAtMs: T0, continuingRide: true, openedParts: [] })
+    // Re-routing, another route option, a new destination: still the same ride.
+    useRideStore.setState({ status: 'routing' })
+    ride().setDestination(place('Picnic Point', -89.43))
+    expect(ride()).toMatchObject({ rideStartedAtMs: T0, continuingRide: true })
+    // The leg's first link starts at a dock but isn't a new ride; a later re-dock is.
+    ride().markPartOpened(0, true)
+    expect(ride().rideStartedAtMs).toBe(T0)
+    ride().markPartOpened(1, true)
+    expect(ride().rideStartedAtMs).toBeGreaterThan(T0)
+  })
+
+  it('down to the last stop it is an ordinary ride, and ending the ride stops the carried timer', () => {
+    trip().removeStop(2)
+    ride().finishPlan()
+    trip().completeLeg(false, place('Union South', -89.41, 'bcycle_madison_5'))
+    expect(trip().stops).toEqual([])
+    expect(ride()).toMatchObject({ destination: arb, rideStartedAtMs: T0, continuingRide: true })
+    ride().endRide()
+    expect(ride()).toMatchObject({ rideStartedAtMs: null, continuingRide: false })
+  })
+
+  it('the last leg finishes like a one-stop ride (not saved), and a leg planned again isn’t finished', () => {
+    trip().goToLeg(2)
+    ride().finishPlan()
+    expect(ride().finished).toBe(true)
+    trip().goToLeg(1)
+    expect(trip().finishedLeg).toBeLessThan(1)
+    trip().goToLeg(2)
+    expect(trip().finishedLeg).toBeLessThan(2)
+  })
+})
