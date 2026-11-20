@@ -40,6 +40,18 @@ describe('parseLaunchParams', () => {
     expect(stripLaunchParams(url + '#x')).toBe('/#x')
   })
 
+  it('writes place names without whitespace, so the link can’t break at a space', () => {
+    const share = (name: string) => buildRideShareUrl('https://bcycle.example', { systemId: 'bcycle_madison', startId: 's1', to: { coord: [-89.4153, 43.0418], name } })
+    const url = share('UW Arboretum\u00a0Visitor  Center (Gallistel)')
+    expect(url).toBe('https://bcycle.example/?system=bcycle_madison&start=s1&toName=UW_Arboretum_Visitor_Center_%28Gallistel%29&to=43.041800%2C-89.415300')
+    expect(url).not.toMatch(/[\s+]/)
+    expect(parseLaunchParams(new URL(url).search, KNOWN).to?.name).toBe('UW Arboretum Visitor Center (Gallistel)')
+    expect(parseLaunchParams(new URL(share('東京 タワー')).search, KNOWN).to?.name).toBe('東京 タワー')
+    // Links shared before the change wrote spaces as "+" or "%20".
+    expect(parseLaunchParams('?to=43.0418,-89.4153&toName=UW+Arboretum+Visitor+Center', KNOWN).to?.name).toBe('UW Arboretum Visitor Center')
+    expect(parseLaunchParams('?to=43.0418,-89.4153&toName=UW%20Arboretum', KNOWN).to?.name).toBe('UW Arboretum')
+  })
+
   it('round-trips station share links', () => {
     const url = buildStationShareUrl('https://bcycle.example', 'bcycle_madison', 'bcycle_madison_1874')
     expect(url).toBe('https://bcycle.example/?system=bcycle_madison&station=bcycle_madison_1874')

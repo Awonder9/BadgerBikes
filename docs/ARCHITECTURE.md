@@ -281,7 +281,9 @@ installed Android app, iPhone Settings); in an Android browser without notificat
 promises background alerts when the server has no VAPID keys. The iOS/Android apps have no Web Push: they
 schedule the timer's alerts on the phone instead, and "end dock full" shows while the app is open (§12).
 
-**Share links** (`src/lib/urlParams.ts`): `?system=<id>&start=<station id>&to=<lat,lon>&toName=&toStation=&route=<0-2>`,
+**Share links** (`src/lib/urlParams.ts`): `?system=<id>&start=<station id>&toName=&to=<lat,lon>&toStation=&route=<0-2>`.
+`toName` has no whitespace (spaces are written as `_` and read back as spaces; older `+` / `%20` links still
+work) and comes before `to`, so chat apps can't split the link at a space or drop a name's trailing `.`. Links are
 validated on load, applied to the ride store (replacing any saved plan; a link to another city switches it
 like Settings → City), then removed from the address bar.
 

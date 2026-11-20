@@ -43,13 +43,15 @@ export function formatLatLon(coord: LngLat): string {
 
 function parseName(raw: string | null): string | null {
   if (!raw) return null
+  // Share links write spaces as "_" (see buildRideShareUrl); older links used "+", which arrives as a space.
   // Drop control characters and angle brackets; this text is only ever rendered as React text.
-  const v = Array.from(raw)
+  const v = Array.from(raw.replace(/_/g, ' '))
     .filter((ch) => {
       const c = ch.codePointAt(0) ?? 0
       return c >= 0x20 && c !== 0x7f && ch !== '<' && ch !== '>'
     })
     .join('')
+    .replace(/\s+/g, ' ')
     .trim()
     .slice(0, MAX_NAME)
   return v || null
@@ -87,13 +89,22 @@ export interface RideShareState {
   routeIndex?: number
 }
 
-/** Builds a ride share link that parseLaunchParams reads back. */
+/** A place name for a share link: no spaces at all ("_" instead), so no chat app or linkifier can split the link there. */
+function shareName(name: string): string {
+  return name.replace(/\s+/g, ' ').trim().slice(0, MAX_NAME).replace(/ /g, '_')
+}
+
+/**
+ * Builds a ride share link that parseLaunchParams reads back. The name goes before the coordinates, so the link
+ * always ends in a number or an id: linkifiers drop a trailing "." or ")" that a name could end with.
+ */
 export function buildRideShareUrl(origin: string, state: RideShareState): string {
   const url = new URL('/', origin)
   url.searchParams.set('system', state.systemId)
   url.searchParams.set('start', state.startId)
+  const name = state.to.name ? shareName(state.to.name) : ''
+  if (name) url.searchParams.set('toName', name)
   url.searchParams.set('to', formatLatLon(state.to.coord))
-  if (state.to.name) url.searchParams.set('toName', state.to.name.slice(0, MAX_NAME))
   if (state.toStationId) url.searchParams.set('toStation', state.toStationId)
   if (state.routeIndex) url.searchParams.set('route', String(state.routeIndex))
   return url.toString()
