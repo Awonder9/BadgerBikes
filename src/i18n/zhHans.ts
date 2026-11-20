@@ -109,6 +109,7 @@ export const zhHans: Messages = {
   saveAsHome: '设为家',
   saveAsWork: '设为公司',
   stations: '站点',
+  nearestBike: '最近的单车',
   nearestOpenDock: '最近有空位的站点',
 
   // Settings
@@ -231,6 +232,7 @@ export const zhHans: Messages = {
   offRouteRedock: (max) => `偏离路线 — 为让你在 ${max} 分钟内换车而添加`,
   offRouteNearDestination: '偏离路线 — 离目的地最近的站点',
   rideOverMax: (max) => `此段骑行超过 ${max} 分钟 — 附近没有可提前换车的站点。`,
+  noBikesNow: '目前没有可用单车。',
   noOpenDocks: '目前没有空位。',
   quickDestinations: '快捷目的地',
   routeServerBusy: '路线服务器繁忙',

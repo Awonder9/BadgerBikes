@@ -54,7 +54,7 @@ export function foldTail(shares: readonly Share[], keep: number): Share[] {
 }
 
 /** The features riders use, in a fixed order (zeros included, so a feature nobody uses still shows). */
-export const FEATURES: ReadonlyArray<UsageEvent | UsageCounter> = ['nearest_dock', 'directions', 'share', 'gpx', 'alerts_on', 'alerts_sent', 'routes_busy']
+export const FEATURES: ReadonlyArray<UsageEvent | UsageCounter> = ['nearest_bike', 'nearest_dock', 'directions', 'share', 'gpx', 'alerts_on', 'alerts_sent', 'routes_busy']
 
 export function summarizeRange(stats: StatsResponse, range: RangeDays): RangeSummary {
   const all = stats.days

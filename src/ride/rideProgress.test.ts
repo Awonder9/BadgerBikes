@@ -3,7 +3,7 @@ import { RIDE } from '../config'
 import { MESSAGES } from '../i18n'
 import { destination } from '../lib/geo'
 import { MADISON, makeStation } from '../test/factories'
-import { clock, endDockState, nearestOpenDock, passChoiceMatters, replacementDocks, rideTimer, timerAlertTimes, upcomingTimerAlerts } from './rideProgress'
+import { clock, endDockState, nearestBike, nearestOpenDock, passChoiceMatters, replacementDocks, rideTimer, timerAlertTimes, upcomingTimerAlerts } from './rideProgress'
 
 describe('ride timer', () => {
   const t0 = 1_800_000_000_000
@@ -72,6 +72,19 @@ describe('nearest open dock', () => {
     expect(nearestOpenDock([full, closed, one, far], O, 1)).toMatchObject({ station: { id: 'one' } })
     expect(nearestOpenDock([full, closed, one, far], O, 2)?.station.id).toBe('far')
     expect(nearestOpenDock([full, closed], O, 1)).toBeNull()
+  })
+})
+
+describe('nearest bike', () => {
+  const O = MADISON.capitol
+  it('is the closest dock where the whole party can rent, however far', () => {
+    const empty = makeStation({ id: 'empty', coord: destination(O, 100, 0), bikes: 0 })
+    const closed = makeStation({ id: 'closed', coord: destination(O, 150, 0), bikes: 6, isRenting: false })
+    const one = makeStation({ id: 'one', coord: destination(O, 200, 90), bikes: 1 })
+    const far = makeStation({ id: 'far', coord: destination(O, 4000, 180), bikes: 9 })
+    expect(nearestBike([empty, closed, one, far], O, 1)).toMatchObject({ station: { id: 'one' } })
+    expect(nearestBike([empty, closed, one, far], O, 2)?.station.id).toBe('far')
+    expect(nearestBike([empty, closed], O, 1)).toBeNull()
   })
 })
 

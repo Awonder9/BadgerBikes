@@ -456,7 +456,7 @@ function statsFixture() {
       opens: users * 3,
       peakActive: Math.round(users / 6),
       beats: Array.from({ length: 24 }, (_hour, h) => (h >= 7 && h <= 21 ? Math.round(users * (h === 8 || h === 17 ? 2.2 : 1)) : 0)),
-      counts: { routes: Math.round(users * 0.9), ride_start: Math.round(users * 0.4), nearest_dock: 5, directions: 7, share: 2, gpx: 1, alerts_on: 3, alerts_sent: 4, routes_busy: 1 },
+      counts: { routes: Math.round(users * 0.9), ride_start: Math.round(users * 0.4), nearest_bike: 6, nearest_dock: 5, directions: 7, share: 2, gpx: 1, alerts_on: 3, alerts_sent: 4, routes_busy: 1 },
       cities: { bcycle_madison: users - 3, bcycle_boulder: 3 },
       platforms: { ios: Math.round(users * 0.6), android: users - Math.round(users * 0.6) },
       installed: Math.round(users * 0.3),

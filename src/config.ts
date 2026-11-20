@@ -357,7 +357,7 @@ export const USAGE = {
   /** Most days the dashboard can show (each needs `maxGapDays` before it for its 90-day count). */
   maxReportDays: 365,
   /** What the app counts (each once per use). */
-  events: ['ride_start', 'gpx', 'share', 'nearest_dock', 'directions', 'alerts_on'],
+  events: ['ride_start', 'gpx', 'share', 'nearest_dock', 'nearest_bike', 'directions', 'alerts_on'],
   /** What the Worker counts itself. */
   serverCounters: ['routes', 'routes_busy', 'alerts_sent'],
 } as const

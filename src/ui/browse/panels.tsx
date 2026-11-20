@@ -25,7 +25,7 @@ import { Icon } from '../primitives/Icon'
 import { changeCity, planRide, rideTo, startRideFrom } from '../ride/rideActions'
 import { PassSelect } from './PassSelect'
 import { SearchBox } from './SearchBox'
-import { useNearestOpenDock } from './useNearestOpenDock'
+import { useNearestStation } from './useNearestOpenDock'
 
 /** "Live · 20 s ago" / "Data may be stale" — ages on its own clock, so its parents don't re-render with it. */
 export function FreshnessBadge({ hasData, isError, lastUpdatedMs }: { hasData: boolean; isError: boolean; lastUpdatedMs: number | undefined }) {
@@ -62,15 +62,22 @@ function RefreshButton() {
   )
 }
 
-/** Where can I return this bike? The closest dock with room, from the rider's position. */
-function NearestOpenDockButton() {
-  const { find, finding, message } = useNearestOpenDock()
+/** Where's the closest bike, and where can I return one? The closest dock with bikes / room, from the rider's position. */
+function NearestButtons() {
+  const bike = useNearestStation('bike')
+  const dock = useNearestStation('dock')
   const { t } = useI18n()
+  const message = bike.message ?? dock.message
   return (
     <>
-      <Button block variant="secondary" icon="dock" disabled={finding} onClick={find}>
-        {finding ? t.findingYou : t.nearestOpenDock}
-      </Button>
+      <div className="grid grid-cols-2 gap-2">
+        <Button block variant="secondary" icon="bike" disabled={bike.finding} onClick={bike.find}>
+          {bike.finding ? t.findingYou : t.nearestBike}
+        </Button>
+        <Button block variant="secondary" icon="dock" disabled={dock.finding} onClick={dock.find}>
+          {dock.finding ? t.findingYou : t.nearestOpenDock}
+        </Button>
+      </div>
       {message && (
         <p role="status" className="text-sm text-amber-800 dark:text-amber-300">
           {message}
@@ -119,7 +126,7 @@ export function BrowsePanel() {
           {t.planARide}
         </Button>
       )}
-      <NearestOpenDockButton />
+      <NearestButtons />
       <div className="flex items-center justify-between gap-2">
         <span className="flex min-w-0 items-center gap-1">
           <FreshnessBadge hasData={!!snapshot} isError={!!error} lastUpdatedMs={snapshot?.lastUpdatedMs} />

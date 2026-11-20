@@ -3,7 +3,7 @@
 import { RIDE } from '../config'
 import type { Messages } from '../i18n'
 import { haversine, kNearest } from '../lib/geo'
-import { canReturn } from '../lib/stationState'
+import { canRent, canReturn } from '../lib/stationState'
 import type { LngLat, PassOption, Station } from '../types'
 
 /**
@@ -74,6 +74,12 @@ export function endDockState(st: Station | undefined, partySize: number): EndDoc
 /** "Nearest open dock": the closest dock where the party can return bikes right now (any distance), or null. */
 export function nearestOpenDock(stations: readonly Station[], from: LngLat, partySize: number): { station: Station; meters: number } | null {
   const best = kNearest(from, stations.filter((s) => canReturn(s, partySize)), (s) => s.coord, 1)[0]
+  return best ? { station: best.item, meters: best.distance } : null
+}
+
+/** "Nearest bike": the closest dock where the party can rent bikes right now (any distance), or null. */
+export function nearestBike(stations: readonly Station[], from: LngLat, partySize: number): { station: Station; meters: number } | null {
+  const best = kNearest(from, stations.filter((s) => canRent(s, partySize)), (s) => s.coord, 1)[0]
   return best ? { station: best.item, meters: best.distance } : null
 }
 

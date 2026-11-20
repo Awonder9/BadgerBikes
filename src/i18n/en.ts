@@ -109,6 +109,7 @@ export const en = {
   saveAsHome: 'Save as Home',
   saveAsWork: 'Save as Work',
   stations: 'Stations',
+  nearestBike: 'Nearest bike',
   nearestOpenDock: 'Nearest open dock',
 
   // Settings
@@ -233,6 +234,7 @@ export const en = {
   offRouteRedock: (max: number) => `Off route — added so you can re-dock within ${max} min`,
   offRouteNearDestination: 'Off route — closest dock to your destination',
   rideOverMax: (max: number) => `This ride is longer than ${max} min — no dock is in range to re-dock sooner.`,
+  noBikesNow: 'No bikes available right now.',
   noOpenDocks: 'No open docks right now.',
   quickDestinations: 'Quick destinations',
   routeServerBusy: 'Route server busy',

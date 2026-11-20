@@ -36,6 +36,7 @@ const tzName = (tz: string) => new Intl.DateTimeFormat('en-US', { timeZone: tz, 
 const PLATFORM_NAMES: Record<string, string> = { ios: 'iPhone / iPad', android: 'Android', desktop: 'Computer' }
 const HOW_NAMES: Record<string, string> = { browser: 'Browser', installed: 'Home Screen web app', 'app:ios': 'iPhone / iPad app', 'app:android': 'Android app' }
 const FEATURE_NAMES: Record<string, string> = {
+  nearest_bike: 'Nearest bike',
   nearest_dock: 'Nearest open dock',
   directions: 'Walking directions to a dock',
   share: 'Share (a dock or a ride)',

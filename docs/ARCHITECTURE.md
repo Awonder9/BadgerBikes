@@ -335,6 +335,8 @@ like Settings → City), then removed from the address bar.
   routed again.
 - **Nearest open dock** (`useNearestOpenDock`, home panel and ride card): the rider's position →
   `nearestOpenDock` (closest dock where the party can return, any distance) → docks view, its card open.
+- **Nearest bike** (`useNearestStation('bike')`, home panel beside Nearest open dock): the rider's position →
+  `nearestBike` (closest dock where the party can rent, any distance) → bikes view, its card open.
 - **Offline banner**: `navigator.onLine` (`useOnline`); it shares a stack under the map buttons with the
   ride banner. React Query refetches the counts on reconnect.
 - **Launch screen**: a static copy in `index.html` (inline CSS, no JavaScript) paints as soon as the page
