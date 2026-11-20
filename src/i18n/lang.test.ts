@@ -13,6 +13,12 @@ describe('detectLang', () => {
     expect(detectLang(['zh-MO'])).toBe('zh-Hant')
   })
 
+  it('lets the script decide over the region (iPhone: Simplified Chinese with the region set to Hong Kong)', () => {
+    expect(detectLang(['zh-Hans-HK'])).toBe('zh-Hans')
+    expect(detectLang(['zh-Hans-TW'])).toBe('zh-Hans')
+    expect(detectLang(['zh-Hant-CN'])).toBe('zh-Hant')
+  })
+
   it('uses the first supported language and falls back to English', () => {
     expect(detectLang(['en-US', 'zh-CN'])).toBe('en')
     expect(detectLang(['fr-FR', 'zh-TW', 'en'])).toBe('zh-Hant')

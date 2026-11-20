@@ -81,6 +81,13 @@ export const UPSTREAM = {
   },
   /** A queued request not granted a slot within this long is rejected (it is stale by then). */
   queueDeadlineMs: { interactive: 10_000, background: 15_000 },
+  /**
+   * A grant never released (its caller vanished) is reclaimed after this long: upstream requests time out after
+   * HTTP.timeoutMs (12 s), so a grant held much longer belongs to no one.
+   */
+  holdTimeoutMs: 30_000,
+  /** This many consecutive network/timeout/5xx outcomes open the circuit. */
+  circuitErrorThreshold: 3,
 } as const
 
 export type UpstreamGroup = keyof typeof UPSTREAM.groups
@@ -94,7 +101,11 @@ export const HTTP = {
 
 export const CACHE_TTL_MS = {
   stationInformation: 60 * 60_000,
-  /** station_status is cached until ~its CDN expiry (lastUpdated + 62 s), clamped to this range. */
+  /**
+   * The GBFS CDN serves station_status with max-age=60: our copy is kept until just after that expires
+   * (lastUpdated + this), so a refetch sees the next CDN fill; clamped to stationStatusMin/Max.
+   */
+  stationStatusAfterFeedMs: 62_000,
   stationStatusMin: 5_000,
   stationStatusMax: 60_000,
   systemInformation: 60 * 60_000,
@@ -119,6 +130,14 @@ export const MAP = {
   longPressMovePx: 10,
   /** After a long-press pick, the click or contextmenu event the same press may still send is ignored. */
   afterPickIgnoreMs: 800,
+  /**
+   * A station opened from search, the list, a star or a link is brought into view at street level (this zoom)
+   * when the map is zoomed out further or the station is off screen or within this many px of the panel or the
+   * screen's edge, over this long.
+   */
+  revealMarginPx: 24,
+  revealZoom: 15,
+  revealDurationMs: 600,
 } as const
 
 /** Station availability classification (src/lib/stationState.ts). */
@@ -152,6 +171,15 @@ export const SPEEDS = {
   bikeKph: { classic: 14, electric: 18 },
   /** Straight-line → street-network distance factor for estimates. */
   detourFactor: 1.3,
+} as const
+
+/** Route geometry (src/routing/normalize.ts). */
+export const ROUTING = {
+  /**
+   * A requested point farther than this from the router's snapped endpoint is joined to the geometry with a
+   * straight connector (RouteLeg invariant in src/types.ts).
+   */
+  connectorMinMeters: 3,
 } as const
 
 /** Bike routing preferences (Valhalla bicycle costing). */
@@ -271,6 +299,11 @@ export const RIDE = {
   arrivedMeters: 100,
   /** Ride timer turns amber this many minutes before the pass's included time runs out. */
   timerWarnMinutes: 5,
+  /**
+   * The longest plausible included ride time: parsed pass times above it are ignored (they come from text such as
+   * "charges may take up to 48 hours" or "24-hour pass"), and the Worker refuses it in a ride's alerts.
+   */
+  maxIncludedMinutes: 600,
   /** The end dock counts as "filling up" at or below this many open docks (plus riders − 1). */
   endDockLowDocks: 1,
   /** Suggested replacement docks: within this distance of the destination. */

@@ -138,6 +138,8 @@ export const zhHans: Messages = {
   clearRecentAria: '清除最近的地点',
   storageNote:
     '已保存的地点、最近的目的地、收藏的站点和当前骑行只存储在本设备上。清除本网站的数据（Cookie 和网站数据）会将其删除。骑行中开启提醒时，本应用的服务器也会保存该次骑行的计时和终点站（不含你的位置），直到骑行结束。本应用还会发送匿名使用统计（不含识别信息或位置）；开启“请勿追踪”或“全球隐私控制”即可关闭。',
+  storageNoteNative:
+    '已保存的地点、最近的目的地、收藏的站点和当前骑行只存储在这部手机上；删除本应用会将其一并删除。骑行提醒由手机自己安排，本应用的服务器不会保存你的骑行信息。本应用还会发送匿名使用统计（不含识别信息或位置）。',
   aboutLink: '关于和致谢',
 
   // About
@@ -172,6 +174,7 @@ export const zhHans: Messages = {
   tellMeWhen: (kind) => (kind === 'bikes' ? '有单车时通知我' : '有空位时通知我'),
   directions: '步行路线',
   directionsAria: (name) => `在 Google 地图中查看前往 ${name} 的步行路线`,
+  bikeDirectionsAria: (name) => `在 Google 地图中查看前往 ${name} 的骑行路线`,
   shareStationTitle: (name) => `${name}：实时单车和空位`,
 
   // Search
@@ -232,6 +235,9 @@ export const zhHans: Messages = {
   quickDestinations: '快捷目的地',
   routeServerBusy: '路线服务器繁忙',
   errorUnroutable: '请把目的地移到离街道或小路更近的位置。',
+  errorNoRoute: '没有通往此目的地的自行车路线。请在附近的街道或小路上选择目的地。',
+  errorRouteOffline: '无法连接到路线服务器。请检查网络连接后重试。',
+  errorRouteFailed: '暂时无法获取路线。请稍后重试。',
   errorBusy: '路线服务器目前繁忙。我们使用的免费公共路线服务每秒大约只能为所有人处理一个请求，所以你的请求没能完成。请过几秒再试。',
   tryAgainIn: (s) => `${s} 秒后重试`,
   shareTitle: (name) => `骑共享单车去 ${name}`,

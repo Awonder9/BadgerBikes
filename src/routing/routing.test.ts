@@ -93,6 +93,24 @@ describe('router facade', () => {
     expect(calls).toEqual(['valhalla', 'osrm']) // stops after the first option
   })
 
+  it('says when there is no bike route at all (both routers found none) instead of asking to retry', async () => {
+    const valhallaNone = () => {
+      throw new AppError('http', '400', { status: 400, body: { error_code: 442 } })
+    }
+    const none = createRouter({ upstream: fakeUpstream((u) => (u.provider === 'valhalla' ? valhallaNone() : { code: 'NoRoute' })) })
+    await expect(none.routeLadder(req({}), [0, 0.35, 1])).rejects.toMatchObject({ code: 'no_route' })
+    // Only one of them found none and the other was busy: a retry may well work.
+    const busy = createRouter({
+      upstream: fakeUpstream((u) => {
+        if (u.provider === 'valhalla') return valhallaNone()
+        throw new AppError('upstream_unavailable', 'busy')
+      }),
+    })
+    await expect(busy.routeLadder(req({}), [0, 0.35, 1])).rejects.toMatchObject({ code: 'upstream_unavailable', retryable: true })
+    // A single leg (walking, say) still gets the straight-line estimate.
+    expect((await none.route(req({ mode: 'walk' }))).provider).toBe('straight')
+  })
+
   it('surfaces location_unroutable for user points and never falls back after abort', async () => {
     const r = createRouter({ upstream: fakeUpstream(() => { throw new AppError('http', '400', { status: 400, body: { error_code: 171 } }) }) })
     await expect(r.route(req({ toIsUserPoint: true }))).rejects.toMatchObject({ code: 'location_unroutable' })

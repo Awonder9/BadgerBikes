@@ -7,7 +7,7 @@ import { normalizeQuery, useGeocodeSearch } from '../../geocode/hooks'
 import { GEOCODE } from '../../config'
 import { useAppStore } from '../../store/appStore'
 import { useI18n } from '../../i18n/useT'
-import { useLocationStore, waitForFix } from '../../location/locationStore'
+import { useLocationStore } from '../../location/locationStore'
 import type { Place } from '../../types'
 import { Icon, type IconName } from '../primitives/Icon'
 import { Spinner } from '../primitives/Spinner'
@@ -17,7 +17,6 @@ export interface SearchBoxProps {
   placeholder?: string
   initialValue?: string
   autoFocus?: boolean
-  includeMyLocation?: boolean
   onSelect: (place: Place) => void
   onCancel?: () => void
 }
@@ -27,13 +26,13 @@ interface Option {
   icon: IconName
   title: string
   detail?: string
-  place: Place | 'myLocation'
+  place: Place
 }
 
-export function SearchBox({ label, placeholder, initialValue = '', autoFocus, includeMyLocation, onSelect, onCancel }: SearchBoxProps) {
+export function SearchBox({ label, placeholder, initialValue = '', autoFocus, onSelect, onCancel }: SearchBoxProps) {
   const [q, setQ] = useState(initialValue)
   // Place search (a request to the public geocoder) runs only for text the rider typed — not for a prefilled
-  // name, the result they just picked, or "My location".
+  // name or the result they just picked.
   const [typed, setTyped] = useState(false)
   const [open, setOpen] = useState(false)
   const [active, setActive] = useState(0)
@@ -47,9 +46,8 @@ export function SearchBox({ label, placeholder, initialValue = '', autoFocus, in
   const options = useMemo<Option[]>(() => {
     const out: Option[] = []
     const query = q.trim()
-    if (includeMyLocation && !query) out.push({ key: 'me', icon: 'locate', title: t.myLocation, place: 'myLocation' })
     if (!query) {
-      for (const s of saved.filter((p) => p.systemId === systemId)) out.push({ key: `saved:${s.id}`, icon: s.icon, title: s.icon === 'home' ? t.home : s.icon === 'work' ? t.work : s.place.name, detail: s.icon === 'star' ? s.place.detail : s.place.name, place: { ...s.place, kind: s.place.kind } })
+      for (const s of saved.filter((p) => p.systemId === systemId)) out.push({ key: `saved:${s.id}`, icon: s.icon, title: s.icon === 'home' ? t.home : s.icon === 'work' ? t.work : s.place.name, detail: s.icon === 'star' ? s.place.detail : s.place.name, place: s.place })
       for (const [i, r] of recent.entries()) out.push({ key: `recent:${i}`, icon: 'clock', title: r.kind === 'myLocation' ? t.myLocation : r.name, detail: r.detail, place: r })
       return out
     }
@@ -61,20 +59,12 @@ export function SearchBox({ label, placeholder, initialValue = '', autoFocus, in
     }
     for (const [i, p] of places.entries()) out.push({ key: `pl:${i}`, icon: 'pin', title: p.name, detail: p.detail, place: p })
     return out
-  }, [q, includeMyLocation, saved, recent, systemId, snapshot, places, t])
+  }, [q, saved, recent, systemId, snapshot, places, t])
 
   const choose = (o: Option | undefined) => {
     if (!o) return
     setOpen(false)
     setTyped(false)
-    if (o.place === 'myLocation') {
-      setQ(t.myLocation)
-      void waitForFix().then((c) => {
-        if (c) onSelect({ kind: 'myLocation', name: t.myLocation, coord: c })
-        else setQ('')
-      })
-      return
-    }
     setQ(o.place.name)
     useAppStore.getState().pushRecent(o.place)
     onSelect(o.place)

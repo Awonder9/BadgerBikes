@@ -34,6 +34,7 @@ const hourLabel = (h: number) => `${h % 12 === 0 ? 12 : h % 12}${h < 12 ? 'am' :
 const tzName = (tz: string) => new Intl.DateTimeFormat('en-US', { timeZone: tz, timeZoneName: 'long' }).formatToParts(Date.now()).find((p) => p.type === 'timeZoneName')?.value ?? tz
 
 const PLATFORM_NAMES: Record<string, string> = { ios: 'iPhone / iPad', android: 'Android', desktop: 'Computer' }
+const HOW_NAMES: Record<string, string> = { browser: 'Browser', installed: 'Home Screen web app', 'app:ios': 'iPhone / iPad app', 'app:android': 'Android app' }
 const FEATURE_NAMES: Record<string, string> = {
   nearest_dock: 'Nearest open dock',
   directions: 'Walking directions to a dock',
@@ -241,7 +242,7 @@ function Dashboard({ data, range }: { data: StatsResponse; range: RangeDays }) {
       <div className="grid gap-4 md:grid-cols-2">
         <Breakdown title="Cities" note="Share of daily users" items={named(foldTail(r.cities, 6), (k) => (k === 'other' ? 'Other cities' : (getSystem(k)?.city ?? k)))} total={deviceDays} />
         <Breakdown title="Devices" note="Share of daily users" items={named(r.platforms, (k) => PLATFORM_NAMES[k] ?? k)} total={deviceDays} />
-        <Breakdown title="Home Screen app or browser" note="Share of daily users" items={named(r.installed, (k) => (k === 'installed' ? 'Home Screen app' : 'Browser'))} total={deviceDays} />
+        <Breakdown title="Browser, Home Screen or app" note="Share of daily users" items={named(r.howUsed, (k) => HOW_NAMES[k] ?? k)} total={deviceDays} />
         <Breakdown title="Languages" note="Share of daily users" items={named(r.langs, (k) => LANG_NAMES[k as Lang] ?? k)} total={deviceDays} />
       </div>
 

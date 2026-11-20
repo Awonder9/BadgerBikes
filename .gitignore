@@ -34,5 +34,15 @@ playwright/.cache
 .dev.vars*
 !.dev.vars.example
 
+# App signing and push credentials (iOS/Android apps): private keys and per-account files, never published
+*.jks
+*.keystore
+*.p8
+*.p12
+*.mobileprovision
+*.provisionprofile
+google-services.json
+GoogleService-Info.plist
+
 # Personal
 notes.txt

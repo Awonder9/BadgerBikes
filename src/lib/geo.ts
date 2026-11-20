@@ -64,13 +64,16 @@ export interface SegmentProjection {
   distance: number
 }
 
+/** Meters per degree of latitude (and of longitude at the equator) on the haversine sphere. */
+const METERS_PER_DEGREE = EARTH_RADIUS_M * (Math.PI / 180)
+
 /**
  * Projects p onto segment ab using a local equirectangular approximation centred on p
  * (sub-meter accurate for segments up to a few km, which covers routing geometry).
  */
 export function projectToSegment(p: LngLat, a: LngLat, b: LngLat): SegmentProjection {
-  const kx = Math.cos(toRad(p[1])) * EARTH_RADIUS_M * (Math.PI / 180)
-  const ky = EARTH_RADIUS_M * (Math.PI / 180)
+  const kx = Math.cos(toRad(p[1])) * METERS_PER_DEGREE
+  const ky = METERS_PER_DEGREE
   const ax = (a[0] - p[0]) * kx
   const ay = (a[1] - p[1]) * ky
   const bx = (b[0] - p[0]) * kx
@@ -130,29 +133,42 @@ export function nearestOnPolyline(
   }
   const from = opts.fromDistance ?? -Infinity
   const to = opts.toDistance ?? Infinity
-  let best: PolylineSnap | null = null
+  // Segments are compared in the flat frame centred on p that projectToSegment uses (the same projections), so
+  // the loop needs no trigonometry; only the nearest point is then measured on the sphere.
+  const kx = Math.cos(toRad(p[1])) * METERS_PER_DEGREE
+  const ky = METERS_PER_DEGREE
+  let bestI = -1
+  let bestT = 0
+  let bestD2 = Infinity
   for (let i = 0; i < coords.length - 1; i++) {
     const segStart = cum[i]!
     const segEnd = cum[i + 1]!
     if (segEnd < from || segStart > to) continue
-    const proj = projectToSegment(p, coords[i]!, coords[i + 1]!)
-    let { t } = proj
-    let point = proj.point
-    let distance = proj.distance
-    const segLen = segEnd - segStart
+    const a = coords[i]!
+    const b = coords[i + 1]!
+    const ax = (a[0] - p[0]) * kx
+    const ay = (a[1] - p[1]) * ky
+    const dx = (b[0] - p[0]) * kx - ax
+    const dy = (b[1] - p[1]) * ky - ay
+    const len2 = dx * dx + dy * dy
+    let t = len2 === 0 ? 0 : Math.max(0, Math.min(1, -(ax * dx + ay * dy) / len2))
     // Clamp the projection into the allowed window when the window cuts this segment.
+    const segLen = segEnd - segStart
     const along = segStart + t * segLen
-    if (along < from || along > to) {
-      const clampedAlong = Math.max(from, Math.min(to, along))
-      t = segLen === 0 ? 0 : (clampedAlong - segStart) / segLen
-      point = lerp(coords[i]!, coords[i + 1]!, t)
-      distance = haversine(p, point)
-    }
-    if (!best || distance < best.distanceFromLine) {
-      best = { point, segmentIndex: i, t, distanceAlong: segStart + t * segLen, distanceFromLine: distance }
+    if (along < from || along > to) t = segLen === 0 ? 0 : (Math.max(from, Math.min(to, along)) - segStart) / segLen
+    const x = ax + dx * t
+    const y = ay + dy * t
+    const d2 = x * x + y * y
+    if (d2 < bestD2) {
+      bestD2 = d2
+      bestI = i
+      bestT = t
     }
   }
-  return best
+  if (bestI < 0) return null
+  const segStart = cum[bestI]!
+  const point = lerp(coords[bestI]!, coords[bestI + 1]!, bestT)
+  return { point, segmentIndex: bestI, t: bestT, distanceAlong: segStart + bestT * (cum[bestI + 1]! - segStart), distanceFromLine: haversine(p, point) }
 }
 
 /** Point `distanceAlong` meters from the start of the polyline (clamped), with the local heading. */

@@ -1,6 +1,8 @@
 // "Share": the phone's share sheet when there is one, else the clipboard ("Copied"), else a prompt to copy.
 import { useState } from 'react'
 import { useI18n } from '../../i18n/useT'
+import { shareLink } from '../../native/share'
+import { isNativeApp } from '../platform'
 import { countUse } from '../usage'
 import { Icon } from './Icon'
 
@@ -12,6 +14,8 @@ export function ShareButton({ title, url, className }: { title: string; url: () 
     const link = url()
     try {
       if (typeof navigator.share === 'function') return await navigator.share({ title, url: link })
+      // Android's web view (our Android app) has no Web Share: the phone's own share sheet.
+      if (isNativeApp()) return void (await shareLink(title, link))
     } catch (e) {
       if (e instanceof DOMException && e.name === 'AbortError') return
     }

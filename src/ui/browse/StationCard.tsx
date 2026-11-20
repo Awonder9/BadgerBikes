@@ -11,12 +11,13 @@ import { useAppStore } from '../../store/appStore'
 import { useI18n } from '../../i18n/useT'
 import type { Messages } from '../../i18n'
 import { useLocationStore } from '../../location/locationStore'
+import { rideUnderWay, useRideStore } from '../../ride/rideStore'
 import type { Station, SystemDetails } from '../../types'
 import { AvailabilityPill } from '../primitives/Availability'
-import { Button, IconButton } from '../primitives/Button'
+import { Button, ButtonLink, IconButton } from '../primitives/Button'
 import { Icon } from '../primitives/Icon'
 import { ShareButton } from '../primitives/ShareButton'
-import { platform, shareOrigin } from '../platform'
+import { isNativeApp, platform, shareOrigin } from '../platform'
 import { rideTo, startRideAt } from '../ride/rideActions'
 import { countUse } from '../usage'
 
@@ -32,7 +33,8 @@ function statusBanner(st: Station, t: Messages): string | null {
 /**
  * One "BCycle" button. iPhone: BCycle's App Store page (shows Open when installed, Get when not) — the
  * app answers no web link, so it can't be opened directly. Android: launches the app, or its Play Store
- * page when it isn't installed.
+ * page when it isn't installed. In our own Android app its Play Store page too: only Chrome can open the
+ * intent:// link that launches it (the app's web view hands it to the system, which drops it).
  */
 export function AppHandoff({ details }: { details: SystemDetails | undefined }) {
   const p = platform()
@@ -40,7 +42,7 @@ export function AppHandoff({ details }: { details: SystemDetails | undefined }) 
   if (p === 'desktop') return <p className="text-sm text-slate-500">{t.unlockOnPhone}</p>
   const link = details?.rentalApps[p]
   const store = safeExternalUrl(link?.storeUri, LINK_HOSTS.appStores)
-  const href = appLaunchUrl(p, link?.discoveryUri ?? null, store) ?? store
+  const href = (p === 'android' && isNativeApp() ? null : appLaunchUrl(p, link?.discoveryUri ?? null, store)) ?? store
   if (!href) return null
   const external = href.startsWith('https:')
   return (
@@ -61,6 +63,8 @@ export function StationCard() {
   const { snapshot } = useStationsSnapshot(systemId, { active: true })
   const { details } = useSystemDetails(systemId)
   const fix = useLocationStore((s) => s.fix)
+  // Mid-ride a dock's card is where "Nearest open dock" and a tap on the map lead: it must not re-plan the ride.
+  const riding = useRideStore(rideUnderWay)
   const now = useNow(10_000)
   const { t, lang } = useI18n()
   const st = selectedId ? snapshot?.byId.get(selectedId) : undefined
@@ -137,9 +141,17 @@ export function StationCard() {
         <Button icon="bike" className="whitespace-nowrap px-2" onClick={() => startRideAt(st)} disabled={a.bikeState === 'unavailable' || a.bikeState === 'none'}>
           {t.startRideHere}
         </Button>
-        <Button variant="secondary" icon="dock" className="whitespace-nowrap px-2" onClick={() => rideTo({ kind: 'station', name: st.name, coord: st.coord, stationId: st.id })}>
-          {t.rideToHere}
-        </Button>
+        {riding ? (
+          // Mid-ride: bike directions from where the rider is (like the ride card's other docks), keeping the plan,
+          // the ride timer and its alerts. Re-planning would start from the first dock and clear the timer.
+          <ButtonLink variant="secondary" icon="dock" className="whitespace-nowrap px-2" href={directionsFromHereUrl(st.coord, 'bicycling')} aria-label={t.bikeDirectionsAria(st.name)}>
+            {t.rideToHere}
+          </ButtonLink>
+        ) : (
+          <Button variant="secondary" icon="dock" className="whitespace-nowrap px-2" onClick={() => rideTo({ kind: 'station', name: st.name, coord: st.coord, stationId: st.id })}>
+            {t.rideToHere}
+          </Button>
+        )}
         {/* Alerts when more free up than right now, so it never fires the moment it's tapped. */}
         <Button
           variant={watching ? 'primary' : 'secondary'}

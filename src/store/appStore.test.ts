@@ -28,6 +28,13 @@ describe('useAppStore actions', () => {
     useAppStore.setState({ ...initialAppState })
   })
 
+  it('a new star makes room by dropping the oldest when the list is full (it used to be dropped itself)', () => {
+    useAppStore.setState({ starredStations: Array.from({ length: 200 }, (_, i) => `bcycle_madison:s${i}`) })
+    useAppStore.getState().toggleStar('bcycle_madison', 'new')
+    const stars = useAppStore.getState().starredStations
+    expect([stars.length, stars.at(-1), stars.includes('bcycle_madison:s0'), stars.includes('bcycle_madison:s1')]).toEqual([200, 'bcycle_madison:new', false, true])
+  })
+
   it('switches to registry cities only', () => {
     useAppStore.setState({ panel: 'ride' })
     expect(useAppStore.getState().setSystem('bcycle_madison')).toBe(true) // first choice keeps the open panel

@@ -1,6 +1,6 @@
 // Pure: BCycle stations near a route, in route order.
 import { RIDE, SPEEDS } from '../config'
-import { buildPolylineIndex, haversine, nearestOnPolyline } from '../lib/geo'
+import { bboxContains, bboxOf, buildPolylineIndex, haversine, nearestOnPolyline, type PolylineIndex } from '../lib/geo'
 import type { LngLat, Station } from '../types'
 
 export interface StationOnRoute {
@@ -22,12 +22,20 @@ export const MIN_STOP_ALONG_METERS = 400
  * dock) are skipped; stations that are not installed are dropped.
  */
 export function stationsAlongRoute(route: readonly LngLat[], stations: readonly Station[], excludeIds: ReadonlySet<string> = new Set(), corridorMeters = CORRIDOR_METERS, endRadiusMeters = 0): StationOnRoute[] {
-  if (route.length < 2) return []
-  const index = buildPolylineIndex([...route])
-  const end = route[route.length - 1]!
+  return route.length < 2 ? [] : alongIndex(buildPolylineIndex([...route]), stations, excludeIds, corridorMeters, endRadiusMeters)
+}
+
+/** stationsAlongRoute on a route whose index is already built. */
+function alongIndex(index: PolylineIndex, stations: readonly Station[], excludeIds: ReadonlySet<string>, corridorMeters: number, endRadiusMeters: number): StationOnRoute[] {
+  const end = index.coords[index.coords.length - 1]!
+  // Only stations within reach of the route's box are measured against every segment (most of a big city's
+  // aren't). The box check is approximate, so its margin is generous: it may let a far station through, never
+  // keep a near one out.
+  const box = bboxOf(index.coords)
+  const reach = Math.max(corridorMeters, endRadiusMeters) * 1.1 + 10
   const out: StationOnRoute[] = []
   for (const s of stations) {
-    if (excludeIds.has(s.id) || !s.status?.isInstalled) continue
+    if (excludeIds.has(s.id) || !s.status?.isInstalled || (box && !bboxContains(box, s.coord, reach))) continue
     const snap = nearestOnPolyline(index, s.coord)
     if (snap && (snap.distanceFromLine <= corridorMeters || haversine(s.coord, end) <= endRadiusMeters)) out.push({ station: s, along: snap.distanceAlong, offset: snap.distanceFromLine })
   }
@@ -107,8 +115,10 @@ export function routeDocks(
   if (route.length < 2) return []
   const exclude = opts.excludeIds ?? new Set<string>()
   const party = opts.partySize ?? 1
-  const total = buildPolylineIndex([...route]).total
-  const wide = stationsAlongRoute(route, stations, exclude, REDOCK_SEARCH_METERS, 0)
+  // One index of the route for every lookup below.
+  const index = buildPolylineIndex([...route])
+  const total = index.total
+  const wide = alongIndex(index, stations, exclude, REDOCK_SEARCH_METERS, 0)
   const docks: RouteDock[] = wide
     .filter((s) => s.offset <= ON_ROUTE_METERS && (s.along >= MIN_STOP_ALONG_METERS || s.station.id === opts.destStationId))
     .map((s) => ({ ...s, reason: 'onRoute' }))
@@ -146,10 +156,9 @@ export function routeDocks(
   // near the destination that still has room means no second one is added; one that filled up gets a usable
   // alternative listed next to it.
   const keep = (opts.keepIds ?? []).filter((id) => !exclude.has(id) && !has(id))
-  const index = keep.length > 0 ? buildPolylineIndex([...route]) : null
   for (const id of keep) {
     const station = stations.find((s) => s.id === id)
-    const snap = station && index ? nearestOnPolyline(index, station.coord) : null
+    const snap = station ? nearestOnPolyline(index, station.coord) : null
     if (!station || !snap) continue
     const reason: DockReason =
       snap.distanceFromLine <= ON_ROUTE_METERS ? 'onRoute' : haversine(station.coord, opts.destination) <= MAX_FINAL_WALK_METERS ? 'nearDestination' : 'redock'
@@ -163,7 +172,7 @@ export function routeDocks(
       .filter((s) => !exclude.has(s.id) && !has(s.id) && usableDock(s, party) && haversine(s.coord, opts.destination) <= MAX_FINAL_WALK_METERS)
       .sort((a, b) => haversine(a.coord, opts.destination) - haversine(b.coord, opts.destination))[0]
     if (near) {
-      const snap = nearestOnPolyline(index ?? buildPolylineIndex([...route]), near.coord)
+      const snap = nearestOnPolyline(index, near.coord)
       docks.push({ station: near, along: snap?.distanceAlong ?? total, offset: snap?.distanceFromLine ?? 0, reason: 'nearDestination' })
     }
   }

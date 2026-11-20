@@ -15,6 +15,17 @@ function normalize(s: string): string {
     .trim()
 }
 
+/** Each station's searchable words, worked out once per station object (a list refresh brings new ones). */
+const wordsOf = new WeakMap<Station, string[]>()
+function stationWords(station: Station): string[] {
+  let words = wordsOf.get(station)
+  if (!words) {
+    words = normalize(`${station.name} ${station.address ?? ''}`).split(' ')
+    wordsOf.set(station, words)
+  }
+  return words
+}
+
 export interface StationMatch {
   station: Station
   score: number
@@ -29,7 +40,7 @@ export function searchStations(stations: readonly Station[], query: string, limi
   if (tokens.length === 0) return []
   const out: StationMatch[] = []
   for (const station of stations) {
-    const words = normalize(`${station.name} ${station.address ?? ''}`).split(' ')
+    const words = stationWords(station)
     let score = 0
     let ok = true
     for (const t of tokens) {

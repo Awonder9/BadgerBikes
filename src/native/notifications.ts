@@ -53,11 +53,14 @@ function inOrder(task: () => Promise<unknown>): void {
 }
 
 let channelName: string | null = null
-/** Android: the ride alerts' channel, high importance so they pop up over Google Maps (renamed with the language). */
+/**
+ * Android: the ride alerts' channel, high importance so they pop up over Google Maps (renamed with the language).
+ * Android 7 has no channels: the plugin answers "unavailable" there, and its notifications need none.
+ */
 async function ensureChannel(name: string): Promise<void> {
   if (platform() !== 'android' || channelName === name) return
   const { LocalNotifications } = await nativePlugins()
-  await LocalNotifications.createChannel({ id: CHANNEL_ID, name, importance: 4, visibility: 1, vibration: true })
+  await LocalNotifications.createChannel({ id: CHANNEL_ID, name, importance: 4, visibility: 1, vibration: true }).catch(() => {})
   channelName = name
 }
 

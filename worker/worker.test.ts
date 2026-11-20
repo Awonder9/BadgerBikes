@@ -108,6 +108,24 @@ describe('worker app', () => {
   })
 })
 
+describe('request bodies', () => {
+  it('refuses a too-large body streamed without a Content-Length, without reading all of it first', async () => {
+    let pulled = 0
+    const chunk = new TextEncoder().encode('x'.repeat(8_192))
+    const body = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        pulled++
+        if (pulled > 1_000) controller.close() // 8 MB in all
+        else controller.enqueue(chunk)
+      },
+    })
+    const res = await createApp(deps()).fetch(new Request('https://x.test/api/usage', { method: 'POST', body, duplex: 'half' } as RequestInit))
+    expect(res.status).toBe(400)
+    expect(await res.json()).toMatchObject({ error: { code: 'bad_request', message: 'Body too large' } })
+    expect(pulled).toBeLessThan(10)
+  })
+})
+
 describe('the apps’ link files (/.well-known/*)', () => {
   const ids = { appId: NATIVE_APP.appId, appleTeamId: 'ABCDE12345', androidCertFingerprints: ['AB:CD:EF'] }
 
@@ -255,11 +273,14 @@ describe('usage counts and the dashboard', () => {
     // A city this Worker doesn't know still counts the device, without the city.
     await call(app, '/api/usage', post({ kind: 'open', first: { ...first, gap: null, systemId: 'bcycle_atlantis' } }))
     expect((await call(app, '/api/usage', post({ kind: 'open', first: null }, 'Googlebot/2.1'))).status).toBe(200)
+    // The iOS/Android app is never also the Home Screen web app.
+    await call(app, '/api/usage', post({ kind: 'open', first: { ...first, platform: 'ios', nativeApp: true } }))
     expect(recorded).toEqual([
-      { kind: 'open', first },
+      { kind: 'open', first: { ...first, nativeApp: false } }, // a report from before the apps: nativeApp absent
       { kind: 'beat', first: null },
       { kind: 'event', name: 'gpx' },
-      { kind: 'open', first: { ...first, gap: null, systemId: null } },
+      { kind: 'open', first: { ...first, gap: null, systemId: null, nativeApp: false } },
+      { kind: 'open', first: { ...first, platform: 'ios', installed: false, nativeApp: true } },
     ])
     const bad = [
       { kind: 'event', name: 'routes' }, // counted by the Worker only
@@ -269,10 +290,11 @@ describe('usage counts and the dashboard', () => {
       { kind: 'open', first: { ...first, platform: 'windows' } },
       { kind: 'open', first: { ...first, lang: 'fr' } },
       { kind: 'open', first: { ...first, installed: 'yes' } },
+      { kind: 'open', first: { ...first, nativeApp: 1 } },
       { kind: 'open', first: { systemId: 'bcycle_madison', platform: 'ios', installed: false, lang: 'en' } }, // no gap
     ]
     expect(await Promise.all(bad.map(async (b) => (await call(app, '/api/usage', post(b))).status))).toEqual(bad.map(() => 400))
-    expect(recorded).toHaveLength(4)
+    expect(recorded).toHaveLength(5)
   })
 
   it('the dashboard numbers are public, checked, and read from the Usage object at most every 30 s', async () => {

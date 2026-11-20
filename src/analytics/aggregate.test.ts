@@ -17,6 +17,7 @@ const day = (i: number, o: Partial<StatsDay> = {}): StatsDay => ({
   cities: { bcycle_madison: 2 },
   platforms: { ios: 1, android: 1 },
   installed: 1,
+  apps: {},
   langs: { en: 2 },
   ...o,
 })
@@ -35,12 +36,22 @@ describe('usage dashboard numbers', () => {
       { key: 'android', value: 30 },
       { key: 'ios', value: 30 },
     ])
-    expect(r.installed).toEqual([
-      { key: 'installed', value: 30 },
+    expect(r.howUsed).toEqual([
       { key: 'browser', value: 30 },
+      { key: 'installed', value: 30 },
     ])
     expect(r.hourly[8]).toBe(2) // 24 check-ins an hour = 2 devices open on average
     expect(r.features.find((f) => f.key === 'routes_busy')).toEqual({ key: 'routes_busy', value: 0 })
+  })
+
+  it('splits daily users into the browser, the Home Screen web app and the iOS/Android app (by platform)', () => {
+    const days = Array.from({ length: 30 }, (_, i) => day(150 + i, { users: 10, installed: 3, apps: { ios: 2, android: 1 } }))
+    expect(summarizeRange(stats(days), 30).howUsed).toEqual([
+      { key: 'browser', value: 120 },
+      { key: 'installed', value: 90 },
+      { key: 'app:ios', value: 60 },
+      { key: 'app:android', value: 30 },
+    ])
   })
 
   it('makes no comparison before counting had begun', () => {

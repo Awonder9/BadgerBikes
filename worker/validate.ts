@@ -1,6 +1,6 @@
 // Request validation for the Worker API. Everything from the client is untrusted.
 import type { PushRideRequest, PushSubscriptionJson, RouteApiRequest, UsageFirst, UsagePlatform, UsageRequest } from '../src/api/contract'
-import { APP, GEOCODE, HTTP, PUSH, ROUTE_DETAILS, USAGE } from '../src/config'
+import { APP, GEOCODE, HTTP, PUSH, RIDE, ROUTE_DETAILS, USAGE } from '../src/config'
 import { SYSTEMS } from '../src/data/systems'
 import { LANGS, type Lang } from '../src/i18n/lang'
 import { base64urlToBytes } from '../src/lib/base64url'
@@ -130,7 +130,7 @@ export function pushRideRequest(body: unknown, nowMs: number): PushRideRequest {
     endStationId,
     partySize,
     rideStartedAtMs: intOrNull(body.rideStartedAtMs, nowMs - PUSH.maxRideMs, nowMs + 60_000, 'ride start'),
-    includedMinutes: intOrNull(body.includedMinutes, 1, 600, 'included minutes'),
+    includedMinutes: intOrNull(body.includedMinutes, 1, RIDE.maxIncludedMinutes, 'included minutes'),
   }
 }
 
@@ -147,10 +147,12 @@ function usageFirst(v: unknown): UsageFirst {
   const gap = v.gap === null ? null : intOrNull(v.gap ?? NaN, 1, USAGE.maxGapDays, 'gap')
   const platform = PLATFORMS.find((p) => p === v.platform)
   const lang = LANGS.find((l) => l === v.lang)
-  if (!platform || !lang || typeof v.installed !== 'boolean') throw bad('Invalid usage report')
+  // nativeApp: absent from reports by web app versions older than the iOS/Android apps.
+  if (!platform || !lang || typeof v.installed !== 'boolean' || (v.nativeApp !== undefined && typeof v.nativeApp !== 'boolean')) throw bad('Invalid usage report')
   // A city this Worker doesn't know (an older or newer app) still counts the device, without the city.
   const systemId = typeof v.systemId === 'string' && systemsById.has(v.systemId) ? v.systemId : null
-  return { gap, systemId, platform, installed: v.installed, lang }
+  const nativeApp = v.nativeApp === true
+  return { gap, systemId, platform, installed: v.installed && !nativeApp, nativeApp, lang }
 }
 
 /** POST /api/usage body: only the known kinds, events and fields (see UsageRequest). */
@@ -173,14 +175,39 @@ export function reportDays(raw: string | null): number {
   return n
 }
 
+/** The request's JSON body: at most HTTP.maxBodyBytes, also when it is streamed without a Content-Length. */
 export async function readJsonBody(request: Request): Promise<unknown> {
   const len = Number(request.headers.get('content-length') ?? '0')
   if (len > HTTP.maxBodyBytes) throw bad('Body too large')
-  const text = await request.text()
-  if (text.length > HTTP.maxBodyBytes) throw bad('Body too large')
+  const text = await readText(request, HTTP.maxBodyBytes)
   try {
     return JSON.parse(text)
   } catch {
     throw bad('Body must be JSON')
   }
+}
+
+/** Reads the body, refusing it as soon as it passes `max` bytes (never buffering a huge upload first). */
+async function readText(request: Request, max: number): Promise<string> {
+  if (!request.body) return ''
+  const reader = request.body.getReader()
+  const chunks: Uint8Array[] = []
+  let size = 0
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    size += value.byteLength
+    if (size > max) {
+      await reader.cancel().catch(() => {})
+      throw bad('Body too large')
+    }
+    chunks.push(value)
+  }
+  const bytes = new Uint8Array(size)
+  let at = 0
+  for (const chunk of chunks) {
+    bytes.set(chunk, at)
+    at += chunk.byteLength
+  }
+  return new TextDecoder().decode(bytes)
 }

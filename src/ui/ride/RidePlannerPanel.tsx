@@ -15,7 +15,7 @@ import { shareTextFile } from '../../native/share'
 import { waitForFix } from '../../location/locationStore'
 import { useMapApiGetter } from '../../map/mapApiContext'
 import { passChoiceMatters } from '../../ride/rideProgress'
-import { chooseRoute, docksAlong, loadRideRoute, useRideStore } from '../../ride/rideStore'
+import { chooseRoute, docksAlong, loadRideRoute, reoptimizeStops, useRideStore, type RideErrorKind } from '../../ride/rideStore'
 import { rideSeconds, type RouteDock } from '../../ride/stationsAlongRoute'
 import { sameRoute } from '../../routing/sameRoute'
 import { findSavedPlace, useAppStore } from '../../store/appStore'
@@ -65,8 +65,7 @@ export function RidePlannerPanel() {
   // The max-ride setting changed since these stops were picked (e.g. in Settings): re-pick the optimized
   // stops, unless mid-ride. Reopening the planner without a change keeps the rider's own choices.
   useEffect(() => {
-    const r = useRideStore.getState()
-    if (snapshot && r.status === 'ready' && r.openedParts.length === 0 && r.stopsForMaxRide !== maxRideMinutes) chooseRoute(r.routeIndex, snapshot, partySize)
+    if (snapshot) reoptimizeStops(snapshot, partySize, maxRideMinutes)
   }, [maxRideMinutes, snapshot, partySize])
 
   const dest = ride.destination
@@ -454,7 +453,7 @@ function QuickDestinations() {
   )
 }
 
-function RouteError({ error }: { error: { kind: 'busy' | 'unroutable' | 'other'; message: string } }) {
+function RouteError({ error }: { error: { kind: RideErrorKind; message: string } }) {
   const [until] = useState(() => Date.now() + RIDE.busyRetrySeconds * 1000)
   // The countdown clock runs only until "Try again" is enabled (it used to re-render twice a second for as
   // long as the message stayed on screen).
@@ -466,7 +465,7 @@ function RouteError({ error }: { error: { kind: 'busy' | 'unroutable' | 'other';
   }, [counting, until])
   const now = useNow(500, counting)
   const { t } = useI18n()
-  const message = error.kind === 'busy' ? t.errorBusy : error.kind === 'unroutable' ? t.errorUnroutable : error.message
+  const message = { busy: t.errorBusy, unroutable: t.errorUnroutable, noRoute: t.errorNoRoute, offline: t.errorRouteOffline, other: t.errorRouteFailed }[error.kind]
   const wait = counting ? Math.max(1, Math.ceil((until - now) / 1000)) : 0
   return (
     <div role="alert" className={`space-y-2 rounded-xl p-3 ${error.kind === 'busy' ? 'bg-amber-50 text-amber-950 dark:bg-amber-950 dark:text-amber-100' : 'bg-red-50 text-red-900 dark:bg-red-950 dark:text-red-200'}`}>

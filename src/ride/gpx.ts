@@ -27,8 +27,17 @@ export interface GpxInput {
 /** A dock farther than this from the line gets its own track point, so the track reaches it. */
 const OFF_LINE_METERS = 25
 
+/** A character XML 1.0 allows in a document (one control character or lone surrogate makes the file unreadable). */
+const xmlChar = (ch: string): boolean => {
+  const c = ch.codePointAt(0) ?? 0
+  return c === 0x9 || c === 0xa || c === 0xd || (c >= 0x20 && c <= 0xd7ff) || (c >= 0xe000 && c <= 0xfffd) || c >= 0x10000
+}
+
 export function xmlEscape(s: string): string {
-  return s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' })[c]!)
+  return Array.from(s)
+    .filter(xmlChar)
+    .join('')
+    .replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' })[c]!)
 }
 
 const ll = (c: LngLat) => `lat="${c[1].toFixed(6)}" lon="${c[0].toFixed(6)}"`

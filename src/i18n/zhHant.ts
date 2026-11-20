@@ -138,6 +138,8 @@ export const zhHant: Messages = {
   clearRecentAria: '清除最近的地點',
   storageNote:
     '已儲存的地點、最近的目的地、收藏的站點和目前的騎乘只會儲存在這台裝置上。清除本網站的資料（Cookie 和網站資料）會將其刪除。騎乘中開啟提醒時，本 App 的伺服器也會保存該次騎乘的計時和終點站（不含你的位置），直到騎乘結束。本 App 也會傳送匿名使用統計（不含識別資訊或位置）；開啟「不要追蹤」或「全球隱私控制」即可關閉。',
+  storageNoteNative:
+    '已儲存的地點、最近的目的地、收藏的站點和目前的騎乘只會儲存在這支手機上；刪除本 App 會將其一併刪除。騎乘提醒由手機自行安排，本 App 的伺服器不會保存你的騎乘資訊。本 App 也會傳送匿名使用統計（不含識別資訊或位置）。',
   aboutLink: '關於與致謝',
 
   // About
@@ -172,6 +174,7 @@ export const zhHant: Messages = {
   tellMeWhen: (kind) => (kind === 'bikes' ? '有單車時通知我' : '有空位時通知我'),
   directions: '步行路線',
   directionsAria: (name) => `在 Google 地圖中查看前往 ${name} 的步行路線`,
+  bikeDirectionsAria: (name) => `在 Google 地圖中查看前往 ${name} 的騎乘路線`,
   shareStationTitle: (name) => `${name}：即時單車和空位`,
 
   // Search
@@ -232,6 +235,9 @@ export const zhHant: Messages = {
   quickDestinations: '快速目的地',
   routeServerBusy: '路線伺服器忙碌中',
   errorUnroutable: '請把目的地移到離街道或小路更近的位置。',
+  errorNoRoute: '沒有通往此目的地的自行車路線。請在附近的街道或小路上選擇目的地。',
+  errorRouteOffline: '無法連線到路線伺服器。請檢查網路連線後重試。',
+  errorRouteFailed: '暫時無法取得路線。請稍後再試。',
   errorBusy: '路線伺服器目前忙碌中。我們使用的免費公共路線服務每秒大約只能為所有人處理一個請求，所以你的請求未能完成。請過幾秒再試。',
   tryAgainIn: (s) => `${s} 秒後重試`,
   shareTitle: (name) => `騎共享單車去 ${name}`,

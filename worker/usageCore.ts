@@ -23,7 +23,10 @@ export interface UsageDayRecord {
   counts: Partial<Record<UsageEvent | UsageCounter, number>>
   cities: Record<string, number>
   platforms: Partial<Record<UsagePlatform, number>>
+  /** The Home Screen web app. */
   installed: number
+  /** The iOS/Android app, by platform (absent from days stored before the apps). */
+  apps?: Partial<Record<UsagePlatform, number>>
   langs: Partial<Record<Lang, number>>
 }
 
@@ -45,6 +48,7 @@ export function emptyDay(): UsageDayRecord {
     cities: {},
     platforms: {},
     installed: 0,
+    apps: {},
     langs: {},
   }
 }
@@ -62,6 +66,7 @@ function countFirst(day: UsageDayRecord, first: UsageFirst): void {
   if (first.systemId) inc(day.cities, first.systemId)
   inc(day.platforms, first.platform)
   if (first.installed) day.installed++
+  if (first.nativeApp) inc((day.apps ??= {}), first.platform)
   inc(day.langs, first.lang)
 }
 
@@ -106,18 +111,39 @@ const sum = (xs: readonly number[]) => xs.reduce((a, b) => a + b, 0)
 export const dailyUsers = (d: UsageDayRecord): number => d.newUsers + sum(d.gaps)
 
 /**
+ * The devices a day counts toward a window that starts k days before it, for k = 0 … gaps.length: new devices,
+ * plus those whose previous active day is outside the window (gap > k). Suffix sums of the gap histogram.
+ */
+function windowCounts(d: UsageDayRecord): number[] {
+  const out = Array.from({ length: d.gaps.length + 1 }, () => d.newUsers)
+  for (let i = d.gaps.length - 1, acc = d.newUsers; i >= 0; i--) {
+    acc += d.gaps[i] ?? 0
+    out[i] = acc
+  }
+  return out
+}
+
+/** Unique devices in the `length` days ending at index `end` of `days` (each day's windowCounts, or null). */
+function uniqueIn(days: ReadonlyArray<number[] | null>, end: number, length: number): number {
+  let total = 0
+  for (let k = 0; k < length; k++) {
+    const c = days[end - length + 1 + k]
+    // k = days since the window's start; the previous active day is outside the window when gap > k.
+    if (c) total += c[Math.min(k, c.length - 1)] ?? 0
+  }
+  return total
+}
+
+/**
  * Unique devices active in the `length` days ending `end` (length ≤ USAGE.maxGapDays): each counted on its
  * first active day d in the window — a new device, or one whose previous active day was before the window.
  */
 export function uniqueUsers(records: ReadonlyMap<string, UsageDayRecord>, end: string, length: number): number {
-  let total = 0
-  for (let k = 0; k < length; k++) {
-    const d = records.get(addDays(end, k - length + 1))
-    if (!d) continue
-    // k = days since the window's start; the previous active day is outside the window when gap > k.
-    total += d.newUsers + sum(d.gaps.slice(k))
-  }
-  return total
+  const days = Array.from({ length }, (_, i) => {
+    const d = records.get(addDays(end, i - length + 1))
+    return d ? windowCounts(d) : null
+  })
+  return uniqueIn(days, length - 1, length)
 }
 
 /** The dashboard: `days` days ending `today`, from the stored records (which must reach back far enough). */
@@ -125,16 +151,26 @@ export function summarize(
   records: ReadonlyMap<string, UsageDayRecord>,
   o: { today: string; days: number; nowMs: number; window: number; state: WindowState | null; allTime: number; since: string | null },
 ): StatsResponse {
+  // Every day the windows reach, oldest first, each with its window counts worked out once (the dashboard asks
+  // for 180 days: 23 000 window-days, which used to rebuild dates and sum histograms each time).
+  const span = o.days + USAGE.maxGapDays - 1
+  const first = addDays(o.today, -(span - 1))
+  const keys = Array.from({ length: span }, (_, i) => addDays(first, i))
+  const counts = keys.map((k) => {
+    const r = records.get(k)
+    return r ? windowCounts(r) : null
+  })
   const days: StatsDay[] = []
   for (let i = o.days - 1; i >= 0; i--) {
-    const day = addDays(o.today, -i)
+    const at = span - 1 - i
+    const day = keys[at]!
     const r = records.get(day) ?? emptyDay()
     days.push({
       day,
       users: dailyUsers(r),
-      users7: uniqueUsers(records, day, 7),
-      users30: uniqueUsers(records, day, 30),
-      users90: uniqueUsers(records, day, 90),
+      users7: uniqueIn(counts, at, 7),
+      users30: uniqueIn(counts, at, 30),
+      users90: uniqueIn(counts, at, 90),
       newUsers: r.newUsers,
       opens: r.opens,
       peakActive: r.peakActive,
@@ -143,6 +179,7 @@ export function summarize(
       cities: r.cities,
       platforms: r.platforms,
       installed: r.installed,
+      apps: r.apps ?? {},
       langs: r.langs,
     })
   }

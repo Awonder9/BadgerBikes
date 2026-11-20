@@ -139,8 +139,10 @@ export interface UsageFirst {
   gap: number | null
   systemId: string | null
   platform: UsagePlatform
-  /** Running as an installed home-screen app. */
+  /** Running as the web app installed on the home screen (not a browser tab, not the iOS/Android app). */
   installed: boolean
+  /** Running as the iOS/Android app (absent from versions of the web app older than the apps). */
+  nativeApp?: boolean
   lang: Lang
 }
 
@@ -169,10 +171,14 @@ export interface StatsDay {
   /** Check-ins by hour of day (each is one device with the app open in one window). */
   beats: number[]
   counts: Partial<Record<UsageEvent | UsageCounter, number>>
-  /** Daily unique devices by city, platform, installed or not, and language. */
+  /**
+   * Daily unique devices by city, platform, how they use it (the Home Screen web app; the iOS/Android app, by
+   * platform; else a browser tab) and language.
+   */
   cities: Record<string, number>
   platforms: Partial<Record<UsagePlatform, number>>
   installed: number
+  apps: Partial<Record<UsagePlatform, number>>
   langs: Partial<Record<Lang, number>>
 }
 

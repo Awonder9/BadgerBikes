@@ -15,9 +15,12 @@ import { LANG_NAMES, LANGS, type LanguageSetting } from '../../i18n/lang'
 import { useI18n } from '../../i18n/useT'
 import { useLocationStore } from '../../location/locationStore'
 import { freshnessOf } from '../../data/snapshot'
+import { directionsFromHereUrl } from '../../ride/googleMaps'
+import { rideUnderWay, useRideStore } from '../../ride/rideStore'
 import type { Place } from '../../types'
+import { isNativeApp } from '../platform'
 import { AvailabilityPill } from '../primitives/Availability'
-import { Button, IconButton } from '../primitives/Button'
+import { Button, ButtonLink, IconButton } from '../primitives/Button'
 import { Icon } from '../primitives/Icon'
 import { changeCity, planRide, rideTo, startRideFrom } from '../ride/rideActions'
 import { PassSelect } from './PassSelect'
@@ -173,6 +176,8 @@ export function PinCard() {
   const pin = useAppStore((s) => s.pin)
   const systemId = useAppStore((s) => s.systemId)
   const saved = useAppStore((s) => s.savedPlaces)
+  // Mid-ride (a long press, or a saved place's marker tapped on the map) the pin must not re-plan the ride.
+  const riding = useRideStore(rideUnderWay)
   const { place, loading } = useReverseGeocode(pin)
   const { t } = useI18n()
   if (!pin) return null
@@ -191,9 +196,16 @@ export function PinCard() {
           }} />
       </header>
       <div className="grid grid-cols-2 gap-2">
-        <Button icon="bike" onClick={() => rideTo(asPlace)}>
-          {t.rideHere}
-        </Button>
+        {riding ? (
+          // Bike directions from where the rider is, keeping the ride's plan, timer and alerts (see StationCard).
+          <ButtonLink icon="bike" href={directionsFromHereUrl(pin, 'bicycling')} aria-label={t.bikeDirectionsAria(p.name)}>
+            {t.rideHere}
+          </ButtonLink>
+        ) : (
+          <Button icon="bike" onClick={() => rideTo(asPlace)}>
+            {t.rideHere}
+          </Button>
+        )}
         <Button variant="secondary" onClick={() => startRideFrom(asPlace)}>
           {t.startFromHere}
         </Button>
@@ -231,12 +243,12 @@ export function StationList() {
   const fix = useLocationStore((s) => s.fix)
   const { snapshot, error } = useStationsSnapshot(systemId)
   const { t, lang } = useI18n()
+  // Each station's distance once per position (the list re-sorts and re-labels as the position updates).
   const sorted = useMemo(() => {
     if (!snapshot) return []
-    const list = [...snapshot.stations]
-    if (fix) list.sort((a, b) => haversine(fix.coord, a.coord) - haversine(fix.coord, b.coord))
-    else list.sort((a, b) => a.name.localeCompare(b.name))
-    return list
+    const rows = snapshot.stations.map((st) => ({ st, meters: fix ? haversine(fix.coord, st.coord) : null }))
+    rows.sort((a, b) => (a.meters !== null && b.meters !== null ? a.meters - b.meters : a.st.name.localeCompare(b.st.name)))
+    return rows
   }, [snapshot, fix])
   return (
     <section aria-label={t.stations}>
@@ -245,14 +257,14 @@ export function StationList() {
         <FreshnessBadge hasData={!!snapshot} isError={!!error} lastUpdatedMs={snapshot?.lastUpdatedMs} />
       </div>
       <ul className="divide-y divide-slate-200 dark:divide-slate-800">
-        {sorted.map((st) => {
+        {sorted.map(({ st, meters }) => {
           const a = classifyStation(st, partySize)
           return (
             <li key={st.id}>
               <button type="button" className="flex min-h-14 w-full items-center gap-2 px-4 py-2 text-left hover:bg-slate-50 dark:hover:bg-slate-900" onClick={() => useAppStore.getState().selectStation(st.id)}>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-medium">{st.name}</span>
-                  {fix && <span className="text-sm text-slate-500">{formatDistance(haversine(fix.coord, st.coord), units, lang)}</span>}
+                  {meters !== null && <span className="text-sm text-slate-500">{formatDistance(meters, units, lang)}</span>}
                 </span>
                 {mapMode === 'bikes' ? (
                   <>
@@ -373,7 +385,7 @@ export function SettingsPanel() {
         {systemId && <SavedPlacesSettings systemId={systemId} />}
         <RecentPlacesSetting />
         <p className="px-4 py-3 text-sm text-slate-500">
-          {t.storageNote}
+          {isNativeApp() ? t.storageNoteNative : t.storageNote}
         </p>
         <button type="button" className={`${row} w-full text-left`} onClick={() => useAppStore.getState().setPanel('about')}>
           <span>{t.aboutLink}</span>

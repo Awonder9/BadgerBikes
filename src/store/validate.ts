@@ -42,7 +42,7 @@ export function validatePlace(v: unknown): Place | null {
 function validatePassChoice(v: unknown): PassChoice | null {
   if (!isObj(v)) return null
   const planId = typeof v.planId === 'string' && ID_RE.test(v.planId) ? v.planId : null
-  const includedMinutes = v.includedMinutes === null ? null : clampInt(v.includedMinutes, 1, 600, -1)
+  const includedMinutes = v.includedMinutes === null ? null : clampInt(v.includedMinutes, 1, RIDE.maxIncludedMinutes, -1)
   if (includedMinutes === -1) return null
   return { planId, includedMinutes }
 }

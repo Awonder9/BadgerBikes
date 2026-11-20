@@ -20,6 +20,17 @@ describe('stationsAlongRoute', () => {
     expect(r[0]!.offset).toBeCloseTo(50, 0)
   })
 
+  it('finds every station within reach, also beyond the ends of a long route (the quick box check drops none)', () => {
+    const south = MADISON.capitol
+    const north = destination(south, 40_000, 0)
+    const near = ['east', 'past', 'corner'].map((id, i) => makeStation({ id, coord: destination(north, 249, [90, 0, 45][i]!) }))
+    const west = makeStation({ id: 'west', coord: destination(south, 249, 270) })
+    const far = [makeStation({ id: 'farEast', coord: destination(north, 252, 90) }), makeStation({ id: 'farPast', coord: destination(north, 252, 0) })]
+    const found = stationsAlongRoute([south, north], [...near, west, ...far])
+    expect(found.map((s) => s.station.id).sort()).toEqual(['corner', 'east', 'past', 'west'])
+    expect(Math.max(...found.map((s) => s.offset))).toBeLessThan(250)
+  })
+
   it('flags segments longer than the included ride time', () => {
     const r = stationsAlongRoute(route, stations, new Set(['start']))
     const segs = rideSegments('start', [r[1]!, r[2]!], 3)

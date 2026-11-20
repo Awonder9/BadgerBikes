@@ -59,6 +59,11 @@ describe('usage counts: unique devices without identifiers', () => {
     }
     expect(mismatches).toEqual([])
     expect(distinct(addDays(start, days - 1), 90)).toBeGreaterThan(100) // the simulation is not trivially small
+    // The dashboard's report works the windows out its own (faster) way: the same numbers, every day.
+    const report = summarize(records, { today: addDays(start, days - 1), days: 180, nowMs: 0, window: 0, state: null, allTime: 0, since: null })
+    expect(report.days.map((r) => [r.day, r.users, r.users7, r.users30, r.users90].join())).toEqual(
+      report.days.map((r) => [r.day, distinct(r.day, 1), distinct(r.day, 7), distinct(r.day, 30), distinct(r.day, 90)].join()),
+    )
   })
 
   it('counts opens, check-ins by hour, the busiest window, new devices and the daily breakdowns', () => {
@@ -75,6 +80,17 @@ describe('usage counts: unique devices without identifiers', () => {
     expect(day).toMatchObject({ newUsers: 1, opens: 3, peakActive: 2, installed: 1, cities: { bcycle_madison: 2 }, platforms: { android: 1, ios: 1 }, langs: { 'zh-Hant': 1, en: 1 }, counts: { share: 1 } })
     expect([day.gaps[2], day.beats[8], dailyUsers(day)]).toEqual([1, 4, 2])
     expect(state).toEqual({ window: 101, count: 2, previous: 2 })
+  })
+
+  it('counts the iOS/Android app by platform, apart from the Home Screen web app; days stored before it count none', () => {
+    const day = emptyDay()
+    applyUsage(day, null, { kind: 'open', first: first(null, { platform: 'ios', nativeApp: true }) }, { window: 1, hour: 9 })
+    applyUsage(day, null, { kind: 'open', first: first(2, { platform: 'android', installed: true }) }, { window: 1, hour: 9 })
+    expect([day.apps, day.installed, dailyUsers(day)]).toEqual([{ ios: 1 }, 1, 2])
+    const old: UsageDayRecord = { ...emptyDay(), newUsers: 1 }
+    delete old.apps
+    const r = summarize(new Map([['2026-11-19', old]]), { today: '2026-11-19', days: 1, nowMs: 0, window: 0, state: null, allTime: 1, since: '2026-11-19' })
+    expect(r.days[0]?.apps).toEqual({})
   })
 
   it('"active now" is the current window, or the previous one while the current is still filling', () => {

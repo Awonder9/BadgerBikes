@@ -1,6 +1,7 @@
 // Provider-neutral leg normalization (docs/ARCHITECTURE.md §6): length units → meters, polyline6
 // decoding, connectors to the requested points, consecutive-duplicate removal with index remapping, and
 // the RouteLeg invariants from src/types.ts that every provider's output must satisfy.
+import { ROUTING } from '../config'
 import { AppError } from '../lib/errors'
 import { haversine, isValidLngLat } from '../lib/geo'
 import { decodePolyline } from '../lib/polyline'
@@ -8,11 +9,8 @@ import { speedMps } from './estimates'
 import type { LegRole, LngLat, Maneuver, Provider, RouteLeg, TravelMode, Units } from '../types'
 import type { BikeKind } from './types'
 
-/**
- * A requested point farther than this from the router's snapped endpoint is joined to the geometry with a
- * straight connector (RouteLeg invariant in src/types.ts).
- */
-export const CONNECTOR_MIN_METERS = 3 // TODO(config): move to src/config.ts
+/** A requested point farther than this from the snapped endpoint gets a straight connector (ROUTING in src/config.ts). */
+export const CONNECTOR_MIN_METERS = ROUTING.connectorMinMeters
 
 export const METERS_PER_MILE = 1609.344
 export const METERS_PER_KILOMETER = 1000

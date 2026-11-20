@@ -4,7 +4,7 @@
 // BCycle facts that shape this module (docs/ARCHITECTURE.md §3): feeds are GBFS 1.1 (booleans 0/1) or 2.1
 // (true/false); timestamps are epoch seconds; `num_bikes_available_types` carries the classic/e-bike split;
 // names may have trailing spaces; pricing URLs often lack a scheme; seasonal systems list 0 stations.
-import { CACHE_TTL_MS, ENDPOINTS } from '../config'
+import { CACHE_TTL_MS, ENDPOINTS, RIDE } from '../config'
 import { AppError, isAbort, isAppError } from '../lib/errors'
 import { isValidLngLat } from '../lib/geo'
 import type { UpstreamFetch } from '../lib/upstream'
@@ -13,16 +13,10 @@ import type { AppLink, LngLat, PassOption, Station, StationInfo, StationStatus, 
 export type GbfsFeed = 'station_information' | 'station_status' | 'system_information' | 'system_pricing_plans'
 
 /**
- * The GBFS CDN serves station_status with `max-age=60`; our copy is kept until just after that expires
- * (last_updated + this), so a refetch sees the next CDN fill.
- */
-const STATUS_CDN_EXPIRY_MS = 62_000 // TODO(config): move to src/config.ts (CACHE_TTL_MS.stationStatusAfterFeedMs)
-
-/**
  * Parsed included ride times outside [1, MAX_INCLUDED_MINUTES] are ignored: they come from text such as
  * "charges may take up to 48 hours" or "24-hour pass", not from a per-ride allowance.
  */
-export const MAX_INCLUDED_MINUTES = 600 // TODO(config): move to src/config.ts (shared with worker/validate.ts)
+export const MAX_INCLUDED_MINUTES = RIDE.maxIncludedMinutes
 
 const PROVIDER = 'gbfs'
 /** BCycle extension field: 'Kiosk and Station' or '3.0 Dock Station' (kiosk-less, app-only rental). */
@@ -212,7 +206,7 @@ export function buildSnapshot(systemId: string, stations: Station[], lastUpdated
 export function stationStatusTtlMs(body: unknown, nowMs: number): number {
   const lastUpdatedMs = isRecord(body) ? epochMs(body.last_updated) : null
   if (lastUpdatedMs === null) return CACHE_TTL_MS.stationStatusMin
-  return clamp(lastUpdatedMs + STATUS_CDN_EXPIRY_MS - nowMs, CACHE_TTL_MS.stationStatusMin, CACHE_TTL_MS.stationStatusMax)
+  return clamp(lastUpdatedMs + CACHE_TTL_MS.stationStatusAfterFeedMs - nowMs, CACHE_TTL_MS.stationStatusMin, CACHE_TTL_MS.stationStatusMax)
 }
 
 // ─── Pricing ─────────────────────────────────────────────────────────────────────────────────────

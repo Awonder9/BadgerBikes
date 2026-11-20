@@ -279,6 +279,25 @@ test('a station card has walking directions and a share link that opens that car
   expect(await page.evaluate(() => navigator.clipboard.readText())).toMatch(/\/\?system=bcycle_madison&station=st_a$/)
 })
 
+test('a dock opened from a link or from the station list is brought into view, at street level', async ({ page, context }) => {
+  await mockApi(context)
+  await skipInstallTip(page)
+  const viewport = () =>
+    page.evaluate(() => (window as unknown as { __bcycle: { map: { current: { getViewport: () => { center: [number, number]; zoom: number } | null } | null } } }).__bcycle.map.current?.getViewport() ?? null)
+  const near = async ([lon, lat]: [number, number]) => {
+    const v = await viewport()
+    return !!v && v.zoom >= 15 && Math.abs(v.center[0] - lon) < 0.001 && Math.abs(v.center[1] - lat) < 0.001
+  }
+  await page.goto('/?station=st_a')
+  await expect(page.getByRole('region', { name: 'Station Alpha & Main' })).toBeVisible()
+  await expect.poll(() => near(A)).toBe(true)
+  await page.getByRole('region', { name: 'Station Alpha & Main' }).getByRole('button', { name: 'Close' }).click()
+  await page.getByRole('button', { name: 'Station list' }).click()
+  await page.getByRole('button', { name: /Charlie Square/ }).click()
+  await expect(page.getByRole('region', { name: 'Station Charlie Square' })).toBeVisible()
+  await expect.poll(() => near(C)).toBe(true)
+})
+
 test('"Nearest open dock" opens the closest dock with room, on the docks map', async ({ page, context }) => {
   await mockApi(context)
   await context.grantPermissions(['geolocation'])
@@ -441,6 +460,7 @@ function statsFixture() {
       cities: { bcycle_madison: users - 3, bcycle_boulder: 3 },
       platforms: { ios: Math.round(users * 0.6), android: users - Math.round(users * 0.6) },
       installed: Math.round(users * 0.3),
+      apps: { ios: Math.round(users * 0.2), android: Math.round(users * 0.1) },
       langs: { en: users - 2, 'zh-Hans': 2 },
     }
   })
@@ -461,6 +481,9 @@ test('the usage dashboard at /analytics shows unique users, active now, charts a
   await expect(page.getByText('2,950')).toBeVisible() // all-time users
   await expect(page.getByRole('slider', { name: /Daily users, last 30 days/ })).toBeVisible()
   await expect(page.getByRole('region', { name: 'Cities' })).toContainText('Madison')
+  // How it is used: a browser tab, the Home Screen web app, or the iOS/Android app (by platform).
+  const how = page.getByRole('region', { name: 'Browser, Home Screen or app' })
+  for (const label of ['Browser', 'Home Screen web app', 'iPhone / iPad app', 'Android app']) await expect(how).toContainText(label)
 
   // The range scopes everything (and is remembered); each chart has its table.
   await page.getByRole('radio', { name: 'Last 7 days' }).click()

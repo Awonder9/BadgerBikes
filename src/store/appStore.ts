@@ -9,6 +9,7 @@ import type { AppActions, AppState, SavedPlace } from './types'
 import { DEFAULT_SETTINGS, MAX_SAVED_PLACES, validatePlaces, validateSavedPlaces, validateSettings, validateStringIds } from './validate'
 
 const MAX_RECENT = 8
+const MAX_STARRED = 200
 
 function samePlace(a: Place, b: Place): boolean {
   return a.name === b.name && Math.abs(a.coord[0] - b.coord[0]) < 1e-5 && Math.abs(a.coord[1] - b.coord[1]) < 1e-5
@@ -46,7 +47,7 @@ export function sanitizePersisted(persisted: unknown): PersistedSlice {
     systemId: typeof p.systemId === 'string' && SYSTEM_IDS.has(p.systemId) ? p.systemId : null,
     settings: validateSettings(p.settings),
     savedPlaces: validateSavedPlaces(p.savedPlaces),
-    starredStations: validateStringIds(p.starredStations, 200),
+    starredStations: validateStringIds(p.starredStations, MAX_STARRED),
     recentPlaces: validatePlaces(p.recentPlaces, MAX_RECENT),
   }
 }
@@ -95,8 +96,9 @@ export const useAppStore = create<AppState & AppActions>()(
       toggleStar: (systemId, stationId) =>
         set((s) => {
           const key = `${systemId}:${stationId}`
+          // Full: the oldest star makes room (capping the end would drop the new one, so the tap did nothing).
           return {
-            starredStations: s.starredStations.includes(key) ? s.starredStations.filter((k) => k !== key) : validateStringIds([...s.starredStations, key], 200),
+            starredStations: s.starredStations.includes(key) ? s.starredStations.filter((k) => k !== key) : validateStringIds([...s.starredStations, key].slice(-MAX_STARRED), MAX_STARRED),
           }
         }),
       pushRecent: (place) =>

@@ -13,6 +13,10 @@ describe('GPX export', () => {
     expect(xmlEscape(`Park & "Spring" <St>'`)).toBe('Park &amp; &quot;Spring&quot; &lt;St&gt;&apos;')
   })
 
+  it('drops characters XML can’t hold, so a stray one in a name never makes the whole file unreadable', () => {
+    expect(xmlEscape('Café\u0000 Bar\u0007\uD800 🚲\tok')).toBe('Café Bar 🚲\tok')
+  })
+
   it('cuts the track where the ride ends', () => {
     const cut = sliceRoute(route, 1500)
     expect(cut).toHaveLength(3)

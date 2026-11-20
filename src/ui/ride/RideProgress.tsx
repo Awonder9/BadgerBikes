@@ -95,7 +95,8 @@ export function RideBanner() {
   const { active, timer, dock, endStation } = useRideStatus(plan)
   const { t } = useI18n()
   if (!active || panel === 'ride') return null
-  const alert = dock !== 'ok' || timer?.state === 'over'
+  // Without an end dock (stations still loading after a reload, or every stop unchecked) there is none to be full.
+  const alert = (!!endStation && dock !== 'ok') || timer?.state === 'over'
   const next = plan.nextPart !== null && plan.rideParts.length > 1 ? t.nextShort(plan.nextPart + 1) : null
   return (
     <button

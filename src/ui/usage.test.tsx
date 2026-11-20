@@ -35,7 +35,7 @@ describe('usage counts (browser side)', () => {
   it('a new device: an open with "new", check-ins once per window while visible, and the next day its gap', async () => {
     renderHook(() => useUsageCounts())
     await flush()
-    expect(sent).toEqual([{ kind: 'open', first: { gap: null, systemId: 'bcycle_madison', platform: 'desktop', installed: false, lang: 'en' } }])
+    expect(sent).toEqual([{ kind: 'open', first: { gap: null, systemId: 'bcycle_madison', platform: 'desktop', installed: false, nativeApp: false, lang: 'en' } }])
     // The next window: one check-in, no longer the day's first.
     await act(async () => vi.advanceTimersByTime(USAGE.beatMs))
     expect(sent.slice(1)).toEqual([{ kind: 'beat', first: null }])
@@ -48,7 +48,18 @@ describe('usage counts (browser side)', () => {
     vi.setSystemTime(T0 + 2 * DAY)
     renderHook(() => useUsageCounts())
     await flush()
-    expect(sent.at(-1)).toEqual({ kind: 'open', first: { gap: 2, systemId: 'bcycle_madison', platform: 'desktop', installed: false, lang: 'en' } })
+    expect(sent.at(-1)).toEqual({ kind: 'open', first: { gap: 2, systemId: 'bcycle_madison', platform: 'desktop', installed: false, nativeApp: false, lang: 'en' } })
+  })
+
+  it('the iOS/Android app reports itself as the app, not as the Home Screen web app', async () => {
+    Object.assign(window, { Capacitor: { isNativePlatform: () => true } })
+    try {
+      renderHook(() => useUsageCounts())
+      await flush()
+      expect(sent).toEqual([{ kind: 'open', first: expect.objectContaining({ installed: false, nativeApp: true }) }])
+    } finally {
+      Reflect.deleteProperty(window, 'Capacitor')
+    }
   })
 
   it('another open the same day (a reload, another tab) is not the first again; a ride start is counted once', async () => {

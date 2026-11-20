@@ -138,6 +138,8 @@ export const en = {
   clearRecentAria: 'Clear recent places',
   storageNote:
     'Saved places, recent destinations, starred stations and your current ride are stored on this device only. Clearing this site’s data (cookies and site data) removes them. With alerts on during a ride, the app’s server also keeps that ride’s timer and end dock (never your location) until the ride ends. The app also sends anonymous usage counts (no identifier or location); Do Not Track or Global Privacy Control turns them off.',
+  storageNoteNative:
+    'Saved places, recent destinations, starred stations and your current ride are stored on this phone only; deleting the app removes them. Ride alerts are scheduled on the phone itself, so the app’s server keeps nothing about your ride. The app also sends anonymous usage counts (no identifier or location).',
   aboutLink: 'About & attributions',
 
   // About
@@ -172,6 +174,7 @@ export const en = {
   tellMeWhen: (kind: Kind) => `Tell me when a ${kind === 'bikes' ? 'bike' : 'dock'} frees up`,
   directions: 'Directions',
   directionsAria: (name: string) => `Walking directions to ${name} in Google Maps`,
+  bikeDirectionsAria: (name: string) => `Bike directions to ${name} in Google Maps`,
   shareStationTitle: (name: string) => `${name}: live bikes and docks`,
 
   // Search
@@ -234,6 +237,9 @@ export const en = {
   quickDestinations: 'Quick destinations',
   routeServerBusy: 'Route server busy',
   errorUnroutable: 'Move the destination closer to a street or path.',
+  errorNoRoute: 'There’s no bike route to this destination. Pick a destination nearby, on a street or path.',
+  errorRouteOffline: 'Couldn’t reach the route server. Check your connection, then try again.',
+  errorRouteFailed: 'Couldn’t get a route right now. Please try again in a moment.',
   errorBusy:
     'The route server is busy right now. We use a free public routing service that handles about one request per second for everyone, so yours couldn’t get through. Please try again in a few seconds.',
   tryAgainIn: (s: number) => `Try again in ${s}s`,

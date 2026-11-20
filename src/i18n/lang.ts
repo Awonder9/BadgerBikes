@@ -12,13 +12,17 @@ export const LANG_NAMES: Record<Lang, string> = { en: 'English', 'zh-Hans': '简
 export const LANG_TAGS: Record<Lang, string> = { en: 'en-US', 'zh-Hans': 'zh-CN', 'zh-Hant': 'zh-TW' }
 
 /**
- * The first supported language in the rider's preference list. Chinese: Traditional for zh-Hant and the
- * regions that write it (Taiwan, Hong Kong, Macau), otherwise Simplified. Nothing supported → English.
+ * The first supported language in the rider's preference list. Chinese: the script the tag names (iPhones say
+ * zh-Hans-HK for Simplified Chinese with the region set to Hong Kong), else Traditional for the regions that
+ * write it (Taiwan, Hong Kong, Macau), otherwise Simplified. Nothing supported → English.
  */
 export function detectLang(preferred: readonly string[]): Lang {
   for (const raw of preferred) {
     const tag = raw.toLowerCase()
-    if (tag === 'zh' || tag.startsWith('zh-')) return /(^|-)(hant|tw|hk|mo)(-|$)/.test(tag) ? 'zh-Hant' : 'zh-Hans'
+    if (tag === 'zh' || tag.startsWith('zh-')) {
+      if (/(^|-)hans(-|$)/.test(tag)) return 'zh-Hans'
+      return /(^|-)(hant|tw|hk|mo)(-|$)/.test(tag) ? 'zh-Hant' : 'zh-Hans'
+    }
     if (tag === 'en' || tag.startsWith('en-')) return 'en'
   }
   return 'en'

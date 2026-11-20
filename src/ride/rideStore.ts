@@ -17,7 +17,8 @@ import type { Place, RouteLeg, StationsSnapshot } from '../types'
 import { useAppStore } from '../store/appStore'
 import { optimizedStops, routeDocks, type RouteDock } from './stationsAlongRoute'
 
-export type RideErrorKind = 'busy' | 'unroutable' | 'other'
+/** What went wrong with a route request; the planner shows each in the rider's language (RouteError). */
+export type RideErrorKind = 'busy' | 'unroutable' | 'noRoute' | 'offline' | 'other'
 
 export interface RideState {
   /** Where the rider starts: a place (walk to the pickup dock first) or a dock (origin.stationId). */
@@ -66,6 +67,12 @@ export interface RideState {
   finishPlan(): void
   reset(): void
 }
+
+/**
+ * A BCycle ride is under way: a Google Maps part was opened, or the timer started ("I've unlocked a bike").
+ * A new plan would clear its timer and alerts, so nothing does that behind the rider's back meanwhile.
+ */
+export const rideUnderWay = (s: Pick<RideState, 'openedParts' | 'rideStartedAtMs'>): boolean => s.openedParts.length > 0 || s.rideStartedAtMs !== null
 
 let inflight: AbortController | null = null
 
@@ -262,25 +269,43 @@ export function chooseRoute(index: number, snapshot: StationsSnapshot, partySize
   })
 }
 
-/** Rider-facing message for a failed route request. */
-export function rideError(err: unknown): { kind: RideErrorKind; message: string } {
-  const e = toAppError(err)
-  if (e.code === 'location_unroutable') return { kind: 'unroutable', message: 'Move the destination closer to a street or path.' }
-  if (e.code === 'upstream_unavailable' || e.code === 'rate_limited') {
-    return {
-      kind: 'busy',
-      message:
-        'The route server is busy right now. We use a free public routing service that handles about one request per second for everyone, so yours couldn’t get through. Please try again in a few seconds.',
-    }
-  }
-  return { kind: 'other', message: e.message }
+/**
+ * The rider's max ride time changed since the stops were picked (e.g. in Settings): re-picks the optimized stops
+ * for it. Never mid-ride — a part opened, or the timer started with "I've unlocked a bike" — since re-picking
+ * clears the ride's progress.
+ */
+export function reoptimizeStops(snapshot: StationsSnapshot, partySize: number, maxRideMinutes: number): void {
+  const r = useRideStore.getState()
+  if (r.status === 'ready' && !rideUnderWay(r) && r.stopsForMaxRide !== maxRideMinutes) chooseRoute(r.routeIndex, snapshot, partySize)
 }
 
-/** Fetches the 3 bike route options start dock → destination and preselects docks along the chosen one. */
+/** A failed route request: its kind (the planner words it for the rider) and the technical message (for logs). */
+export function rideError(err: unknown): { kind: RideErrorKind; message: string } {
+  const e = toAppError(err)
+  const kind: RideErrorKind =
+    e.code === 'location_unroutable'
+      ? 'unroutable'
+      : e.code === 'upstream_unavailable' || e.code === 'rate_limited'
+        ? 'busy'
+        : e.code === 'no_route'
+          ? 'noRoute'
+          : e.code === 'network' || e.code === 'timeout'
+            ? 'offline'
+            : 'other'
+  return { kind, message: e.message }
+}
+
+/**
+ * Fetches the 3 bike route options start dock → destination and preselects docks along the chosen one. On an
+ * e-bike (an all-electric fleet, or "Prefer e-bikes" in a mixed one) the routes are timed at e-bike speed: the
+ * planner's stop times and re-docks follow the chosen route's own pace, so they would otherwise be classic-bike
+ * times.
+ */
 export async function loadRideRoute(systemId: string, snapshot: StationsSnapshot, units: 'imperial' | 'metric', partySize: number): Promise<void> {
   const { startId, destination } = useRideStore.getState()
   const start = startId ? snapshot.byId.get(startId) : undefined
   if (!start || !destination) return
+  const electric = ridesElectric(snapshot.stations, useAppStore.getState().settings.preferEbikes)
   inflight?.abort()
   const ctrl = new AbortController()
   inflight = ctrl
@@ -297,6 +322,7 @@ export async function loadRideRoute(systemId: string, snapshot: StationsSnapshot
         language: APP.language,
         toIsUserPoint: destination.kind !== 'station',
         priority: 'interactive',
+        ...(electric ? { bikeKind: 'electric' as const } : {}),
         ...(destination.stationId ? { stationId: destination.stationId } : {}),
       },
       ctrl.signal,

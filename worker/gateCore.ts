@@ -37,11 +37,6 @@ export interface GateStats {
   consecutiveErrors: number
 }
 
-/** Upstream requests time out after HTTP.timeoutMs (12 s); a grant held much longer belongs to a vanished caller. */
-const HOLD_TIMEOUT_MS = 30_000 // TODO(config): move to src/config.ts (UPSTREAM.holdTimeoutMs)
-/** Consecutive network/timeout/5xx outcomes that open the circuit. */
-const ERROR_THRESHOLD = 3 // TODO(config): move to src/config.ts (UPSTREAM.circuitErrorThreshold)
-
 export const PRIORITIES: readonly Priority[] = ['interactive', 'background']
 
 export const isPriority = (v: unknown): v is Priority => typeof v === 'string' && (PRIORITIES as readonly string[]).includes(v)
@@ -55,8 +50,8 @@ export function gateConfigFor(group: UpstreamGroup): GateCoreConfig {
     maxInFlight: g.maxInFlight,
     circuitOpenMs: g.circuitOpenMs,
     queueDeadlineMs: UPSTREAM.queueDeadlineMs,
-    holdTimeoutMs: HOLD_TIMEOUT_MS,
-    errorThreshold: ERROR_THRESHOLD,
+    holdTimeoutMs: UPSTREAM.holdTimeoutMs,
+    errorThreshold: UPSTREAM.circuitErrorThreshold,
   }
 }
 

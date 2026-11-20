@@ -21,10 +21,13 @@ export interface RangeSummary {
   opens: number
   ridesStarted: number
   routes: number
-  /** Device-days by city / platform / installed / language (each device once per day). */
+  /**
+   * Device-days by city / platform / how the app is used / language (each device once per day). How: 'browser',
+   * 'installed' (the Home Screen web app) or 'app:<platform>' (the iOS/Android app).
+   */
   cities: Share[]
   platforms: Share[]
-  installed: Share[]
+  howUsed: Share[]
   langs: Share[]
   /** Average devices with the app open, by hour of day. */
   hourly: number[]
@@ -40,6 +43,8 @@ function total(days: readonly StatsDay[], pick: (d: StatsDay) => Partial<Record<
 }
 
 const count = (days: readonly StatsDay[], name: UsageEvent | UsageCounter) => days.reduce((n, d) => n + (d.counts[name] ?? 0), 0)
+
+const ranked = (shares: Share[]) => shares.filter((s) => s.value > 0).sort((a, b) => b.value - a.value || a.key.localeCompare(b.key))
 
 /** Ranked shares with the tail past `keep` folded into one "other" row. */
 export function foldTail(shares: readonly Share[], keep: number): Share[] {
@@ -60,6 +65,8 @@ export function summarizeRange(stats: StatsResponse, range: RangeDays): RangeSum
   const counted = stats.since !== null && before !== undefined && stats.since <= before.day
   const deviceDays = days.reduce((n, d) => n + d.users, 0)
   const installed = days.reduce((n, d) => n + d.installed, 0)
+  const apps = total(days, (d) => d.apps)
+  const inApps = apps.reduce((n, s) => n + s.value, 0)
   const hourly = Array.from({ length: 24 }, (_, h) => days.reduce((n, d) => n + (d.beats[h] ?? 0), 0) / (12 * Math.max(days.length, 1)))
   return {
     days,
@@ -72,7 +79,7 @@ export function summarizeRange(stats: StatsResponse, range: RangeDays): RangeSum
     routes: count(days, 'routes'),
     cities: total(days, (d) => d.cities),
     platforms: total(days, (d) => d.platforms),
-    installed: deviceDays > 0 ? [{ key: 'installed', value: installed }, { key: 'browser', value: deviceDays - installed }] : [],
+    howUsed: ranked([{ key: 'browser', value: deviceDays - installed - inApps }, { key: 'installed', value: installed }, ...apps.map((s) => ({ key: `app:${s.key}`, value: s.value }))]),
     langs: total(days, (d) => d.langs),
     hourly,
     features: FEATURES.map((key) => ({ key, value: count(days, key) })),

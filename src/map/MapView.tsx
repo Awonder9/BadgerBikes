@@ -28,10 +28,12 @@ import { LAYER_IDS as L, SOURCE_IDS as S, type MapViewProps, type Padding, type 
 const runtime = import('./maplibre')
 runtime.catch(() => {})
 
+// Opened beside the app: in the Home Screen app there is no browser bar to come back from another site.
+const link = (href: string, text: string) => `<a href="${href}" target="_blank" rel="noopener noreferrer">${text}</a>`
 const ATTRIBUTION = [
-  'Routing: <a href="https://valhalla1.openstreetmap.de">Valhalla</a> &amp; OSRM by FOSSGIS',
-  'Search: <a href="https://photon.komoot.io">Photon</a>',
-  '<a href="https://www.openstreetmap.org/fixthemap">Report a map problem</a>',
+  `Routing: ${link('https://valhalla1.openstreetmap.de', 'Valhalla')} &amp; OSRM by FOSSGIS`,
+  `Search: ${link('https://photon.komoot.io', 'Photon')}`,
+  link('https://www.openstreetmap.org/fixthemap', 'Report a map problem'),
 ]
 
 /** What the station dots count: bikes, open docks, or — "Prefer e-bikes" in a mixed fleet — e-bikes only. */
@@ -119,6 +121,14 @@ function featureNear(map: MlMap, at: { x: number; y: number }, layer: string): {
   return best
 }
 
+/** Whether `coord` shows in the map's unobscured part (inside the padding: not under the panel or map buttons). */
+function inView(map: MlMap, coord: LngLat, pad: Padding | null): boolean {
+  const p = map.project(coord)
+  const el = map.getContainer()
+  const m = MAP.revealMarginPx
+  return p.x >= (pad?.left ?? 0) + m && p.x <= el.clientWidth - (pad?.right ?? 0) - m && p.y >= (pad?.top ?? 0) + m && p.y <= el.clientHeight - (pad?.bottom ?? 0) - m
+}
+
 /** A camera change asked for before the map runtime had loaded (applied without animation once it has). */
 type PendingCamera = { kind: 'fly'; center: LngLat; zoom?: number } | { kind: 'fit'; bbox: BBox; maxZoom?: number }
 
@@ -132,6 +142,10 @@ export function MapView({ ref, onStationClick, onBackgroundClick, onMapPick, onE
   const appliedStyle = useRef<string | null>(null)
   /** The station whose feature-state is `selected` on the map. */
   const selectedOnMap = useRef<string | null>(null)
+  /** The selected station already brought into view (each selection moves the camera at most once). */
+  const revealed = useRef<string | null>(null)
+  /** The station dot last tapped, and when: a tap selects what the rider is looking at, so the map stays put. */
+  const lastTap = useRef<{ id: string; atMs: number } | null>(null)
   const pendingCamera = useRef<PendingCamera | null>(null)
   const padding = useRef<Padding | null>(null)
   const { systemId, mode, selectedStationId, settings, starred, saved } = useAppStore(
@@ -294,8 +308,10 @@ export function MapView({ ref, onStationClick, onBackgroundClick, onMapPick, onE
       const savedPlace = savedHit && (!stationHit || savedHit.px <= stationHit.px) ? useAppStore.getState().savedPlaces.find((p) => p.id === savedHit.feature.properties?.id) : undefined
       if (savedPlace) return emitPick(savedPlace.place.coord)
       const id = stationHit?.feature.properties?.id
-      if (typeof id === 'string') emitStation(id)
-      else emitBackground()
+      if (typeof id === 'string') {
+        lastTap.current = { id, atMs: Date.now() }
+        emitStation(id)
+      } else emitBackground()
     })
     // Long-press (touch) or right-click → pick a point.
     let timer: ReturnType<typeof setTimeout> | null = null
@@ -435,6 +451,27 @@ export function MapView({ ref, onStationClick, onBackgroundClick, onMapPick, onE
     if (!sys || !map) return
     map.fitBounds([[sys.bbox[0], sys.bbox[1]], [sys.bbox[2], sys.bbox[3]]], { padding: 40, maxZoom: 14, duration: 0 })
   }, [systemId])
+
+  // A station opened anywhere but on the map (search, the list, a star, a share link) is brought into view at
+  // street level: it was off screen, under the panel, or a dot among the whole city's. A tapped dot is what the
+  // rider is looking at, and a camera move someone else just started (Nearest open dock) is left alone. After
+  // the city's framing above, so a link to another city's dock isn't framed away.
+  const reveal = useEffectEvent((id: string | null, coord: LngLat | undefined) => {
+    if (id === null) revealed.current = null
+    if (id === null || revealed.current === id || !coord) return // no position yet: once the stations have loaded
+    revealed.current = id
+    const tap = lastTap.current
+    if (tap?.id === id && Date.now() - tap.atMs < 1_000) return
+    const map = mapRef.current
+    if (!map) pendingCamera.current = { kind: 'fly', center: coord, zoom: MAP.revealZoom }
+    else if (!map.isMoving() && (map.getZoom() < MAP.revealZoom || !inView(map, coord, padding.current))) {
+      map.easeTo({ center: coord, zoom: Math.max(map.getZoom(), MAP.revealZoom), duration: MAP.revealDurationMs })
+    }
+  })
+  const selectedCoord = selectedStationId ? snapshot?.byId.get(selectedStationId)?.coord : undefined
+  useEffect(() => {
+    reveal(selectedStationId, selectedCoord)
+  }, [selectedStationId, selectedCoord])
 
   useEffect(() => useLocationStore.subscribe((s) => s.fix, () => drawUser()), [])
 

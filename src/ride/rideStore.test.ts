@@ -3,11 +3,30 @@ import { resetHttpState, setFetchImpl } from '../lib/http'
 import valhallaBike from '../test/fixtures/valhalla/route_bicycle.json'
 import { MADISON, makeSnapshot, makeStation } from '../test/factories'
 import { normalizeValhallaRoute } from '../routing/valhalla'
-import { loadRideRoute, restoreRide, useRideStore } from './rideStore'
+import { AppError } from '../lib/errors'
+import { initialAppState, useAppStore } from '../store/appStore'
+import type { StationsSnapshot } from '../types'
+import { loadRideRoute, reoptimizeStops, restoreRide, rideError, useRideStore } from './rideStore'
 
 const leg = normalizeValhallaRoute(valhallaBike, { role: 'ride', mode: 'bike', from: [-89.3842, 43.07467], to: [-89.4003, 43.07652], units: 'imperial', language: 'en-US' })
 const dest = { kind: 'search' as const, name: 'Memorial Union', coord: [-89.4003, 43.07652] as [number, number] }
 const now = 1_800_000_000_000
+
+describe('route errors', () => {
+  it('are told apart, so the planner words each in the rider’s language instead of showing the raw message', () => {
+    const kinds = [
+      new AppError('upstream_unavailable', 'x'),
+      new AppError('rate_limited', 'x'),
+      new AppError('location_unroutable', 'x'),
+      new AppError('no_route', 'x'),
+      new AppError('network', 'Network request failed: /api/routes'),
+      new AppError('timeout', 'x'),
+      new AppError('http', 'HTTP 502 for /api/routes'),
+      new Error('boom'),
+    ].map((e) => rideError(e).kind)
+    expect(kinds).toEqual(['busy', 'busy', 'unroutable', 'noRoute', 'offline', 'offline', 'other', 'other'])
+  })
+})
 
 describe('ride plan persistence', () => {
   const saved = { startId: 'bcycle_madison_1', destination: dest, routes: [leg, leg, leg], routeIndex: 2, stopIds: ['a', 'b'], openedParts: [0], rideStartedAtMs: now - 60_000 }
@@ -68,6 +87,27 @@ describe('ride progress', () => {
     expect(useRideStore.getState()).toMatchObject({ stopIds: ['x'], openedParts: [0], rideStartedAtMs: t0 })
     s.setDestination(dest)
     expect(useRideStore.getState()).toMatchObject({ openedParts: [], rideStartedAtMs: null })
+  })
+})
+
+describe('re-picking the stops after the max ride time changes (Settings)', () => {
+  beforeEach(() => useRideStore.getState().reset())
+  afterEach(() => useAppStore.setState({ ...initialAppState }))
+  const snapshot = makeSnapshot([makeStation({ id: 'a', coord: MADISON.capitol }), makeStation({ id: 'b', coord: MADISON.memorialUnion })])
+
+  it('happens before the ride, never once its timer runs (re-picking would clear the timer)', () => {
+    useRideStore.setState({ startId: 'a', destination: dest, routes: [leg, leg, leg], routeIndex: 0, route: leg, status: 'ready', stopIds: ['b'], stopsForMaxRide: 25 })
+    useAppStore.getState().updateSettings({ maxRideMinutes: 45 })
+    // "I've unlocked a bike" after walking to the dock: the timer runs before any part is opened.
+    useRideStore.setState({ rideStartedAtMs: now })
+    reoptimizeStops(snapshot, 1, 45)
+    expect(useRideStore.getState()).toMatchObject({ rideStartedAtMs: now, stopsForMaxRide: 25 })
+    useRideStore.setState({ rideStartedAtMs: null, openedParts: [0] })
+    reoptimizeStops(snapshot, 1, 45)
+    expect(useRideStore.getState()).toMatchObject({ openedParts: [0], stopsForMaxRide: 25 })
+    useRideStore.setState({ openedParts: [] })
+    reoptimizeStops(snapshot, 1, 45)
+    expect(useRideStore.getState().stopsForMaxRide).toBe(45)
   })
 })
 
@@ -136,6 +176,32 @@ describe('routing the plan', () => {
     await done
     expect(useRideStore.getState()).toMatchObject({ status: 'ready', routeIndex: 0 })
     expect(useRideStore.getState().routes).toHaveLength(3)
+  })
+
+  it('times the routes for the bike the rider will be on (the stop times and re-docks follow their pace)', async () => {
+    const bikeKinds: unknown[] = []
+    restore = setFetchImpl(async (_url, init) => {
+      bikeKinds.push((JSON.parse(String(init?.body)) as { bikeKind?: unknown }).bikeKind ?? 'classic')
+      return new Response(JSON.stringify({ routes: [leg, leg, leg] }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+    })
+    const plan = async (snap: StationsSnapshot) => {
+      useRideStore.getState().reset()
+      useRideStore.getState().setStart('a')
+      useRideStore.getState().setDestination(dest)
+      await loadRideRoute('bcycle_madison', snap, 'imperial', 1)
+    }
+    const fleet = (o: { ebikes: number; classic: number }) =>
+      makeSnapshot([makeStation({ id: 'a', coord: MADISON.capitol, ...o }), makeStation({ id: 'b', coord: MADISON.libraryMall, ...o })])
+    try {
+      await plan(snapshot) // all e-bikes, as in Madison
+      await plan(fleet({ ebikes: 0, classic: 5 }))
+      await plan(fleet({ ebikes: 2, classic: 3 }))
+      useAppStore.getState().updateSettings({ preferEbikes: true })
+      await plan(fleet({ ebikes: 2, classic: 3 }))
+    } finally {
+      useAppStore.setState({ ...initialAppState })
+    }
+    expect(bikeKinds).toEqual(['electric', 'classic', 'classic', 'electric'])
   })
 
   it('an answer for the previous start or destination never comes back as the plan', async () => {

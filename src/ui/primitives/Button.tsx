@@ -1,5 +1,5 @@
 // Shared buttons. Touch targets are ≥ 44 px everywhere and ≥ 56 px for navigation actions (size="nav").
-import type { ButtonHTMLAttributes, ReactNode } from 'react'
+import type { AnchorHTMLAttributes, ButtonHTMLAttributes, ReactNode } from 'react'
 import { Icon, type IconName } from './Icon'
 
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger'
@@ -40,6 +40,28 @@ export function Button({ variant = 'primary', size = 'md', icon, iconRight, bloc
       {children}
       {iconRight && <Icon name={iconRight} size={size === 'nav' ? 24 : 20} className="shrink-0" />}
     </button>
+  )
+}
+
+export interface ButtonLinkProps extends AnchorHTMLAttributes<HTMLAnchorElement> {
+  href: string
+  variant?: Variant
+  size?: Size
+  icon?: IconName
+}
+
+/** A link to another site or app (Google Maps) that looks like Button; it opens beside the app. */
+export function ButtonLink({ variant = 'primary', size = 'md', icon, className = '', children, ...rest }: ButtonLinkProps) {
+  return (
+    <a
+      {...rest}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={`inline-flex select-none items-center justify-center rounded-xl font-medium transition-colors ${VARIANTS[variant]} ${SIZES[size]} ${className}`}
+    >
+      {icon && <Icon name={icon} size={size === 'nav' ? 24 : 20} className="shrink-0" />}
+      {children}
+    </a>
   )
 }
 

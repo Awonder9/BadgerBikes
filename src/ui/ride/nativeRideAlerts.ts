@@ -3,7 +3,7 @@
 // arrive while Google Maps is in front without a server. They are scheduled again when the timer, the pass, the
 // language or the permissions change, and cancelled when the ride ends. "End dock full" needs the server to watch
 // the dock, which the apps can't reach yet (native push): it shows while the app is open (useRideAlerts).
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { MESSAGES } from '../../i18n'
 import { useLang } from '../../i18n/useT'
@@ -22,9 +22,18 @@ export function useNativeRideAlerts(plan: RidePlan): void {
   const exactAlarms = useExactAlarmAccess()
   const lang = useLang()
   const { includedMinutes } = plan
+  // Cancelled only when a ride ends here, never because the app starts without one: once its last link is opened
+  // a plan is no longer saved, but the BCycle ride (and its alerts) carries on if the app is restarted meanwhile.
+  const scheduled = useRef(false)
   useEffect(() => {
     if (!isNativeApp()) return
     const t = MESSAGES[lang]
-    scheduleTimerAlerts(active && allowed ? upcomingTimerAlerts(startedAt, includedMinutes, Date.now(), t) : [], t.notifyChannel, exactAlarms)
+    if (active && allowed) {
+      scheduleTimerAlerts(upcomingTimerAlerts(startedAt, includedMinutes, Date.now(), t), t.notifyChannel, exactAlarms)
+      scheduled.current = true
+    } else if (scheduled.current) {
+      scheduleTimerAlerts([], t.notifyChannel, exactAlarms)
+      scheduled.current = false
+    }
   }, [active, allowed, exactAlarms, startedAt, includedMinutes, lang])
 }

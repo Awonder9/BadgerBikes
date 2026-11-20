@@ -84,8 +84,9 @@ subscription (no location) until the ride ends, at most 4 hours.
 
 **Usage dashboard:** `https://<your domain>/analytics` (badgerbikes.app/analytics) shows unique users
 (today, 7, 30 and 90 days, all time), who is using the app now, new vs returning users, routes planned and
-rides started, when people use it, cities, devices, Home Screen vs browser, languages and feature use.
-Nothing to set up, and nothing in the app links to it. The counts are anonymous: the app sends no
+rides started, when people use it, cities, devices, browser vs Home Screen web app vs the iOS/Android apps,
+languages and feature use. Nothing to set up, and nothing in the app links to it; it's website-only (the
+iOS/Android apps don't include it). The counts are anonymous: the app sends no
 identifier, IP-derived data or location (how unique users are counted without one:
 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) §8a), and browsers with Do Not Track or Global Privacy
 Control send nothing.

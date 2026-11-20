@@ -1,8 +1,11 @@
 // The apps' identity and link domain are repeated in files no build reads together (capacitor.config.ts, the
-// Xcode and Gradle projects, src/config.ts, .env.native): a change to one must reach all of them.
+// Xcode and Gradle projects, src/config.ts, .env.native): a change to one must reach all of them. And the apps
+// never carry the usage dashboard, which is website-only (the native build's check in vite.config.ts).
 import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { NATIVE_APP } from '../src/config'
+import { websiteOnlyDashboard } from '../vite.config'
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8')
 
@@ -21,5 +24,24 @@ describe('the native projects agree with the app', () => {
     const host = new URL(origin ?? '').host
     expect(read('ios/App/App/App.entitlements')).toContain(`<string>applinks:${host}</string>`)
     expect(read('android/app/src/main/AndroidManifest.xml')).toContain(`android:host="${host}"`)
+  })
+})
+
+describe('the usage dashboard', () => {
+  /** Runs the native build's check on a bundle: its error, or null when the bundle may ship. */
+  const check = (bundle) => {
+    try {
+      websiteOnlyDashboard().generateBundle.call({ error: (message) => { throw new Error(message) } }, {}, bundle)
+      return null
+    } catch (err) {
+      return err.message
+    }
+  }
+  const chunk = (fileName, ...modules) => ({ type: 'chunk', fileName, modules: Object.fromEntries(modules.map((m) => [fileURLToPath(new URL(`../${m}`, import.meta.url)), {}])) })
+
+  it('is website-only: a native build that would carry its page or any of its code fails', () => {
+    expect(check({ 'assets/main.js': chunk('assets/main.js', 'src/App.tsx', 'src/ui/usage.ts'), 'index.html': { type: 'asset', fileName: 'index.html' } })).toBeNull()
+    expect(check({ 'analytics.html': { type: 'asset', fileName: 'analytics.html' } })).toMatch(/website-only.*analytics\.html/)
+    expect(check({ 'assets/main.js': chunk('assets/main.js', 'src/App.tsx', 'src/analytics/aggregate.ts') })).toMatch(/website-only.*src\/analytics\/aggregate\.ts/)
   })
 })

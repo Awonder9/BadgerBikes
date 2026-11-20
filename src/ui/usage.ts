@@ -2,7 +2,8 @@
 //
 // Sent: "the app was opened"; "the app is open", once per USAGE.beatMs window while it is visible; a few
 // feature uses (USAGE.events); and with a device's first open of the day, the number of days since its
-// previous active day plus its city, kind of device, language and whether it is installed. No identifier,
+// previous active day plus its city, kind of device, language and how it is used (a browser tab, the Home
+// Screen web app or the iOS/Android app). No identifier,
 // location or anything else that could tell devices apart: the device keeps only its last active day and
 // check-in window. Nothing is sent with Do Not Track or Global Privacy Control on, from automated browsers,
 // or where site storage is blocked (a device couldn't tell a new day from a repeat there).
@@ -14,7 +15,7 @@ import { currentLang } from '../i18n/useT'
 import { dayKey, firstOfDay, parseUsageMemory, windowOf, type UsageMemory } from '../lib/usage'
 import { useRideStore, type RideState } from '../ride/rideStore'
 import { useAppStore } from '../store/appStore'
-import { isStandalone, platform } from './platform'
+import { isNativeApp, isStandalone, platform } from './platform'
 
 const STORAGE_KEY = 'bcycle.usage'
 
@@ -49,7 +50,11 @@ function checkIn(kind: 'open' | 'beat'): void {
   // Claims the window first, so this device's other tabs skip it. No storage, no report (see above).
   if (!m || !remember({ ...m, window: windowOf(now, USAGE.beatMs) })) return
   const f = firstOfDay(m, today, USAGE.maxGapDays)
-  const first: UsageFirst | null = f ? { gap: f.gap, systemId: useAppStore.getState().systemId, platform: platform(), installed: isStandalone(), lang: currentLang() } : null
+  // The apps count as installed in the app (no install tip), but for the dashboard they are the apps.
+  const nativeApp = isNativeApp()
+  const first: UsageFirst | null = f
+    ? { gap: f.gap, systemId: useAppStore.getState().systemId, platform: platform(), installed: !nativeApp && isStandalone(), nativeApp, lang: currentLang() }
+    : null
   api.usage({ kind, first }).then(
     () => {
       const latest = memory()

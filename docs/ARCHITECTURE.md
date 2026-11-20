@@ -89,9 +89,9 @@ Browser (React app, static assets on Cloudflare)       Cloudflare Worker (/api/*
 
 **Usage policies (must comply):** FOSSGIS = at most 1 request/second **for both hosts combined**, no heavy use,
 valid User-Agent identifying the app, attribution "© OpenStreetMap contributors" + link to
-`https://www.openstreetmap.org/fixthemap`, and an **easily reachable operator email** on the site (Worker var
-`CONTACT_EMAIL` = badgerbikes.app@gmail.com, sent in the User-Agent and shown in About). High-traffic sites may not use FOSSGIS — a public
-launch should point `VITE_VALHALLA_URL`/`VITE_OSRM_*` at self-hosted or commercial Valhalla-compatible
+`https://www.openstreetmap.org/fixthemap`, and an **easily reachable operator email** on the site (the
+`CONTACT_EMAIL` Worker secret, sent in the User-Agent and shown in About). High-traffic sites may not use
+FOSSGIS — a public launch should point `VITE_VALHALLA_URL`/`VITE_OSRM_*` at self-hosted or commercial Valhalla-compatible
 endpoints (the code supports this via env).
 
 
@@ -111,7 +111,8 @@ fails), `POST /api/routes` (three bike route options), `POST /api/route-details`
 `{ error: { code, message, retryable } }` with 4xx/5xx; codes from `AppErrorCode`.
 
 - Validate everything: `system` must match a registry id; coordinates finite and in range; strings trimmed
-  and length-limited; body ≤ `HTTP.maxBodyBytes`. Unknown fields ignored.
+  and length-limited; body ≤ `HTTP.maxBodyBytes` (read as a stream and refused once past it, also without a
+  Content-Length). Unknown fields ignored.
 - Per-client-IP limits via Rate Limiting bindings (`ROUTE_LIMITER`, `GEOCODE_LIMITER`, `PUSH_LIMITER`);
   exceeded → 429 `rate_limited`.
 - Responses: JSON, `Cache-Control: no-store`, `X-Content-Type-Options: nosniff`, same-origin only.
@@ -128,7 +129,10 @@ once) and gate releases (a lost release would hold FOSSGIS's single slot until t
 Valhalla requests. When the gate or the servers refuse, the route options would degrade to straight-line
 guesses, which are useless for finding docks — so `/api/routes` returns 503 `upstream_unavailable` instead
 and the planner shows "Route server busy … try again in a few seconds" with a short countdown
-(`RIDE.busyRetrySeconds` = 3). Already-computed options are cached, so the retry is cheap.
+(`RIDE.busyRetrySeconds` = 3). Already-computed options are cached, so the retry is cheap. When both routers
+answered that there is no route at all, retrying can't help: `/api/routes` returns 422 `no_route` and the
+planner asks for a destination on a street or path. Other failures are worded by kind too (offline, other;
+`rideError`), never shown as the raw technical message.
 
 **Static asset headers** (`public/_headers`): CSP (`connect-src 'self' https://tiles.openfreemap.org`, …),
 `Referrer-Policy: strict-origin-when-cross-origin`, `X-Content-Type-Options: nosniff`,
@@ -178,8 +182,8 @@ polyline6 → `[lon, lat]`; connectors when snapped > 3 m; duplicate points remo
 spoken-instruction text (`verbal*`, unused since navigation moved to Google Maps; `routeForApp` in `worker/app.ts`).
 
 **Fallbacks**: Valhalla → OSRM route (never `/table`) → straight line. `route()` rejects only with `aborted`
-or `location_unroutable`; `routeLadder()` also rejects with `upstream_unavailable` when any option is a
-straight-line estimate (§4).
+or `location_unroutable`; `routeLadder()` never returns a straight-line estimate: it rejects with `no_route`
+when both routers found no route for an option, else with `upstream_unavailable` (§4).
 
 ---
 
@@ -210,8 +214,9 @@ stretch would exceed the rider's max ride time (`settings.maxRideMinutes`, defau
 the last on-route dock is more than a 400 m walk away. `optimizedStops` preselects the fewest docks that keep
 every ride within the limit (greedy: re-dock at the farthest usable dock still in range), ending at the
 usable dock closest to the destination; the rest are shown as optional stops. Ride times use the chosen
-route's pace (duration ÷ distance) so they match the route cards. The last checked dock ends the ride. The
-list is recomputed from live counts, but the stops already chosen always stay in it (`keepIds`): a chosen
+route's pace (duration ÷ distance) so they match the route cards; on an e-bike the routes are requested with
+`bikeKind: 'electric'`, so that pace is an e-bike's (§8, *Prefer e-bikes*). The last checked dock ends the
+ride. The list is recomputed from live counts, but the stops already chosen always stay in it (`keepIds`): a chosen
 dock that fills up stays the end of the ride and is reported as full (with a usable alternative listed),
 instead of silently dropping out of the plan and its Google links.
 
@@ -248,8 +253,11 @@ the rider's position), one-shot alerts (vibration + system notification if permi
 service worker's `showNotification` because Android Chrome refuses `new Notification()`; tapping one focuses
 the app via `public/sw-notifications.js`). Mid-ride, a dock tapped on the map opens its card (it never
 replaces the destination, which would also clear the ride timer and opened parts); *Nearest open dock* is on
-the ride card too. The first ride in a city asks which pass the rider has (only when its passes include
-different times; `passChoiceMatters`), so the timer warns at the right moment.
+the ride card too. While a BCycle ride is under way (`rideUnderWay`: a part opened or the timer started), that
+card's *Ride to here* — and a dropped pin's *Ride here* (a long press, or a saved place's marker) — is a Google
+Maps bike link from the rider's position, like the replacement docks', instead of a new plan (which would start
+from the first dock and clear the timer). The first ride in a city asks which pass the rider has (only when its
+passes include different times; `passChoiceMatters`), so the timer warns at the right moment.
 
 **Background ride alerts** (Web Push; `src/ui/ride/backgroundAlerts.ts`, `worker/rideAlerts*.ts`,
 `worker/webPush.ts`): a web page cannot run while Google Maps is in front, so while a ride is under way and
@@ -295,7 +303,10 @@ like Settings → City), then removed from the address bar.
   from `useLocationStore` (outside React). The theme follows the OS (`prefers-color-scheme`) live; the style
   is only reloaded when it actually changes. Taps hit the nearest station dot within 12 px; a long press
   (touch timer or the browser's contextmenu) picks a point once. While planning, a tapped dock fills the
-  planner (start, then destination) instead of opening the station card.
+  planner (start, then destination) instead of opening the station card. A station opened from search, the
+  list, a star or a link is brought into view at street level (`MAP.revealZoom`) when it is off screen, under
+  the panel or the map is zoomed out further; a tapped dot leaves the camera alone. Attribution links open
+  beside the app (the Home Screen app has no browser bar to come back with).
 - **Location** (`src/location/locationStore.ts`): watched only after the rider asks (Locate, Nearest dock,
   "My location" search); asking again after an error (denied, unavailable) starts a new watch, and Locate
   says why when there is no position. `waitForFix()` for one-shot needs: a fresh fix, else the next one, else
@@ -318,7 +329,10 @@ like Settings → City), then removed from the address bar.
 - **Prefer e-bikes** (`settings.preferEbikes`, offered only when `fleetComposition` is `mixed`): the Bikes
   view counts e-bikes (`ebikeState` / `ebikes` feature properties; the toggle reads *E-bikes*), pickup
   ranking adds `RIDE.pickupNoEbikePenaltyS` for docks without enough e-bikes, and planner estimates use
-  e-bike speeds (`ridesElectric`), as they already did for all-electric fleets. Route requests are unchanged.
+  e-bike speeds (`ridesElectric`), as they do for all-electric fleets: the route request carries
+  `bikeKind: 'electric'` (Valhalla's `cycling_speed` = `SPEEDS.bikeKph.electric`), because the route cards,
+  stop times and re-docks all follow the chosen route's pace. A plan already routed keeps its times until it is
+  routed again.
 - **Nearest open dock** (`useNearestOpenDock`, home panel and ride card): the rider's position →
   `nearestOpenDock` (closest dock where the party can return, any distance) → docks view, its card open.
 - **Offline banner**: `navigator.onLine` (`useOnline`); it shares a stack under the map buttons with the
@@ -347,7 +361,9 @@ how, without tracking anyone. **No identifier leaves the device**, and nothing s
   `beat` once per `USAGE.beatMs` window while visible (other tabs skip a claimed window), and `event` for a
   few feature uses (`USAGE.events`; a ride start is the first Google Maps link / walk / GPX of a ride). With
   its first open or check-in of a day it adds `first`: the **gap in days since its previous active day**
-  (null = new device), city, platform, installed or not, language.
+  (null = new device), city, platform, how it is used (`installed`: the Home Screen web app; `nativeApp`: the
+  iOS/Android app, counted by platform; neither: a browser tab), language. `nativeApp` is absent from reports
+  by web app versions older than the apps; such reports, and days stored before, count no app use.
 - **Unique users from gaps**: a device active in the window [S, E] is counted once, on its first active day d
   in the window, where its gap > d − S. So per day the server keeps a histogram of gaps (1 … 90, the last
   bucket "90 or more") and any window up to `USAGE.maxGapDays` is a sum (`uniqueUsers` in
@@ -361,12 +377,17 @@ how, without tracking anyone. **No identifier leaves the device**, and nothing s
   older than `USAGE.keepDays` are deleted. No IP, User-Agent, location or identifier is stored.
 - Not counted: Do Not Track / Global Privacy Control on, `navigator.webdriver` (automation, tests),
   bot-like User-Agents (server side), browsers without working site storage. Settings → storage note says so.
-- **Dashboard** at `/analytics`: public by URL (anonymous totals only), `noindex` (meta + `X-Robots-Tag`),
-  not linked from the app, not precached by the app's service worker (`globIgnores`, and
-  `navigateFallbackDenylist` so the app shell never answers it). `GET /api/analytics` is rate-limited and
+  The iOS/Android apps count like the web app (their web views send neither signal); the app's storage note
+  says it sends anonymous usage counts.
+- **Dashboard** at `/analytics`, **website only**: public by URL (anonymous totals only), `noindex` (meta +
+  `X-Robots-Tag`), not linked from the app, not precached by the app's service worker (`globIgnores`, and
+  `navigateFallbackDenylist` so the app shell never answers it), and never in the iOS/Android apps: their build
+  leaves the page out, fails if any of it would be included (`websiteOnlyDashboard` in `vite.config.ts`), and
+  `/analytics` links open in the browser (only `/` opens the apps, §12). `GET /api/analytics` is rate-limited and
   cached per Worker isolate for 30 s. Charts are hand-made SVG (`src/analytics/charts.tsx`): stacked columns
   (new vs returning), lines (7/30-day uniques; routes vs rides), hour-of-day activity, ranked bars
-  (cities, devices, installed, languages, features); every chart has a table view and keyboard scrubbing.
+  (cities, devices, browser / Home Screen web app / iOS or Android app, languages, features); every chart has
+  a table view and keyboard scrubbing.
 
 ---
 
@@ -410,9 +431,12 @@ how, without tracking anyone. **No identifier leaves the device**, and nothing s
 - Native apps (§12): CORS for the apps' two origins only, preflights and errors included, and the link files
   (`worker/worker.test.ts`); telling the app from a browser tab (`src/ui/platform.test.ts`); the location plugin
   and its errors (`src/location/geoSource.test.ts`); the timer alerts the apps schedule
-  (`src/ride/rideProgress.test.ts`); the alerts guide's native cases; which links open the app, once
-  (`src/native/appLinks.test.ts`); the back button (`src/ui/layout/backButton.test.ts`); the app ID and link
-  domain agreeing across the native projects (`scripts/native-projects.test.mjs`). No automated tests run the apps
+  (`src/ride/rideProgress.test.ts`), scheduled even without Android 7's notification channels
+  (`src/native/notifications.test.ts`) and kept when the app restarts without the ride
+  (`src/ui/ride/nativeRideAlerts.test.tsx`); the alerts guide's native cases; which links open the app, once
+  (`src/native/appLinks.test.ts`); the back button (`src/ui/layout/backButton.test.ts`); the BCycle button in
+  the Android app (`src/ui/browse/StationCard.test.tsx`); the app ID and link domain agreeing across the native
+  projects (`scripts/native-projects.test.mjs`). No automated tests run the apps
   themselves: build them with `npm run ios` / `npm run android` (§12 lists what was checked by hand).
 - Background alerts: Web Push encryption against the RFC 8291 test vectors and decrypted as a browser would,
   the VAPID JWT verified with WebCrypto (`worker/webPush.test.ts`); the RideAlerts rules and the Durable
@@ -481,7 +505,8 @@ few Capacitor plugins where the web view falls short.
   Saved places, settings and the ride plan live in that origin's storage, separate from the browser's.
 - **Telling the app apart**: `isNativeApp()` (`src/ui/platform.ts`) reads `window.Capacitor`, which the native
   bridge defines before the page runs. The app counts as installed (`isStandalone()`): no install tip and no
-  "Add to Home Screen" alert steps.
+  "Add to Home Screen" alert steps. Its usage counts say it is the app (`nativeApp`), so the dashboard tells it
+  apart from the Home Screen web app; the dashboard itself is website-only (§8a).
 - **Plugins** (`@capacitor/app`, `geolocation`, `local-notifications`, `share`, `filesystem`): imported only in
   `src/native/plugins.ts`, a chunk of its own (~10 KB) loaded by `nativePlugins()` (`src/native/index.ts`) and
   only inside the apps, so the web app never downloads it (like maplibre, §2). The wrappers around them live in
@@ -499,7 +524,8 @@ few Capacitor plugins where the web view falls short.
   time" on the phone as local notifications (`upcomingTimerAlerts`, the same times the Worker uses:
   `timerAlertTimes`). They arrive while Google Maps is in front without a server, are scheduled again when the
   timer, the pass, the language or the permissions change (fixed ids, `NATIVE_ALERT_IDS`, so a new one replaces
-  the old) and are cancelled when the ride ends. While the app is open the scheduled ones show themselves, so the
+  the old) and are cancelled when the ride ends in the app — not when the app restarts without it: once its last
+  link is opened a plan is no longer saved, but the BCycle ride and its alerts carry on, as the Worker's do. While the app is open the scheduled ones show themselves, so the
   in-app alert only vibrates for them; "end dock full" / "filling up" are shown right away from the app, which
   is the only place they can come from (needs the app open). "Turn on alerts" asks for the plugin's permission;
   the alerts guide (`alertsGuide.ts`) says `native` once allowed. Android: since Android 14 exact alarms ("Alarms
@@ -507,7 +533,8 @@ few Capacitor plugins where the web view falls short.
   25-minute warning a window of +18 min). The plugin would open that settings screen by itself when scheduling;
   the app instead schedules inexact alarms and the ride card offers "Allow alarms & reminders" (`exactAlarms`),
   then schedules them again as exact. Android shows them on the high-importance channel `ride-alerts` (named in
-  the rider's language) with the white bike `ic_stat_bike`.
+  the rider's language; Android 7 has no channels, and the plugin's refusal to make one is ignored) with the
+  white bike `ic_stat_bike`.
 - **Share links open the apps** (Universal Links, App Links): the apps claim `https://badgerbikes.app/` (any query;
   `/analytics` and other paths stay in the browser): iOS through the Associated Domains entitlement
   (`ios/App/App/App.entitlements`, set for Release builds only, since Apple's free Personal Team can't sign it and
@@ -521,9 +548,12 @@ few Capacitor plugins where the web view falls short.
 - **Back button** (Android; `src/ui/layout/backButton.ts`): leaves a focused text field first, then closes one
   level at a time like the panels' own Back and Close buttons (About → Settings → map; a station's card, a pin,
   the planner or the list → map); on the map it sends the app to the background (`App.minimizeApp`).
-- **GPX file**: the web views can't download. iOS's has Web Share with files (the share sheet); Android's has no
-  Web Share, so the file is written to the app's cache folder and offered through the phone's share sheet
-  (`src/native/share.ts`). Closing the sheet without choosing an app starts nothing, as on the web.
+- **Sharing**: the web views can't download. iOS's has Web Share (the share sheet, files included); Android's has
+  none, so links go through the phone's share sheet and the GPX file is written to the app's cache folder and
+  offered there (`src/native/share.ts`). Closing the sheet without choosing an app starts nothing, as on the web.
+- **BCycle button**: only Chrome can open the intent:// link that launches BCycle on Android (the app's web view
+  hands it to the system, which drops it), so the Android app opens BCycle's Play Store page, which shows "Open"
+  when it is installed — as the iPhone button does with the App Store.
 - **Links to other sites** (`target="_blank"`, Google Maps) leave the web view: Capacitor hands them to the
   system, which opens the Google Maps app when installed.
 - **Look**: Android draws edge to edge with `env(safe-area-inset-*)` set as in a browser when its System WebView
@@ -540,7 +570,8 @@ few Capacitor plugins where the web view falls short.
   WebKit prompt); on Android the notification and "Alarms & reminders" prompts, the timer alerts scheduled exact,
   "almost up" delivered with Google Maps in front and opening the app when tapped, both cancelled by End ride;
   the back button; the GPX share sheet; share links opening the app cold and warm, not again after a reload, and
-  `/analytics` staying in the browser.
+  `/analytics` staying in the browser; then the share sheet for links, the BCycle button opening the store page,
+  and a dock picked from the list brought into view.
 - **Not built yet**: "end dock full" while the app is in the background (it needs native push from the Worker:
   APNs with an Apple Developer account's key, Firebase Cloud Messaging for Android), haptics on iPhone, store
   listings. Untested: Universal Links on an iPhone (they need the Team ID and a paid developer account), Android's

@@ -1,7 +1,7 @@
 // Router facade: Valhalla → OSRM → straight for routes, and the three bike route options.
 // See ./types.ts for the rejection contract.
 import { BIKE_ROUTING, CACHE_TTL_MS, ENDPOINTS } from '../config'
-import { AppError, isAbort } from '../lib/errors'
+import { AppError, isAbort, toAppError } from '../lib/errors'
 import type { UpstreamFetch } from '../lib/upstream'
 import type { LngLat, RouteLeg } from '../types'
 import { mapOsrmError, normalizeOsrmRoute, osrmRouteUrl } from './osrm'
@@ -36,7 +36,12 @@ export function createRouter(deps: RouterDeps): AltRouter {
   const ep = deps.endpoints ?? ENDPOINTS
   const up = deps.upstream
 
-  async function route(req: RouteRequest, opts: RequestOpts = {}): Promise<RouteLeg> {
+  /**
+   * Valhalla, then OSRM: the first route found, or why each of them failed (no straight-line guess here).
+   * Rejects at once when retrying elsewhere can't help: aborted, or a pin that can't reach a street.
+   */
+  async function fromProviders(req: RouteRequest, opts: RequestOpts): Promise<RouteLeg | AppError[]> {
+    const failures: AppError[] = []
     const priority = opts.priority ?? 'interactive'
     const keyTail = `${req.mode}|${req.bikeKind ?? 'classic'}|${req.useRoads ?? BIKE_ROUTING.defaultUseRoads}|${req.units}|${req.language}|${r5(req.from)}|${r5(req.to)}|${req.headingDeg ?? ''}`
     try {
@@ -54,6 +59,7 @@ export function createRouter(deps: RouterDeps): AltRouter {
       const err = mapValhallaError(e, req)
       if (isAbort(err) || opts.signal?.aborted) throw aborted()
       if (!isFallbackable(err)) throw err
+      failures.push(toAppError(err))
     }
     try {
       const json = await up<unknown>({
@@ -70,22 +76,33 @@ export function createRouter(deps: RouterDeps): AltRouter {
       const err = mapOsrmError(e)
       if (isAbort(err) || opts.signal?.aborted) throw aborted()
       if (!isFallbackable(err)) throw err
+      failures.push(toAppError(err))
     }
-    return straightLeg(req)
+    return failures
+  }
+
+  /** A route from Valhalla, else OSRM, else a straight-line estimate (walking legs and the like). */
+  async function route(req: RouteRequest, opts: RequestOpts = {}): Promise<RouteLeg> {
+    const found = await fromProviders(req, opts)
+    return Array.isArray(found) ? straightLeg(req) : found
   }
 
   /**
    * One bike route per use_roads level, in order (identical routes are kept so options stay positional; the
    * UI marks them). The last option is replaced by the quickest of all, so "Fastest" is always fastest.
-   * A straight-line guess is useless for picking docks along the way, so when the routing servers are busy
-   * (or down) this rejects with 'upstream_unavailable' and the rider is asked to retry shortly.
+   * A straight-line guess is useless for picking docks along the way: when both routers found no way between
+   * the points this rejects with 'no_route' (trying again won't help), and when they are busy or down with
+   * 'upstream_unavailable' (the rider is asked to retry shortly).
    */
   async function routeLadder(req: RouteRequest, levels: readonly number[], opts: RequestOpts = {}): Promise<RouteLeg[]> {
     const out: RouteLeg[] = []
     for (const useRoads of levels.slice(0, 3)) {
-      const leg = { ...(await route({ ...req, useRoads }, opts)), useRoads }
-      if (leg.provider === 'straight') throw new AppError('upstream_unavailable', 'The routing server is busy. Try again in a few seconds.', { retryable: true, provider: 'valhalla' })
-      out.push(leg)
+      const found = await fromProviders({ ...req, useRoads }, opts)
+      if (Array.isArray(found)) {
+        if (found.length > 0 && found.every((e) => e.code === 'no_route')) throw new AppError('no_route', 'No bike route between these points.', { provider: 'valhalla' })
+        throw new AppError('upstream_unavailable', 'The routing server is busy. Try again in a few seconds.', { retryable: true, provider: 'valhalla' })
+      }
+      out.push({ ...found, useRoads })
     }
     const quickest = out.reduce<RouteLeg | undefined>((m, l) => (!m || l.duration < m.duration ? l : m), undefined)
     if (out.length > 1 && quickest) out[out.length - 1] = quickest
