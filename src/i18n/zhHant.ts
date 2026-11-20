@@ -110,6 +110,7 @@ export const zhHant: Messages = {
   saveAsWork: '設為公司',
   stations: '站點',
   nearestBike: '最近的單車',
+  nearestDockShort: '最近空位',
   nearestOpenDock: '最近有空位的站點',
 
   // Settings

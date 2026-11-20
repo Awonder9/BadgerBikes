@@ -110,6 +110,8 @@ export const en = {
   saveAsWork: 'Save as Work',
   stations: 'Stations',
   nearestBike: 'Nearest bike',
+  /** Half-width home button beside Nearest bike: must fit one line on a phone. */
+  nearestDockShort: 'Nearest dock',
   nearestOpenDock: 'Nearest open dock',
 
   // Settings

@@ -71,11 +71,11 @@ function NearestButtons() {
   return (
     <>
       <div className="grid grid-cols-2 gap-2">
-        <Button block variant="secondary" icon="bike" disabled={bike.finding} onClick={bike.find}>
+        <Button block variant="secondary" icon="bike" className="whitespace-nowrap" disabled={bike.finding} onClick={bike.find}>
           {bike.finding ? t.findingYou : t.nearestBike}
         </Button>
-        <Button block variant="secondary" icon="dock" disabled={dock.finding} onClick={dock.find}>
-          {dock.finding ? t.findingYou : t.nearestOpenDock}
+        <Button block variant="secondary" icon="dock" className="whitespace-nowrap" disabled={dock.finding} onClick={dock.find}>
+          {dock.finding ? t.findingYou : t.nearestDockShort}
         </Button>
       </div>
       {message && (

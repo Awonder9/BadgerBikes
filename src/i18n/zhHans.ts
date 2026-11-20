@@ -110,6 +110,7 @@ export const zhHans: Messages = {
   saveAsWork: '设为公司',
   stations: '站点',
   nearestBike: '最近的单车',
+  nearestDockShort: '最近空位',
   nearestOpenDock: '最近有空位的站点',
 
   // Settings

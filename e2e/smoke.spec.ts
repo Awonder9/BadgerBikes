@@ -298,15 +298,27 @@ test('a dock opened from a link or from the station list is brought into view, a
   await expect.poll(() => near(C)).toBe(true)
 })
 
-test('"Nearest open dock" opens the closest dock with room, on the docks map', async ({ page, context }) => {
+test('"Nearest dock" opens the closest dock with room, on the docks map', async ({ page, context }) => {
   await mockApi(context)
   await context.grantPermissions(['geolocation'])
   await context.setGeolocation({ latitude: B[1] + 0.0005, longitude: B[0] }) // next to Bravo Park
   await skipInstallTip(page)
   await page.goto('/')
-  await page.getByRole('button', { name: 'Nearest open dock' }).click()
+  await page.getByRole('button', { name: 'Nearest dock' }).click()
   await expect(page.getByRole('region', { name: 'Station Bravo Park' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Docks' })).toHaveAttribute('aria-pressed', 'true')
+})
+
+test('"Nearest bike" opens the closest dock with bikes, on the bikes map', async ({ page, context }) => {
+  await mockApi(context)
+  await context.grantPermissions(['geolocation'])
+  await context.setGeolocation({ latitude: B[1] + 0.0005, longitude: B[0] }) // next to Bravo Park
+  await skipInstallTip(page)
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Docks' }).click()
+  await page.getByRole('button', { name: 'Nearest bike' }).click()
+  await expect(page.getByRole('region', { name: 'Station Bravo Park' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Bikes' })).toHaveAttribute('aria-pressed', 'true')
 })
 
 test('an offline banner shows while there is no connection', async ({ page, context }) => {
