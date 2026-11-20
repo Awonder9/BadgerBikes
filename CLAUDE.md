@@ -10,7 +10,7 @@ turn-by-turn directions, with ride progress tracked in the app.
   `@cloudflare/vite-plugin`; share links like `?start=<station id>&to=<lat,lon>` are handy)
 - `npm run check` — typecheck (`tsc -b`) + lint (`oxlint`) + unit tests (`vitest run`)
 - `npx vitest run src/<dir>` — run a subset of unit tests
-- `npm run build` — production build to `$TMPDIR/bcycle-live-dist` (outside OneDrive; `BUILD_OUT_DIR=dist` overrides)
+- `npm run build` — production build to `$TMPDIR/bcycle-live-dist` (`BUILD_OUT_DIR=dist` overrides)
 - `npm run preview` — build, then serve the production build in workerd locally
 - `npm run deploy` — build + `wrangler deploy` to Cloudflare (needs `npx wrangler login` once)
 - `npm run build:native` — the bundle for the iOS/Android apps (Vite mode `native`: `/api/*` on `VITE_WEB_ORIGIN`
@@ -38,7 +38,7 @@ turn-by-turn directions, with ride progress tracked in the app.
   §12); their `public/` copies of it are generated and gitignored. There the page is cross-origin to the Worker
   (CORS allows only `NATIVE_APP.origins`); tell the app apart with `isNativeApp()` (`src/ui/platform.ts`).
   `src/native/` wraps the Capacitor plugins (location, local notifications, share links, back button, sharing a
-  file). Android's Gradle builds outside the project (`android/gradle.properties`: OneDrive breaks Gradle's locks).
+  file). Android's Gradle builds outside the project (`android/gradle.properties`).
 - Pure modules in `src/` that the Worker imports must be runtime-agnostic: no DOM, no Node APIs.
   `tsconfig.worker.json` (no DOM lib) enforces this for everything the Worker imports.
 

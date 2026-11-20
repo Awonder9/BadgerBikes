@@ -485,8 +485,7 @@ platform's web view (WKWebView, Android System WebView), loaded from the phone i
 few Capacitor plugins where the web view falls short.
 
 - **Build**: `npm run build:native` = `tsc -b` + `vite build --mode native` + `cap sync`. Native mode
-  (`vite.config.ts`) builds into Capacitor's `webDir` (`<system temp>/bcycle-live-native`, outside the
-  cloud-synced folder like the web build) without the Cloudflare plugin (no Worker build, and
+  (`vite.config.ts`) builds into Capacitor's `webDir` (`<system temp>/bcycle-live-native`, like the web build) without the Cloudflare plugin (no Worker build, and
   `.wrangler/deploy/config.json` is left alone, so a native bundle can't be deployed by mistake), without the
   service worker and web manifest (`VitePWA({ disable })` turns `useRegisterSW` into a no-op, so the update prompt
   never shows; app updates come from the stores), and without the usage dashboard. `cap sync` copies the bundle
@@ -578,14 +577,8 @@ few Capacitor plugins where the web view falls short.
   APNs with an Apple Developer account's key, Firebase Cloud Messaging for Android), haptics on iPhone, store
   listings. Untested: Universal Links on an iPhone (they need the Team ID and a paid developer account), Android's
   edge-to-edge path (the emulator's web view was 133), and real phones.
-- **Cloud-synced folder**: OneDrive breaks Gradle's lock files ("Cannot lock file hash cache", "Could not add
-  entry … to cache") and would upload hundreds of MB per build, so `android/gradle.properties` puts Gradle's and
-  Kotlin's per-project caches and every module's build directory (`bcycle.buildDir`, applied in
-  `android/build.gradle`) under `/tmp/bcycle-live-android`. `app/build.gradle` copies the finished APK/AAB back
-  to `android/app/build/outputs`, where `npx cap run android` and `npx cap build android` read it. Xcode's build
-  products and Swift packages go to DerivedData, outside the project. What can't move: `cap sync` deletes and
-  recreates `ios/App/App/public`, `android/app/src/main/assets/public` and the two `capacitor-cordova-*-plugins`
-  folders, and when OneDrive hasn't caught up with the deletion it keeps the new folder as "… 2" and drops the
-  original (seen 2026-11-19 after three syncs in 20 minutes): Xcode then has no web bundle and Gradle no
-  `:capacitor-cordova-android-plugins`. Renaming the "… 2" folders back fixes it; developing outside the synced
-  folder (or pausing OneDrive while syncing) avoids it.
+- **Build output outside the project**: `android/gradle.properties` puts Gradle's and Kotlin's per-project caches
+  and every module's build directory (`bcycle.buildDir`, applied in `android/build.gradle`) under
+  `/tmp/bcycle-live-android`. `app/build.gradle` copies the finished APK/AAB back to
+  `android/app/build/outputs`, where `npx cap run android` and `npx cap build android` read it. Xcode's build
+  products and Swift packages go to DerivedData, outside the project.

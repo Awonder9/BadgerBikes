@@ -111,12 +111,8 @@ npm run build:native   # only build and copy (after changing src/, before runnin
 
 - iOS needs Xcode; Android needs Android Studio (Gradle uses the JDK 21 it ships with). To run on your own
   iPhone, pick your Apple developer team once in Xcode → App target → Signing & Capabilities.
-- Gradle keeps its build files in `/tmp/bcycle-live-android` (`android/gradle.properties`), outside this
-  cloud-synced folder, whose sync breaks Gradle's lock files; the finished APK is copied back to
-  `android/app/build/outputs`.
-- In a OneDrive (or other cloud-synced) folder, `cap sync` can end with folders named `public 2` or
-  `capacitor-cordova-*-plugins 2` and the originals gone (OneDrive's conflict handling): rename them back, or pause
-  syncing while running `npm run build:native`. A project folder outside cloud sync avoids it.
+- Gradle keeps its build files in `/tmp/bcycle-live-android` (`android/gradle.properties`); the finished APK is
+  copied back to `android/app/build/outputs`.
 - Live reload in the iOS Simulator: `npm run dev`, then `npx cap run ios --live-reload --host localhost --port 5173`.
 - To try a native build against your local Worker, put `VITE_WEB_ORIGIN=http://localhost:5173` in
   `.env.native.local` (gitignored) while `npm run dev` runs. The Android emulator also needs
