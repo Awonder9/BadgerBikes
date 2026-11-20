@@ -32,6 +32,7 @@ import { isNativeApp, shareOrigin } from '../platform'
 import { countUse } from '../usage'
 import { IosAlertsHint } from './AlertsHelp'
 import { RideStatusCard } from './RideProgress'
+import { LegIndicator, NextLegCard, TripStops } from './TripStops'
 import { useRidePlan, type RidePlan } from './useRidePlan'
 
 export function RidePlannerPanel() {
@@ -100,6 +101,8 @@ export function RidePlannerPanel() {
         )}
       </header>
 
+      <LegIndicator />
+      <NextLegCard />
       <RideStatusCard plan={plan} />
 
       <div className="space-y-1">
@@ -115,6 +118,8 @@ export function RidePlannerPanel() {
         <SearchBox key={`dest:${dest?.name ?? ''}`} label={t.destination} placeholder={t.destinationPlaceholder} initialValue={dest?.name ?? ''} onSelect={(p) => ride.setDestination(p)} />
         {!dest && <QuickDestinations />}
       </div>
+
+      <TripStops />
 
       {ride.status === 'routing' && (
         <p className="flex items-center gap-2 text-slate-600 dark:text-slate-300" role="status">

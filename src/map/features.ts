@@ -71,13 +71,16 @@ export function buildRouteFeatures(legs: readonly RouteLeg[], completedBefore = 
 }
 
 export interface EndpointProps {
-  kind: 'origin' | 'pickup' | 'dropoff' | 'destination'
+  kind: 'origin' | 'pickup' | 'dropoff' | 'destination' | 'tripStop'
   label: string
 }
 
-/** Start (when it isn't a dock) and destination markers; dock ends are shown by the station rings. */
-export function buildEndpointFeatures(dest: LngLat | null, origin: LngLat | null = null): FeatureCollection<EndpointProps> {
-  const features: FeatureCollection<EndpointProps>['features'] = []
+/**
+ * Start (when it isn't a dock) and destination markers; dock ends are shown by the station rings. `tripStops`: a
+ * multi-stop trip's other stops (the leg on screen's own ends are drawn as start and destination).
+ */
+export function buildEndpointFeatures(dest: LngLat | null, origin: LngLat | null = null, tripStops: readonly LngLat[] = []): FeatureCollection<EndpointProps> {
+  const features: FeatureCollection<EndpointProps>['features'] = tripStops.map((c) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: c }, properties: { kind: 'tripStop', label: '' } }))
   if (origin) features.push({ type: 'Feature', geometry: { type: 'Point', coordinates: origin }, properties: { kind: 'origin', label: '' } })
   if (dest) features.push({ type: 'Feature', geometry: { type: 'Point', coordinates: dest }, properties: { kind: 'destination', label: '' } })
   return { type: 'FeatureCollection', features }

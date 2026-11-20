@@ -14,6 +14,7 @@ import { useT } from '../i18n/useT'
 import { useLocationStore } from '../location/locationStore'
 import type { BBox, LngLat, MapMode } from '../types'
 import { useRideStore } from '../ride/rideStore'
+import { useTripStore } from '../ride/tripStore'
 import { isDarkStyle, usePrefersDark } from '../ui/useMediaQuery'
 import { useRidePlan } from '../ui/ride/useRidePlan'
 import { AVAILABILITY_COLORS, PATH_COLORS, ROUTE_COLORS, STAR_GOLD, USER_PUCK } from './colors'
@@ -89,7 +90,7 @@ function ensureLayers(map: MlMap, view: StationView, dark: boolean) {
   if (!map.getLayer(L.stationCount))
     map.addLayer({ id: L.stationCount, type: 'symbol', source: S.stations, minzoom: 12.5, layout: { 'text-field': labelExpr(view), 'text-font': [...MAP.labelFont], 'text-size': ['interpolate', ['linear'], ['zoom'], 13, 10, 16, 14], 'text-allow-overlap': true, 'text-ignore-placement': true }, paint: { 'text-color': labelColorExpr(view) } })
   if (!map.getLayer(L.endpoints))
-    map.addLayer({ id: L.endpoints, type: 'circle', source: S.endpoints, filter: ['in', ['get', 'kind'], ['literal', ['origin', 'destination']]], paint: { 'circle-radius': 7, 'circle-color': ['match', ['get', 'kind'], 'destination', '#dc2626', '#0f172a'], 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 3 } })
+    map.addLayer({ id: L.endpoints, type: 'circle', source: S.endpoints, filter: ['in', ['get', 'kind'], ['literal', ['origin', 'destination', 'tripStop']]], paint: { 'circle-radius': ['match', ['get', 'kind'], 'tripStop', 6, 7], 'circle-color': ['match', ['get', 'kind'], 'destination', '#dc2626', 'tripStop', '#7c3aed', '#0f172a'], 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 3 } })
   // Home, Work and favorite places, above stations and route (but under the rider's own dot).
   if (!map.getLayer(L.savedPlaces))
     map.addLayer({ id: L.savedPlaces, type: 'symbol', source: S.saved, layout: { 'icon-image': ['match', ['get', 'icon'], 'home', savedImageId('home'), 'work', savedImageId('work'), savedImageId('star')], 'icon-size': ['interpolate', ['linear'], ['zoom'], 10, 0.7, 14, 1], 'icon-allow-overlap': true, 'icon-ignore-placement': true } })
@@ -177,10 +178,13 @@ export function MapView({ ref, onStationClick, onBackgroundClick, onMapPick, onE
   // Everything the station features depend on: the city (revisions restart at 1 in each city), its data
   // revision, the party size (availability colors), plan roles and stars.
   const stationsKey = snapshot ? `${snapshot.systemId}|${snapshot.revision}|${settings.partySize}|${rolesKey}|${starred.join(',')}` : ''
+  // A multi-stop trip's other stops (not the leg on screen's destination, drawn as the destination).
+  const { tripStopList, tripLeg } = useTripStore(useShallow((s) => ({ tripStopList: s.stops, tripLeg: s.leg })))
+  const tripStops = useMemo(() => (tripStopList.length >= 2 ? tripStopList.filter((_, i) => i !== tripLeg).map((p) => p.coord) : []), [tripStopList, tripLeg])
   // Everything the route layers depend on.
   const routeScene = useMemo(
-    () => ({ route: ride.route, routes: ride.routes, destination: ride.destination, origin: ride.origin, segments: details?.segments, walkKey }),
-    [ride.route, ride.routes, ride.destination, ride.origin, details, walkKey],
+    () => ({ route: ride.route, routes: ride.routes, destination: ride.destination, origin: ride.origin, segments: details?.segments, walkKey, tripStops }),
+    [ride.route, ride.routes, ride.destination, ride.origin, details, walkKey, tripStops],
   )
 
   const emitStation = useEffectEvent((id: string) => onStationClick(id))
@@ -230,7 +234,7 @@ export function MapView({ ref, onStationClick, onBackgroundClick, onMapPick, onE
     routes.features.push(...buildWalkFeatures(walks))
     void source(map, S.route)?.setData(routes as never)
     void source(map, S.routeKinds)?.setData(buildPathKindFeatures(route ? (scene.segments ?? []) : []) as never)
-    void source(map, S.endpoints)?.setData(buildEndpointFeatures(destination?.coord ?? null, origin) as never)
+    void source(map, S.endpoints)?.setData(buildEndpointFeatures(destination?.coord ?? null, origin, scene.tripStops) as never)
   })
   // User location dot, outside React.
   const drawUser = useEffectEvent(() => {

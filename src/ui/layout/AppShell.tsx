@@ -28,6 +28,7 @@ import { useRidePlan } from '../ride/useRidePlan'
 import { useArrivalCheck, useRideAlerts } from '../ride/useRideStatus'
 import { useOnline } from '../useOnline'
 import { useRideStore } from '../../ride/rideStore'
+import { tripResumedAtLaunch } from '../../ride/tripStore'
 import { LoadingScreen } from './LoadingScreen'
 
 function useIsDesktop(): boolean {
@@ -377,9 +378,10 @@ export function AppShell() {
       else if (!coord) setNotice(useLocationStore.getState().geoError === 'geo_denied' ? currentMessages().locationDenied : currentMessages().locationNotFound)
     })
   }
-  // Coming back mid-ride (e.g. after Google Maps, or the page was reloaded): show the plan right away.
+  // Coming back mid-ride (e.g. after Google Maps, or the page was reloaded), or to a trip's next leg: show the
+  // plan right away.
   useEffect(() => {
-    if (useRideStore.getState().openedParts.length > 0) {
+    if (useRideStore.getState().openedParts.length > 0 || tripResumedAtLaunch()) {
       useAppStore.getState().setPanel('ride')
       useAppStore.getState().setSheet('half')
     }

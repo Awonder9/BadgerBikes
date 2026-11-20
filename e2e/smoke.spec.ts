@@ -188,6 +188,46 @@ test('a ride plan is saved until the last Google Maps link is opened', async ({ 
   await expect(page.getByRole('heading', { name: 'Your ride' })).toHaveCount(0)
 })
 
+test('a trip with several stops: each leg is planned as its own ride, and the next leg follows the finished one', async ({ page, context }) => {
+  await mockApi(context, { routes: 'ok' })
+  await skipInstallTip(page)
+  await page.goto(`/?start=st_a&to=${C[1]},${C[0]}&toName=Charlie%20Square&toStation=st_c`)
+  await expect(page.getByRole('link', { name: /Open in Google Maps|Part 1/ })).toBeVisible()
+  await page.getByRole('button', { name: 'Add a stop' }).click()
+  await page.getByRole('combobox', { name: 'Next stop' }).fill('Bravo')
+  await page.getByRole('option', { name: /Bravo Park/ }).click()
+  const stops = page.getByRole('region', { name: 'Stops' })
+  await expect(stops.getByRole('listitem')).toHaveCount(2)
+  await expect(page.getByText('Leg 1 of 2', { exact: true })).toBeVisible()
+  // Adding a stop leaves leg 1's plan (and its docks) as it was.
+  await expect(page.getByRole('combobox', { name: 'Destination' })).toHaveValue('Charlie Square')
+  await expect(page.getByRole('link', { name: /Open in Google Maps|Part 1/ })).toBeVisible()
+
+  // Leg 2 starts at the dock of stop 1.
+  await stops.getByRole('button', { name: 'Plan leg 2, to Bravo Park' }).click()
+  await expect(page.getByText('Leg 2 of 2', { exact: true })).toBeVisible()
+  await expect(page.getByRole('combobox', { name: 'Destination' })).toHaveValue('Bravo Park')
+  await expect(page.getByText('Charlie Square').first()).toBeVisible()
+  await stops.getByRole('button', { name: 'Plan leg 1, to Charlie Square' }).click()
+  await expect(page.getByRole('combobox', { name: 'Destination' })).toHaveValue('Charlie Square')
+
+  // Opening leg 1's last link finishes it: the next leg is offered, and comes back after a reload too.
+  const popup = context.waitForEvent('page')
+  await page.getByRole('link', { name: /Open in Google Maps|Part 1/ }).last().click()
+  await (await popup).close()
+  await expect(page.getByRole('button', { name: 'Next leg: ride to Bravo Park' })).toBeVisible()
+  await expect(stops.getByRole('button', { name: 'Plan leg 2, to Bravo Park' })).toBeEnabled()
+  await page.reload()
+  await expect(page.getByText('Leg 2 of 2', { exact: true })).toBeVisible()
+  await expect(page.getByRole('combobox', { name: 'Destination' })).toHaveValue('Bravo Park')
+
+  // Down to one stop it is an ordinary ride again; Clear ends the trip.
+  await page.getByRole('region', { name: 'Stops' }).getByRole('button', { name: 'Remove Charlie Square' }).click()
+  await expect(page.getByRole('region', { name: 'Stops' })).toHaveCount(0)
+  await expect(page.getByText(/Leg \d of \d/)).toHaveCount(0)
+  await expect(page.getByRole('combobox', { name: 'Destination' })).toHaveValue('Bravo Park')
+})
+
 test('the exact route downloads as a GPX file for Komoot / OsmAnd and starts the ride', async ({ page, context }) => {
   await mockApi(context, { routes: 'ok' })
   await skipInstallTip(page)

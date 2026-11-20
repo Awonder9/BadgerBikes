@@ -279,6 +279,8 @@ export const ROUTE_DETAILS = {
 
 /** Ride plan and ride-in-progress behavior (src/ride/rideStore.ts, src/ui/ride). */
 export const RIDE = {
+  /** Most destinations in one multi-stop trip (src/ride/tripStore.ts): legs = stops, each its own ride. */
+  maxTripStops: 10,
   /** Default for settings.maxRideMinutes: the longest ride between docks the planner plans for. */
   defaultMaxRideMinutes: 25,
   /** Starting from a place: pickup docks considered (with bikes) within this walk, else the nearest few. */

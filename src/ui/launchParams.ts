@@ -3,6 +3,8 @@
 import { currentMessages } from '../i18n/useT'
 import type { LaunchParams } from '../lib/urlParams'
 import { useRideStore } from '../ride/rideStore'
+// Loaded at launch: the trip follows the plan from the start (a share link or a city change clears both).
+import '../ride/tripStore'
 import { useAppStore } from '../store/appStore'
 import type { Place } from '../types'
 import { changeCity } from './ride/rideActions'

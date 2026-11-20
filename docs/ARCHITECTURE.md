@@ -198,6 +198,20 @@ estimates (`estimateBetween`), shown with "~", drawn as dashed lines, with Googl
 first ride part does not start the ride timer when there is a walk to the dock first; the ride card asks
 "I've unlocked a bike".
 
+**Multi-stop trips** (`tripStore.ts`, `src/ui/ride/TripStops.tsx`): an ordered list of destinations
+(`RIDE.maxTripStops`); leg *i* ends at stop *i* and starts at leg 1's start (*i* = 0) or at stop *i − 1* — that
+dock when the stop is a dock, else the best pickup near it (*Start from anywhere*). Every leg is its own BCycle
+ride: the rider docks near each stop, so legs share no bike, timer or docks. Only the leg on screen is in the
+ride store (`planLeg` sets its start and destination as a fresh plan) and is planned exactly like a one-stop
+ride — route options, docks along the route and their add/remove all unchanged; the trip store only keeps the
+stops, the leg shown, leg 1's start (to come back to it) and the last finished leg. It follows the ride store:
+a destination typed for the leg becomes that stop, `finishPlan` marks the leg finished (*Next leg* appears),
+and clearing the plan (Clear, a share link, a city change) ends the trip. Editing stops re-plans the leg on
+screen only when its two ends change; mid-ride (`rideUnderWay`, not finished) the edits that would are
+disabled, as is switching legs. A finished plan isn't saved, so at launch (`reconcileTrip`) a trip whose leg
+was finished opens the planner on the next leg; a trip that doesn't match the saved plan is dropped. The
+trip's other stops are violet dots on the map. Share links and the GPX file cover the leg on screen.
+
 **Path breakdown + elevation** (`details.ts`, `POST /api/route-details`): one Valhalla `/trace_attributes`
 request for the selected route only (polyline6 of our geometry, `shape_match: walk_or_snap` because of the
 dock connectors, background priority, cached), classifying each edge by `use` / `cycle_lane` /

@@ -11,6 +11,7 @@ const PATHS = {
   close: 'M6 6l12 12M18 6 6 18',
   chevronDown: 'm6 9 6 6 6-6',
   chevronRight: 'm9 6 6 6-6 6',
+  chevronUp: 'm6 15 6-6 6 6',
   back: 'm15 6-6 6 6 6',
   swap: 'M7 4v16m0 0-3-3m3 3 3-3M17 20V4m0 0-3 3m3-3 3 3',
   star: 'm12 3 2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9L12 3Z',

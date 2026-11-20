@@ -55,6 +55,8 @@ export interface RideState {
   /** The best pickup for the current origin (not pinned). */
   autoPickup(id: string): void
   setDestination(place: Place | null): void
+  /** One leg of a multi-stop trip (tripStore.ts): its start and destination at once, as a fresh plan. */
+  planLeg(leg: { origin: Place | null; startId: string | null; pickupPinned: boolean; destination: Place }): void
   toggleStop(id: string, routeOrder: readonly string[]): void
   /** The rider opened Google Maps part `index`; `fromDock` = it starts where they unlock a bike. */
   markPartOpened(index: number, fromDock: boolean, startTimer?: boolean): void
@@ -87,7 +89,7 @@ const planReset = (): Partial<RideState> => {
   return { routes: [], route: null, stopIds: [], status: 'idle', error: null, openedParts: [], rideStartedAtMs: null, walkToDockOpened: false }
 }
 
-type RideActions = 'setOrigin' | 'setStart' | 'autoPickup' | 'setDestination' | 'toggleStop' | 'markPartOpened' | 'openWalkToDock' | 'startRideTimer' | 'endRide' | 'finishPlan' | 'reset'
+type RideActions = 'setOrigin' | 'setStart' | 'autoPickup' | 'setDestination' | 'planLeg' | 'toggleStop' | 'markPartOpened' | 'openWalkToDock' | 'startRideTimer' | 'endRide' | 'finishPlan' | 'reset'
 const empty = (): Omit<RideState, RideActions> => ({
   origin: null,
   startId: null,
@@ -176,6 +178,7 @@ export const useRideStore = create<RideState>()(
       // Unchanged: the same state object, so nothing re-renders (the planner calls this on every count update).
       autoPickup: (id) => set((s) => (s.startId === id ? s : { startId: id, ...planReset(), finished: false })),
       setDestination: (destination) => set({ destination, ...planReset(), finished: false }),
+      planLeg: ({ origin, startId, pickupPinned, destination }) => set({ origin, startId, pickupPinned, destination, ...planReset(), finished: false }),
       // Keeps the ride's progress: mid-ride, a rider who switches to another dock (say the end dock filled up)
       // is still on the same BCycle ride, so its timer and background alerts carry on.
       toggleStop: (id, routeOrder) =>
