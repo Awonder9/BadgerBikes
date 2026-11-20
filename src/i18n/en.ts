@@ -265,6 +265,7 @@ export const en = {
   errorBusy:
     'The route server is busy right now. We use a free public routing service that handles about one request per second for everyone, so yours couldn’t get through. Please try again in a few seconds.',
   tryAgainIn: (s: number) => `Try again in ${s}s`,
+  shareTripTitle: (names: readonly string[]) => `Bike-share trip: ${names.join(' → ')}`,
   shareTitle: (name: string) => `Bike-share ride to ${name}`,
   copyLink: 'Copy this link:',
   copied: 'Copied',

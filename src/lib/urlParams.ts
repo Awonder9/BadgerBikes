@@ -1,10 +1,16 @@
 // Untrusted input from the URL and from feeds: launch parameters, share links and external links.
+import { RIDE } from '../config'
 import { isValidLngLat } from './geo'
 import type { LngLat } from '../types'
 
 export interface SharedPoint {
   coord: LngLat
   name: string | null
+}
+
+/** A further stop of a shared multi-stop trip: a place, or a dock (`stationId`). */
+export interface SharedStop extends SharedPoint {
+  stationId: string | null
 }
 
 export interface LaunchParams {
@@ -15,8 +21,12 @@ export interface LaunchParams {
   rideStartId: string | null
   to: SharedPoint | null
   toStationId: string | null
-  /** 0 = bike-friendly, 1 = balanced, 2 = fastest. */
+  /** 0 = bike-friendly, 1 = balanced, 2 = fastest (for the leg shown, `leg`). */
   routeIndex: number | null
+  /** A multi-stop trip: the stops after `to`, in order (empty for a one-stop ride). */
+  stops: SharedStop[]
+  /** The trip's leg the sender was looking at (0-based; the URL counts from 1), or null. */
+  leg: number | null
 }
 
 const ID_RE = /^[A-Za-z0-9_.-]{1,80}$/
@@ -57,11 +67,25 @@ function parseName(raw: string | null): string | null {
   return v || null
 }
 
+/** One `stop` value: "lat,lon,<dock id or empty>,<name>" (the name last: it may contain commas). */
+function parseStop(raw: string): SharedStop | null {
+  const m = /^(-?[\d.]+,-?[\d.]+),([A-Za-z0-9_.-]{0,80}),(.*)$/s.exec(raw.trim())
+  const coord = m ? parseLatLon(m[1]!) : null
+  if (!m || !coord) return null
+  return { coord, stationId: m[2] || null, name: parseName(m[3]!) }
+}
+
 export function parseLaunchParams(search: string, knownSystemIds: ReadonlySet<string>): LaunchParams {
   const q = new URLSearchParams(search)
   const system = parseId(q.get('system'))
   const toCoord = parseLatLon(q.get('to'))
   const route = q.get('route')
+  // A trip with a stop that doesn't parse is dropped as a whole: half a trip would be a different trip.
+  const rawStops = toCoord ? q.getAll('stop').slice(0, RIDE.maxTripStops - 1) : []
+  const parsed = rawStops.map(parseStop)
+  const stops = parsed.every((s) => s !== null) ? (parsed as SharedStop[]) : []
+  const legRaw = q.get('leg')
+  const leg = stops.length && legRaw && /^\d{1,2}$/.test(legRaw) && Number(legRaw) >= 1 && Number(legRaw) <= stops.length + 1 ? Number(legRaw) - 1 : null
   return {
     systemId: system && knownSystemIds.has(system) ? system : null,
     stationId: parseId(q.get('station')),
@@ -69,11 +93,13 @@ export function parseLaunchParams(search: string, knownSystemIds: ReadonlySet<st
     to: toCoord ? { coord: toCoord, name: parseName(q.get('toName')) } : null,
     toStationId: parseId(q.get('toStation')),
     routeIndex: route !== null && /^[0-2]$/.test(route) ? Number(route) : null,
+    stops,
+    leg,
   }
 }
 
 /** Params consumed at launch and removed from the address bar afterwards. */
-export const LAUNCH_PARAM_KEYS = ['system', 'station', 'start', 'to', 'toName', 'toStation', 'route'] as const
+export const LAUNCH_PARAM_KEYS = ['system', 'station', 'start', 'to', 'toName', 'toStation', 'route', 'stop', 'leg'] as const
 
 export function stripLaunchParams(href: string): string {
   const url = new URL(href)
@@ -87,6 +113,10 @@ export interface RideShareState {
   to: SharedPoint
   toStationId?: string | null
   routeIndex?: number
+  /** A multi-stop trip: the stops after `to` (then `startId` is leg 1's start dock and `to` its destination). */
+  stops?: readonly SharedStop[]
+  /** The leg shown (0-based); `routeIndex` is that leg's route option. */
+  leg?: number
 }
 
 /** A place name for a share link: no spaces at all ("_" instead), so no chat app or linkifier can split the link there. */
@@ -95,18 +125,23 @@ function shareName(name: string): string {
 }
 
 /**
- * Builds a ride share link that parseLaunchParams reads back. The name goes before the coordinates, so the link
+ * Builds a ride share link that parseLaunchParams reads back. Names go before coordinates or ids, so the link
  * always ends in a number or an id: linkifiers drop a trailing "." or ")" that a name could end with.
+ * A trip's further stops are repeated `stop=lat,lon,<dock id>,<name>` values; an app without trips ignores them
+ * and opens leg 1 (start → `to`).
  */
 export function buildRideShareUrl(origin: string, state: RideShareState): string {
   const url = new URL('/', origin)
   url.searchParams.set('system', state.systemId)
   url.searchParams.set('start', state.startId)
+  const stops = (state.stops ?? []).slice(0, RIDE.maxTripStops - 1)
+  for (const s of stops) url.searchParams.append('stop', `${formatLatLon(s.coord)},${s.stationId ?? ''},${s.name ? shareName(s.name) : ''}`)
   const name = state.to.name ? shareName(state.to.name) : ''
   if (name) url.searchParams.set('toName', name)
   url.searchParams.set('to', formatLatLon(state.to.coord))
   if (state.toStationId) url.searchParams.set('toStation', state.toStationId)
   if (state.routeIndex) url.searchParams.set('route', String(state.routeIndex))
+  if (stops.length && state.leg) url.searchParams.set('leg', String(state.leg + 1))
   return url.toString()
 }
 

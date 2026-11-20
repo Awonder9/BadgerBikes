@@ -210,7 +210,7 @@ and clearing the plan (Clear, a share link, a city change) ends the trip. Editin
 screen only when its two ends change; mid-ride (`rideUnderWay`, not finished) the edits that would are
 disabled, as is switching legs. A finished plan isn't saved, so at launch (`reconcileTrip`) a trip whose leg
 was finished opens the planner on the next leg; a trip that doesn't match the saved plan is dropped. The
-trip's other stops are violet dots on the map. Share links and the GPX file cover the leg on screen.
+trip's other stops are violet dots on the map. Share links carry the whole trip (below); the GPX file covers the leg on screen.
 
 **Path breakdown + elevation** (`details.ts`, `POST /api/route-details`): one Valhalla `/trace_attributes`
 request for the selected route only (polyline6 of our geometry, `shape_match: walk_or_snap` because of the
@@ -295,9 +295,13 @@ installed Android app, iPhone Settings); in an Android browser without notificat
 promises background alerts when the server has no VAPID keys. The iOS/Android apps have no Web Push: they
 schedule the timer's alerts on the phone instead, and "end dock full" shows while the app is open (§12).
 
-**Share links** (`src/lib/urlParams.ts`): `?system=<id>&start=<station id>&toName=&to=<lat,lon>&toStation=&route=<0-2>`.
-`toName` has no whitespace (spaces are written as `_` and read back as spaces; older `+` / `%20` links still
-work) and comes before `to`, so chat apps can't split the link at a space or drop a name's trailing `.`. Links are
+**Share links** (`src/lib/urlParams.ts`): `?system=<id>&start=<station id>&stop=…&toName=&to=<lat,lon>&toStation=&route=<0-2>&leg=<n>`.
+Names have no whitespace (spaces are written as `_` and read back as spaces; older `+` / `%20` links still
+work) and come before coordinates and ids, so chat apps can't split the link at a space or drop a name's
+trailing `.`. A multi-stop trip is shared whole: `start` is leg 1's start dock, `to*` stop 1, then one repeated
+`stop=lat,lon,<dock id or empty>,<name>` per further stop (`RIDE.maxTripStops`), and `leg` (from 1) the leg shown,
+whose route option `route` is; a stop that doesn't parse drops the trip's extra stops. An app without trips
+ignores `stop`/`leg` and opens leg 1. A trip whose leg 1 has no start dock yet is shared as the leg on screen. Links are
 validated on load, applied to the ride store (replacing any saved plan; a link to another city switches it
 like Settings → City), then removed from the address bar.
 

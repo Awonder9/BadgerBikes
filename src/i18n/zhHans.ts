@@ -261,6 +261,7 @@ export const zhHans: Messages = {
   errorRouteFailed: '暂时无法获取路线。请稍后重试。',
   errorBusy: '路线服务器目前繁忙。我们使用的免费公共路线服务每秒大约只能为所有人处理一个请求，所以你的请求没能完成。请过几秒再试。',
   tryAgainIn: (s) => `${s} 秒后重试`,
+  shareTripTitle: (names) => `共享单车行程：${names.join(' → ')}`,
   shareTitle: (name) => `骑共享单车去 ${name}`,
   copyLink: '复制此链接：',
   copied: '已复制',

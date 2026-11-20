@@ -261,6 +261,7 @@ export const zhHant: Messages = {
   errorRouteFailed: '暫時無法取得路線。請稍後再試。',
   errorBusy: '路線伺服器目前忙碌中。我們使用的免費公共路線服務每秒大約只能為所有人處理一個請求，所以你的請求未能完成。請過幾秒再試。',
   tryAgainIn: (s) => `${s} 秒後重試`,
+  shareTripTitle: (names) => `共享單車行程：${names.join(' → ')}`,
   shareTitle: (name) => `騎共享單車去 ${name}`,
   copyLink: '複製此連結：',
   copied: '已複製',

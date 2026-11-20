@@ -33,6 +33,7 @@ import { countUse } from '../usage'
 import { IosAlertsHint } from './AlertsHelp'
 import { RideStatusCard } from './RideProgress'
 import { LegIndicator, NextLegCard, TripStops } from './TripStops'
+import { isTrip, useTripStore } from '../../ride/tripStore'
 import { useRidePlan, type RidePlan } from './useRidePlan'
 
 export function RidePlannerPanel() {
@@ -514,10 +515,29 @@ function FavoriteToggle({ systemId, place }: { systemId: string; place: Place })
   )
 }
 
+/**
+ * Shares the plan on screen; in a multi-stop trip the whole trip (from leg 1's start dock, every stop, and the leg
+ * shown). A trip whose leg 1 has no start dock yet is shared as the leg on screen.
+ */
 function ShareRideButton({ systemId, startId, destination, routeIndex }: { systemId: string; startId: string; destination: Place; routeIndex: number }) {
+  const { stops, leg, firstStart } = useTripStore(useShallow((s) => ({ stops: s.stops, leg: s.leg, firstStart: s.firstStart })))
   const { t } = useI18n()
-  const url = () => buildRideShareUrl(shareOrigin(), { systemId, startId, to: { coord: destination.coord, name: destination.name }, toStationId: destination.stationId ?? null, routeIndex })
-  return <ShareButton title={t.shareTitle(destination.name)} url={url} className="flex min-h-11 items-center gap-1 px-2 text-sm font-medium text-brand-700 dark:text-brand-300" />
+  const tripStartId = isTrip({ stops }) ? (leg === 0 ? startId : firstStart?.startId) : null
+  const first = stops[0]
+  const url = () =>
+    tripStartId && first
+      ? buildRideShareUrl(shareOrigin(), {
+          systemId,
+          startId: tripStartId,
+          to: { coord: first.coord, name: first.name },
+          toStationId: first.stationId ?? null,
+          stops: stops.slice(1).map((s) => ({ coord: s.coord, name: s.name, stationId: s.stationId ?? null })),
+          leg,
+          routeIndex,
+        })
+      : buildRideShareUrl(shareOrigin(), { systemId, startId, to: { coord: destination.coord, name: destination.name }, toStationId: destination.stationId ?? null, routeIndex })
+  const title = tripStartId ? t.shareTripTitle(stops.map((s) => s.name)) : t.shareTitle(destination.name)
+  return <ShareButton title={title} url={url} className="flex min-h-11 items-center gap-1 px-2 text-sm font-medium text-brand-700 dark:text-brand-300" />
 }
 
 /**

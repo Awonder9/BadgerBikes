@@ -15,7 +15,8 @@ location — no location prompt; Madison if none is near), and Settings → City
 2. **Pick where you're going** — any place or a dock, or a one-tap chip for a saved or recent place.
    Going to several places? *Add a stop* (up to 10): each leg is its own ride — dock near a stop, then pick up
    a bike there for the next leg. The planner shows one leg at a time (*Leg 2 of 3*); tap a stop to plan its
-   leg, reorder or remove stops, and once a leg is done *Next leg* plans the next one from that stop.
+   leg, reorder or remove stops, and once a leg is done *Next leg* plans the next one from that stop. *Share*
+   sends the whole trip, opening on the leg you're looking at.
 3. **Choose a route** — three options side by side: *Bike-friendly* (as few cars as possible),
    *Balanced*, and *Fastest* (the quickest of the three), each with time and distance. When two
    options are the same path, the card says so. Below them: the **whole trip** (walk → ride → walk),
@@ -63,6 +64,7 @@ npm run dev          # http://localhost:5173 — app + Cloudflare Worker API tog
 ```
 
 - `?start=<station id>&to=<lat,lon>&toName=…` opens a shared ride.
+  Add `&stop=<lat,lon>,<dock id or empty>,<Name_With_Underscores>` per further stop (and `&leg=2`) for a trip.
 - Phone testing needs HTTPS for GPS: `brew install cloudflared`, then
   `cloudflared tunnel --url http://localhost:5173` and open the printed `https://…trycloudflare.com` link.
 - `npm run preview` builds and serves the production build in Cloudflare's runtime locally.

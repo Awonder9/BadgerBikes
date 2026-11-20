@@ -228,6 +228,37 @@ test('a trip with several stops: each leg is planned as its own ride, and the ne
   await expect(page.getByRole('combobox', { name: 'Destination' })).toHaveValue('Bravo Park')
 })
 
+test('a shared trip link carries every stop and the leg shown, and Share sends the whole trip again', async ({ page, context }) => {
+  await mockApi(context, { routes: 'ok' })
+  await context.grantPermissions(['clipboard-read', 'clipboard-write'])
+  await page.addInitScript(() => Reflect.deleteProperty(Navigator.prototype, 'share'))
+  await skipInstallTip(page)
+  const cafe = `${C[1].toFixed(6)},${(C[0] + 0.004).toFixed(6)}`
+  await page.goto(`/?system=bcycle_madison&start=st_a&stop=${B[1]},${B[0]},st_b,Bravo_Park&stop=${cafe},,Coffee_Shop&toName=Charlie_Square&to=${C[1]},${C[0]}&toStation=st_c&leg=2`)
+  const stops = page.getByRole('region', { name: 'Stops' })
+  await expect(stops.getByRole('listitem')).toHaveCount(3)
+  await expect(stops).toContainText('Charlie Square')
+  await expect(stops).toContainText('Coffee Shop')
+  await expect(page.getByText('Leg 2 of 3', { exact: true })).toBeVisible()
+  await expect(page.getByRole('combobox', { name: 'Destination' })).toHaveValue('Bravo Park')
+  await expect(page.getByRole('link', { name: /Open in Google Maps|Part 1/ })).toBeVisible()
+
+  await page.getByRole('button', { name: 'Share' }).click()
+  await expect(page.getByRole('button', { name: 'Copied' })).toBeVisible()
+  const link = new URL(await page.evaluate(() => navigator.clipboard.readText()))
+  expect(link.search).not.toMatch(/[\s+]/)
+  expect(link.searchParams.get('start')).toBe('st_a')
+  expect(link.searchParams.get('toName')).toBe('Charlie_Square')
+  expect(link.searchParams.getAll('stop')).toEqual([`${B[1].toFixed(6)},${B[0].toFixed(6)},st_b,Bravo_Park`, `${cafe},,Coffee_Shop`])
+  expect(link.searchParams.get('leg')).toBe('2')
+
+  // The copied link opens the same trip on the same leg.
+  await page.goto(link.pathname + link.search)
+  await expect(page.getByText('Leg 2 of 3', { exact: true })).toBeVisible()
+  await expect(page.getByRole('combobox', { name: 'Destination' })).toHaveValue('Bravo Park')
+  await expect(page.getByRole('region', { name: 'Stops' }).getByRole('listitem')).toHaveCount(3)
+})
+
 test('the exact route downloads as a GPX file for Komoot / OsmAnd and starts the ride', async ({ page, context }) => {
   await mockApi(context, { routes: 'ok' })
   await skipInstallTip(page)

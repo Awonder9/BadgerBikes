@@ -52,6 +52,40 @@ describe('parseLaunchParams', () => {
     expect(parseLaunchParams('?to=43.0418,-89.4153&toName=UW%20Arboretum', KNOWN).to?.name).toBe('UW Arboretum')
   })
 
+  it('round-trips a multi-stop trip: every stop, docks or places, and the leg shown', () => {
+    const url = buildRideShareUrl('https://bcycle.example', {
+      systemId: 'bcycle_madison',
+      startId: 's1',
+      to: { coord: [-89.4003, 43.07652], name: 'Memorial Union' },
+      routeIndex: 2,
+      stops: [
+        { coord: [-89.4153, 43.0418], name: 'UW Arboretum, Visitor Center (East)', stationId: null },
+        { coord: [-89.384, 43.0747], name: 'Capitol Square', stationId: 'bcycle_madison_9' },
+      ],
+      leg: 1,
+    })
+    expect(url).not.toMatch(/[\s+]/)
+    // An app without trips still reads leg 1 from start/to; the link ends in a number, never a name.
+    expect(url).toMatch(/&toName=Memorial_Union&to=43\.076520%2C-89\.400300&route=2&leg=2$/)
+    const p = parseLaunchParams(new URL(url).search, KNOWN)
+    expect(p).toMatchObject({ rideStartId: 's1', routeIndex: 2, leg: 1, to: { name: 'Memorial Union' } })
+    expect(p.stops).toEqual([
+      { coord: [-89.4153, 43.0418], name: 'UW Arboretum, Visitor Center (East)', stationId: null },
+      { coord: [-89.384, 43.0747], name: 'Capitol Square', stationId: 'bcycle_madison_9' },
+    ])
+    expect(stripLaunchParams(url)).toBe('/')
+  })
+
+  it('drops a trip with a malformed stop, and a leg out of range', () => {
+    const base = '?start=s1&to=43.07652,-89.4003'
+    expect(parseLaunchParams(`${base}&stop=43.04,-89.41,,Arb&stop=999,1,,Bad&leg=2`, KNOWN)).toMatchObject({ stops: [], leg: null })
+    expect(parseLaunchParams(`${base}&stop=43.04,-89.41,bad id,Arb`, KNOWN).stops).toEqual([])
+    expect(parseLaunchParams(`${base}&stop=43.04,-89.41,,Arb&leg=3`, KNOWN)).toMatchObject({ stops: [{ name: 'Arb' }], leg: null })
+    expect(parseLaunchParams(`${base}&stop=43.04,-89.41,,&leg=1`, KNOWN)).toMatchObject({ stops: [{ name: null, stationId: null }], leg: 0 })
+    // No destination: no trip either.
+    expect(parseLaunchParams('?start=s1&stop=43.04,-89.41,,Arb', KNOWN).stops).toEqual([])
+  })
+
   it('round-trips station share links', () => {
     const url = buildStationShareUrl('https://bcycle.example', 'bcycle_madison', 'bcycle_madison_1874')
     expect(url).toBe('https://bcycle.example/?system=bcycle_madison&station=bcycle_madison_1874')

@@ -4,7 +4,7 @@ import { currentMessages } from '../i18n/useT'
 import type { LaunchParams } from '../lib/urlParams'
 import { useRideStore } from '../ride/rideStore'
 // Loaded at launch: the trip follows the plan from the start (a share link or a city change clears both).
-import '../ride/tripStore'
+import { useTripStore } from '../ride/tripStore'
 import { useAppStore } from '../store/appStore'
 import type { Place } from '../types'
 import { changeCity } from './ride/rideActions'
@@ -24,6 +24,18 @@ export function openLaunchParams(p: LaunchParams): void {
     ride.reset()
     ride.setStart(p.rideStartId)
     ride.setDestination(destination)
+    // A multi-stop trip: its further stops, then the leg the sender was looking at (the route option is that leg's).
+    if (p.stops.length) {
+      const trip = useTripStore.getState()
+      for (const s of p.stops) {
+        trip.addStop(
+          s.stationId
+            ? { kind: 'station', name: s.name ?? currentMessages().destinationDock, coord: s.coord, stationId: s.stationId }
+            : { kind: 'search', name: s.name ?? currentMessages().sharedDestination, coord: s.coord },
+        )
+      }
+      if (p.leg) trip.goToLeg(p.leg)
+    }
     useRideStore.setState({ pendingRouteIndex: p.routeIndex })
     app.setPanel('ride')
     app.setSheet('half')
