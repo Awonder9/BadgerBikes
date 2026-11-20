@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { alertsGuide, type AlertsGuideInput } from './alertsGuide'
 
-const base: AlertsGuideInput = { platform: 'android', nativeApp: false, standalone: false, access: 'default', pushSupported: true, serverPush: true, background: { on: false, failed: false } }
+const base: AlertsGuideInput = { platform: 'android', nativeApp: false, exactAlarms: null, standalone: false, access: 'default', pushSupported: true, serverPush: true, background: { on: false, failed: false } }
 const guide = (o: Partial<AlertsGuideInput>) => alertsGuide({ ...base, ...o })
 
 describe('what the ride card says about alerts', () => {
@@ -25,11 +25,19 @@ describe('what the ride card says about alerts', () => {
     expect(guide({ access: 'unsupported', pushSupported: false })).toBe('useChrome')
   })
 
-  it('the iOS/Android app: alerts while it is open — never Home Screen steps, Chrome or an iOS update', () => {
-    // Its web view has no Notification API or Web Push, even though the server sends background alerts.
+  it('the iOS/Android app: ask, then the timer alerts scheduled on the phone — never Home Screen steps, Chrome or an iOS update', () => {
+    // Its web view has no Web Push, whatever the server offers: the plugin's permission decides.
     for (const platform of ['ios', 'android'] as const) {
-      expect(guide({ nativeApp: true, platform, standalone: true, access: 'unsupported', pushSupported: false, serverPush: true })).toBe('appOnly')
+      const app = (o: Partial<AlertsGuideInput>) => guide({ nativeApp: true, platform, standalone: true, pushSupported: false, serverPush: true, ...o })
+      expect([app({ access: 'default' }), app({ access: 'granted' }), app({ access: 'denied' }), app({ access: 'unsupported' })]).toEqual(['ask', 'native', 'blocked', 'appOnly'])
     }
+  })
+
+  it('the Android app with "Alarms & reminders" off: asks for it, since the timer alerts could come late', () => {
+    const app = (o: Partial<AlertsGuideInput>) => guide({ nativeApp: true, standalone: true, pushSupported: false, access: 'granted', ...o })
+    expect([app({ exactAlarms: false }), app({ exactAlarms: true }), app({ exactAlarms: null })]).toEqual(['exactAlarms', 'native', 'native'])
+    // Not before notifications are allowed: one thing at a time.
+    expect(app({ access: 'default', exactAlarms: false })).toBe('ask')
   })
 
   it('without background alerts on the server, never promises them (no install steps, no "use Chrome")', () => {

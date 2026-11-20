@@ -4,7 +4,7 @@ import { useShallow } from 'zustand/react/shallow'
 import { APP } from '../../config'
 import { useMeta } from '../../data/hooks'
 import { useI18n } from '../../i18n/useT'
-import { requestNotificationAccess, useNotificationAccess } from '../notifications'
+import { requestExactAlarms, requestNotificationAccess, useExactAlarmAccess, useNotificationAccess } from '../notifications'
 import { isNativeApp, isStandalone, platform } from '../platform'
 import { Icon } from '../primitives/Icon'
 import { alertsGuide } from './alertsGuide'
@@ -12,13 +12,15 @@ import { pushSupported, useBackgroundAlerts } from './backgroundAlerts'
 
 export function AlertsHelp() {
   const access = useNotificationAccess()
+  const exactAlarms = useExactAlarmAccess()
   const background = useBackgroundAlerts(useShallow((s) => ({ on: s.on, failed: s.failed })))
   const meta = useMeta()
   const { t } = useI18n()
   const os = platform()
   const standalone = isStandalone()
   const serverPush = meta ? meta.pushPublicKey !== null : null
-  const guide = alertsGuide({ platform: os, nativeApp: isNativeApp(), standalone, access, pushSupported: pushSupported(), serverPush, background })
+  const nativeApp = isNativeApp()
+  const guide = alertsGuide({ platform: os, nativeApp, exactAlarms, standalone, access, pushSupported: pushSupported(), serverPush, background })
   const note = (text: string) => <p className="text-xs opacity-80">{text}</p>
 
   switch (guide) {
@@ -32,6 +34,15 @@ export function AlertsHelp() {
       )
     case 'appOnly':
       return note(t.alertsNote)
+    case 'native':
+      return note(t.alertsNative)
+    case 'exactAlarms':
+      return (
+        <div className="space-y-1">
+          <ActionButton onClick={() => void requestExactAlarms()}>{t.allowExactAlarms}</ActionButton>
+          {note(t.alertsExactAlarms)}
+        </div>
+      )
     case 'iosUpdate':
       return note(t.alertsIosUpdate)
     case 'useChrome':
@@ -39,15 +50,8 @@ export function AlertsHelp() {
     case 'ask':
       return (
         <div className="space-y-1">
-          <button
-            type="button"
-            className="flex min-h-11 items-center gap-1.5 rounded-lg bg-white/70 px-3 text-left text-sm font-semibold ring-1 ring-slate-300 dark:bg-slate-950/60 dark:ring-slate-600"
-            onClick={() => void requestNotificationAccess()}
-          >
-            <Icon name="bell" size={16} className="shrink-0" />
-            {t.turnOnAlerts}
-          </button>
-          {note(serverPush ? (os === 'android' ? t.alertsAskAndroid : t.alertsAsk) : t.alertsAskAppOpen)}
+          <ActionButton onClick={() => void requestNotificationAccess()}>{t.turnOnAlerts}</ActionButton>
+          {note(nativeApp ? t.alertsAskNative : serverPush ? (os === 'android' ? t.alertsAskAndroid : t.alertsAsk) : t.alertsAskAppOpen)}
         </div>
       )
     case 'iosInstall':
@@ -56,10 +60,33 @@ export function AlertsHelp() {
       return (
         <Steps
           title={t.alertsBlockedTitle}
-          steps={os === 'android' ? (standalone ? t.alertsBlockedAndroidApp(APP.name) : t.alertsBlockedAndroid) : os === 'ios' ? t.alertsBlockedIos(APP.name) : t.alertsBlockedDesktop}
+          steps={
+            os === 'android'
+              ? nativeApp
+                ? t.alertsBlockedAndroidNative(APP.name)
+                : standalone
+                  ? t.alertsBlockedAndroidApp(APP.name)
+                  : t.alertsBlockedAndroid
+              : os === 'ios'
+                ? t.alertsBlockedIos(APP.name)
+                : t.alertsBlockedDesktop
+          }
         />
       )
   }
+}
+
+function ActionButton({ onClick, children }: { onClick: () => void; children: string }) {
+  return (
+    <button
+      type="button"
+      className="flex min-h-11 items-center gap-1.5 rounded-lg bg-white/70 px-3 text-left text-sm font-semibold ring-1 ring-slate-300 dark:bg-slate-950/60 dark:ring-slate-600"
+      onClick={onClick}
+    >
+      <Icon name="bell" size={16} className="shrink-0" />
+      {children}
+    </button>
+  )
 }
 
 /**

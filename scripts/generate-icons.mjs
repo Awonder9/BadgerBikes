@@ -59,6 +59,9 @@ const outputs = [
     // Adaptive icon (Android 8+): the bike over the brand color (values/ic_launcher_background.xml), sized so the
     // launcher's mask shows it like the maskable web icon and it stays inside the 66 dp safe zone.
     { file: `${androidRes}/mipmap-${d}/ic_launcher_foreground.png`, svg: bike({ scale: 0.51, background: 'none' }), size: 108 * x },
+    // Notification icon in the status bar (24 dp): the white bike alone, which Android tints. Used by the ride
+    // alerts (capacitor.config.ts: LocalNotifications.smallIcon).
+    { file: `${androidRes}/drawable-${d}/ic_stat_bike.png`, svg: bike({ scale: 1, background: 'none' }), size: 24 * x },
   ]),
   // Android launch screen (AppTheme.NoActionBarLaunch's background): stretched to the screen.
   { file: `${androidRes}/drawable/splash.png`, svg: splash(480, 320), width: 480, height: 320 },

@@ -37,7 +37,8 @@ location — no location prompt; Madison if none is near), and Settings → City
 6. **Ride** — after you open a part, the app tracks which parts you've opened ("Next: Part 2 → dock"),
    times the ride against your pass (it asks which pass you have on your first ride), and watches your end
    dock (with nearby docks if it fills up). With alerts on, "ride time almost up" and "end dock full" reach
-   you even while Google Maps is in front (on iPhone, once the app is on your Home Screen). The plan is
+   you even while Google Maps is in front (on iPhone, once the app is on your Home Screen; in the iOS and Android
+   apps, "ride time almost up" does and the end dock is checked while the app is open). The plan is
    saved on the device until you open the last link (the walk, or the last ride part) or arrive, so coming
    back from Google Maps finds it intact. When you start from a place, the timer waits until you tap
    *I've unlocked a bike*. *Share* sends a link to the same ride.
@@ -109,12 +110,28 @@ npm run build:native   # only build and copy (after changing src/, before runnin
 
 - iOS needs Xcode; Android needs Android Studio (Gradle uses the JDK 21 it ships with). To run on your own
   iPhone, pick your Apple developer team once in Xcode → App target → Signing & Capabilities.
+- Gradle keeps its build files in `/tmp/bcycle-live-android` (`android/gradle.properties`), outside this
+  cloud-synced folder, whose sync breaks Gradle's lock files; the finished APK is copied back to
+  `android/app/build/outputs`.
+- In a OneDrive (or other cloud-synced) folder, `cap sync` can end with folders named `public 2` or
+  `capacitor-cordova-*-plugins 2` and the originals gone (OneDrive's conflict handling): rename them back, or pause
+  syncing while running `npm run build:native`. A project folder outside cloud sync avoids it.
 - Live reload in the iOS Simulator: `npm run dev`, then `npx cap run ios --live-reload --host localhost --port 5173`.
 - To try a native build against your local Worker, put `VITE_WEB_ORIGIN=http://localhost:5173` in
-  `.env.native.local` (gitignored) while `npm run dev` runs.
-- `node scripts/generate-icons.mjs` renders the app icons and launch screens from the app's artwork.
-- Not in the apps yet: background ride alerts (alerts show while the app is open), share links opening the app,
-  and the GPX export on Android. Details: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) §12.
+  `.env.native.local` (gitignored) while `npm run dev` runs. The Android emulator also needs
+  `adb reverse tcp:5173 tcp:5173` and, while testing only, `server: { cleartext: true }` in `capacitor.config.ts`
+  (Android refuses plain `http://`).
+- **Share links opening the apps** (instead of the browser): set `appleTeamId` (developer.apple.com → Account →
+  Membership details) and `androidCertFingerprints` (Play Console → Test and release → App integrity → App
+  signing: the SHA-256 fingerprint) in `NATIVE_APP` in `src/config.ts`, then `npm run deploy`; the Worker then
+  serves the files Apple and Google check. On iPhone this needs a paid Apple Developer Program membership: the
+  Associated Domains entitlement is on for Release builds only, so Debug builds still run with a free account.
+- **Ride alerts in the apps**: "ride time almost up" and "past your included time" are scheduled on the phone and
+  arrive while Google Maps is open; Android also asks to allow "Alarms & reminders" so they come on time. "End dock
+  full" shows while the app is open (in the background it would need native push).
+- `node scripts/generate-icons.mjs` renders the app icons, launch screens and Android's notification icon from
+  the app's artwork.
+- Details: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) §12.
 
 ## Forking
 
@@ -124,8 +141,10 @@ You're welcome to run your own copy (MIT license). Before deploying it, please m
 - change `APP.repoUrl` and `APP.userAgent` in `src/config.ts` to your repository, so the public servers
   can tell your deployment apart from this one;
 - change `APP.name` (and the PWA name in `vite.config.ts`) and the custom domain in `wrangler.jsonc`;
-- for the iOS/Android apps: your own `appId` and `appName` in `capacitor.config.ts` (an app ID can't be reused
-  in the App Store or Google Play) and your domain in `.env.native`.
+- for the iOS/Android apps: your own app ID (`appId` in `capacitor.config.ts` and `NATIVE_APP.appId` in
+  `src/config.ts`; an app ID can't be reused in the App Store or Google Play) and name (`appName`), and your domain
+  in `.env.native`, `ios/App/App/App.entitlements` and `android/app/src/main/AndroidManifest.xml`
+  (`npm run check` tells you if they disagree).
 
 ## Checks
 
@@ -144,7 +163,7 @@ npm run e2e          # Playwright smoke tests (phone + desktop, network-free)
   Maps links (no API key needed) and keeps the ride plan and progress. `src/analytics/` is the separate
   `/analytics` page.
 - **iOS and Android apps** (`ios/`, `android/`): Capacitor shells around the same app, calling the deployed
-  Worker.
+  Worker, with a few plugins (`src/native/`) for location, notifications, share links and the back button.
 - Design and rationale: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ## License and data

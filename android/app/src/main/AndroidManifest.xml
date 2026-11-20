@@ -22,6 +22,17 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
+            <!-- Share links (https://badgerbikes.app/?system=…) open the app (App Links). Android checks
+                 /.well-known/assetlinks.json on that site when the app is installed (served once
+                 NATIVE_APP.androidCertFingerprints in src/config.ts is set); until it vouches for the app, links
+                 open in the browser unless the rider allows them in the app's settings (Open by default). -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="badgerbikes.app" android:path="/" />
+            </intent-filter>
+
         </activity>
 
         <provider
@@ -38,11 +49,13 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
-    <!-- The page's navigator.geolocation (map dot, nearest dock, start from my location, arrival): Capacitor asks
-         for these when the page first asks for a position, never at launch. -->
+    <!-- The rider's position (map dot, nearest dock, start from my location, arrival) through the location
+         plugin: asked for when the app first needs a position, never at launch. -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-feature android:name="android.hardware.location.gps" android:required="false" />
-    <!-- navigator.vibrate() with the in-app ride and station alerts (no prompt). -->
+    <!-- navigator.vibrate() with the in-app ride and station alerts (no prompt). The local notifications plugin
+         adds POST_NOTIFICATIONS (asked for with "Turn on alerts") and SCHEDULE_EXACT_ALARM ("Alarms & reminders",
+         so ride-time alerts come on time; the ride card asks for it). -->
     <uses-permission android:name="android.permission.VIBRATE" />
 </manifest>

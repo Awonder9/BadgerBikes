@@ -1,5 +1,6 @@
 // Cloudflare Worker entry: wires real dependencies into the API app. Static assets are served by
-// Cloudflare before the Worker runs (wrangler.jsonc: run_worker_first only for /api/*).
+// Cloudflare before the Worker runs (wrangler.jsonc: run_worker_first only for /api/* and /.well-known/*).
+import { NATIVE_APP } from '../src/config'
 import { fetchStationsSnapshot, fetchSystemDetails } from '../src/data/gbfs'
 import { reversePlace, searchPlaces } from '../src/geocode/photon'
 import { createRouter } from '../src/routing'
@@ -47,6 +48,7 @@ export default {
         : null,
       usage: { record: (req) => usage().record(req), count: (name) => usage().count(name), report: (days) => usage().report(days) },
       background: (work) => ctx.waitUntil(work),
+      appLinks: { appId: NATIVE_APP.appId, appleTeamId: NATIVE_APP.appleTeamId, androidCertFingerprints: NATIVE_APP.androidCertFingerprints },
     })
     return app.fetch(request)
   },

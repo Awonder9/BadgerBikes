@@ -21,6 +21,7 @@ import { Button, IconButton } from '../primitives/Button'
 import { Icon } from '../primitives/Icon'
 import { Spinner } from '../primitives/Spinner'
 import { useBackgroundRideAlerts } from '../ride/backgroundAlerts'
+import { useNativeRideAlerts } from '../ride/nativeRideAlerts'
 import { rideMapTap } from '../ride/rideActions'
 import { RideBanner } from '../ride/RideProgress'
 import { useRidePlan } from '../ride/useRidePlan'
@@ -319,6 +320,7 @@ function RideWatchers() {
   const plan = useRidePlan()
   useRideAlerts(plan)
   useBackgroundRideAlerts(plan)
+  useNativeRideAlerts(plan)
   useArrivalCheck()
   return null
 }

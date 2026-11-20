@@ -1,5 +1,6 @@
 // What the ride card says about alerts: what the rider needs to do on this phone and browser so "time almost
-// up" and "end dock full" reach them while Google Maps is in front (Web Push), or why they can't.
+// up" and "end dock full" reach them while Google Maps is in front (Web Push; in the iOS/Android apps, the timer's
+// alerts scheduled on the phone), or why they can't.
 import type { NotificationAccess } from '../notifications'
 
 export type AlertsGuide =
@@ -19,11 +20,17 @@ export type AlertsGuide =
   | 'blocked'
   /** Alerts show only while the app is open (no background alerts here, or they couldn't be set up). */
   | 'appOnly'
+  /** iOS/Android app, allowed: the timer's alerts arrive while Google Maps is open; the end dock is watched while the app is. */
+  | 'native'
+  /** Android app, allowed, but "Alarms & reminders" is off: the timer's alerts could come late. */
+  | 'exactAlarms'
 
 export interface AlertsGuideInput {
   platform: 'ios' | 'android' | 'desktop'
   /** Inside the iOS/Android app (Capacitor): its web view has neither web notifications nor Web Push. */
   nativeApp: boolean
+  /** Android app: alarms may be exact ("Alarms & reminders"); null elsewhere or not known yet. */
+  exactAlarms: boolean | null
   /** Running as an installed home-screen app. */
   standalone: boolean
   access: NotificationAccess
@@ -36,10 +43,13 @@ export interface AlertsGuideInput {
 }
 
 export function alertsGuide(i: AlertsGuideInput): AlertsGuide {
+  // The apps schedule the timer's alerts on the phone (no Home Screen steps, no "use Chrome", no "update iOS").
+  if (i.nativeApp) {
+    if (i.access === 'granted') return i.exactAlarms === false ? 'exactAlarms' : 'native'
+    if (i.access === 'denied') return 'blocked'
+    return i.access === 'default' ? 'ask' : 'appOnly'
+  }
   if (i.background.on) return 'on'
-  // Native notifications aren't built yet, and nothing the rider can do in the app changes that: no Home Screen
-  // steps, no "use Chrome", no "update iOS". Alerts show while the app is open.
-  if (i.nativeApp) return 'appOnly'
   const canPush = i.serverPush === true
   // Safari tabs on iPhone have no notifications at all; only the Home Screen app does (iOS 16.4+).
   if (i.platform === 'ios' && !i.standalone) return canPush ? 'iosInstall' : 'appOnly'

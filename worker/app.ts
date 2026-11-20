@@ -1,4 +1,5 @@
-// HTTP layer for /api/*. Dependencies are injected so handlers are testable in Node.
+// HTTP layer for /api/* (and the apps' /.well-known/* link files). Dependencies are injected so handlers are
+// testable in Node.
 import { APP, BIKE_ROUTING, NATIVE_APP } from '../src/config'
 import {
   API_PATHS,
@@ -21,6 +22,7 @@ import { AppError, toAppError, type AppErrorCode } from '../src/lib/errors'
 import type { UpstreamFetch } from '../src/lib/upstream'
 import type { AltRouter } from '../src/routing/types'
 import type { RouteLeg } from '../src/types'
+import { appLinksResponse, type AppLinkIds } from './appLinks'
 import { geocodeQuery, latLonParams, pushCancelRequest, pushRideRequest, readJsonBody, reportDays, requireSystem, routeDetailsRequest, routeRequest, usageRequest } from './validate'
 
 /** One device's background ride alerts (the RideAlerts Durable Object's RPC methods). */
@@ -54,6 +56,8 @@ export interface AppDeps {
   usage?: UsageRpc | null
   /** Keeps work the response doesn't wait for alive after it is sent (ctx.waitUntil). */
   background?: (work: Promise<unknown>) => void
+  /** The iOS/Android apps this site's share links may open (/.well-known/*); undefined → none. */
+  appLinks?: AppLinkIds
 }
 
 /** Crawlers and automated browsers aren't people using the app. */
@@ -156,6 +160,7 @@ export function createApp(deps: AppDeps) {
     const method = request.method
     const signal = request.signal
 
+    if (p.startsWith('/.well-known/')) return (method === 'GET' && appLinksResponse(p, deps.appLinks)) || new Response(null, { status: 404 })
     if (p === API_PATHS.health) return json({ ok: true, service: 'badger-bikes', time: new Date(deps.now()).toISOString() })
     if (p === API_PATHS.meta) return json({ contactEmail: deps.contactEmail, version: deps.version, pushPublicKey: deps.push?.publicKey ?? null } satisfies MetaResponse)
 

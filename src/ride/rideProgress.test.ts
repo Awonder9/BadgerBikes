@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { RIDE } from '../config'
+import { MESSAGES } from '../i18n'
 import { destination } from '../lib/geo'
 import { MADISON, makeStation } from '../test/factories'
-import { clock, endDockState, nearestOpenDock, passChoiceMatters, replacementDocks, rideTimer } from './rideProgress'
+import { clock, endDockState, nearestOpenDock, passChoiceMatters, replacementDocks, rideTimer, timerAlertTimes, upcomingTimerAlerts } from './rideProgress'
 
 describe('ride timer', () => {
   const t0 = 1_800_000_000_000
@@ -12,6 +13,25 @@ describe('ride timer', () => {
     expect(rideTimer(t0, t0 + 31 * 60_000, 30)).toMatchObject({ leftS: -60, state: 'over' })
     expect(rideTimer(t0, t0 + 90 * 60_000, null)).toEqual({ elapsedS: 5400, leftS: null, state: 'ok' })
     expect(rideTimer(t0, t0 - 5000, 30).elapsedS).toBe(0) // clock skew never goes negative
+  })
+
+  it('times its alerts: "almost up" RIDE.timerWarnMinutes before the included time ends, then "over"', () => {
+    expect(timerAlertTimes(t0, 30)).toEqual({ warnAtMs: t0 + (30 - RIDE.timerWarnMinutes) * 60_000, overAtMs: t0 + 30 * 60_000 })
+    // No timer yet (walking to the dock) or no known pass: no alerts.
+    expect([timerAlertTimes(null, 30), timerAlertTimes(t0, null), timerAlertTimes(t0, 0)]).toEqual([null, null, null])
+  })
+
+  it('the apps schedule the alerts still ahead, in the rider’s language', () => {
+    const t = MESSAGES.en
+    expect(upcomingTimerAlerts(t0, 30, t0 + 60_000, t)).toEqual([
+      { kind: 'warn', atMs: t0 + 25 * 60_000, title: t.notifyWarnTitle, body: t.notifyWarnBody(RIDE.timerWarnMinutes) },
+      { kind: 'over', atMs: t0 + 30 * 60_000, title: t.notifyOverTitle, body: t.extraFees },
+    ])
+    // Already in the last minutes (an alert that is due shows in the open app instead), or past the included time.
+    expect(upcomingTimerAlerts(t0, 30, t0 + 27 * 60_000, t).map((a) => a.kind)).toEqual(['over'])
+    expect(upcomingTimerAlerts(t0, 30, t0 + 31 * 60_000, t)).toEqual([])
+    expect(upcomingTimerAlerts(null, 30, t0, t)).toEqual([])
+    expect(upcomingTimerAlerts(t0, 30, t0, MESSAGES['zh-Hans'])[0]?.title).toBe(MESSAGES['zh-Hans'].notifyWarnTitle)
   })
 
   it('formats m:ss', () => {

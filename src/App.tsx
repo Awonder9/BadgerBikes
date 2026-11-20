@@ -1,4 +1,5 @@
-// Composition root: providers, launch parameters (share links), theme, location watcher, shell.
+// Composition root: providers, launch parameters (share links), the native apps' links and back button, theme,
+// location watcher, shell.
 import { QueryClientProvider } from '@tanstack/react-query'
 import { Component, useEffect, type ReactNode } from 'react'
 import { createQueryClient, prefetchNearestStations, prefetchStations } from './data/hooks'
@@ -7,13 +8,13 @@ import { parseLaunchParams, stripLaunchParams } from './lib/urlParams'
 import { api } from './api/client'
 import { APP } from './config'
 import { useLocationWatcher } from './location/locationStore'
+import { useNativeApp } from './native/useNativeApp'
 import { useRideStore } from './ride/rideStore'
 import { useAppStore } from './store/appStore'
 import { LANG_TAGS } from './i18n/lang'
 import { currentMessages, useLang } from './i18n/useT'
-import type { Place } from './types'
+import { openLaunchParams } from './ui/launchParams'
 import { AppShell } from './ui/layout/AppShell'
-import { changeCity } from './ui/ride/rideActions'
 import { isDarkStyle, usePrefersDark } from './ui/useMediaQuery'
 import { useUsageCounts } from './ui/usage'
 
@@ -50,25 +51,7 @@ if (import.meta.env.DEV) Object.assign(window, { __bcycle: { app: useAppStore, r
 
 function useLaunchParams() {
   useEffect(() => {
-    const p = parseLaunchParams(window.location.search, SYSTEM_IDS)
-    const app = useAppStore.getState()
-    // Another city than the stored one: like Settings → City (a saved plan belongs to the old city's docks).
-    if (p.systemId) changeCity(p.systemId)
-    if (p.stationId) app.selectStation(p.stationId)
-    // A shared ride: start dock + destination (+ route option). The planner routes it once stations load.
-    if (p.rideStartId && p.to) {
-      const ride = useRideStore.getState()
-      const destination: Place = p.toStationId
-        ? { kind: 'station', name: p.to.name ?? currentMessages().destinationDock, coord: p.to.coord, stationId: p.toStationId }
-        : { kind: 'search', name: p.to.name ?? currentMessages().sharedDestination, coord: p.to.coord }
-      // It replaces whatever was planned: no start place or ride progress carries over from an older plan.
-      ride.reset()
-      ride.setStart(p.rideStartId)
-      ride.setDestination(destination)
-      useRideStore.setState({ pendingRouteIndex: p.routeIndex })
-      app.setPanel('ride')
-      app.setSheet('half')
-    }
+    openLaunchParams(parseLaunchParams(window.location.search, SYSTEM_IDS))
     if (window.location.search) window.history.replaceState(null, '', stripLaunchParams(window.location.href))
   }, [])
 }
@@ -107,6 +90,7 @@ function useDocumentLang() {
 
 function Root() {
   useLaunchParams()
+  useNativeApp()
   useDefaultCity()
   useTheme()
   useDocumentLang()

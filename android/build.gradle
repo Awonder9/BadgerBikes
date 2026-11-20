@@ -17,11 +17,16 @@ buildscript {
 
 apply from: "variables.gradle"
 
+// Build files go outside the project folder (bcycle.buildDir in gradle.properties, which explains why), the
+// Capacitor plugins' builds included (they would otherwise land in node_modules). app/build.gradle copies the
+// finished APK/AAB back to app/build/outputs, where `npx cap run android` and `npx cap build android` look for it.
+def buildRoot = new File(findProperty('bcycle.buildDir') ?: "${System.getProperty('java.io.tmpdir')}/bcycle-live-android/build")
 allprojects {
     repositories {
         google()
         mavenCentral()
     }
+    layout.buildDirectory = new File(buildRoot, project == rootProject ? 'root' : project.path.substring(1).replace(':', '/'))
 }
 
 task clean(type: Delete) {

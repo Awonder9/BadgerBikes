@@ -8,9 +8,10 @@
   "main": "worker/index.ts",
   "compatibility_date": "2026-11-01",
   "assets": {
-    // Unknown paths fall back to index.html (client-side app), except /api/* which always hits the Worker.
+    // Unknown paths fall back to index.html (client-side app), except /api/* and /.well-known/* (the apps' link
+    // files, worker/appLinks.ts), which always hit the Worker.
     "not_found_handling": "single-page-application",
-    "run_worker_first": ["/api/*"]
+    "run_worker_first": ["/api/*", "/.well-known/*"]
   },
   // One UpstreamGate instance per upstream group ("fossgis", "photon") enforces the public servers'
   // usage policies globally — across all users and Worker isolates. One RideAlerts instance per push

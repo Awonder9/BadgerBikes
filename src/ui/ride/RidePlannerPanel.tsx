@@ -11,6 +11,7 @@ import { useRouteDetails } from '../../data/routeDetails'
 import { PATH_COLORS } from '../../map/colors'
 import { buildRideShareUrl } from '../../lib/urlParams'
 import { gpxFileName, rideGpx } from '../../ride/gpx'
+import { shareTextFile } from '../../native/share'
 import { waitForFix } from '../../location/locationStore'
 import { useMapApiGetter } from '../../map/mapApiContext'
 import { passChoiceMatters } from '../../ride/rideProgress'
@@ -27,7 +28,7 @@ import { IconButton } from '../primitives/Button'
 import { Icon } from '../primitives/Icon'
 import { ShareButton } from '../primitives/ShareButton'
 import { Spinner } from '../primitives/Spinner'
-import { canHandOverFiles, shareOrigin } from '../platform'
+import { isNativeApp, shareOrigin } from '../platform'
 import { countUse } from '../usage'
 import { IosAlertsHint } from './AlertsHelp'
 import { RideStatusCard } from './RideProgress'
@@ -525,8 +526,7 @@ function ExactRouteFile({ plan }: { plan: RidePlan }) {
   const [msg, setMsg] = useState<string | null>(null)
   const { t } = useI18n()
   const { start, chosen, rideParts, walkLink } = plan
-  // The Android app can neither share nor save the file yet: no button that would do nothing (and start the ride).
-  if (!route || !start || chosen.length === 0 || !canHandOverFiles()) return null
+  if (!route || !start || chosen.length === 0) return null
   const save = async () => {
     setMsg(null)
     const name = t.gpxName(destination?.name ?? chosen.at(-1)!.station.name)
@@ -553,8 +553,14 @@ function ExactRouteFile({ plan }: { plan: RidePlan }) {
         await navigator.share({ files: [file], title: name })
         return started()
       }
+      // The Android app's web view has no Web Share, and the apps can't download: the phone's share sheet.
+      if (isNativeApp()) {
+        if (await shareTextFile(fileName, gpx, name)) started()
+        return
+      }
     } catch (e) {
       if (e instanceof DOMException && e.name === 'AbortError') return
+      if (isNativeApp()) return setMsg(t.gpxShareFailed)
     }
     const url = URL.createObjectURL(file)
     const a = document.createElement('a')

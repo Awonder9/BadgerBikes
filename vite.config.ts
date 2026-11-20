@@ -41,6 +41,10 @@ export default defineConfig(({ mode }) => {
               { name: 'vendor', test: /node_modules[\\/](react|react-dom|scheduler|@tanstack|zustand)[\\/]/ },
             ],
           },
+          // The Capacitor plugins' chunks (src/native/plugins.ts and the plugins' lazy parts) are loaded only inside
+          // the iOS/Android apps: named native-* so the web app's service worker can leave them out. (A chunk group
+          // would also take Vite's preload helper along, which the startup code shares.)
+          chunkFileNames: (chunk) => (NATIVE_CHUNK.test(chunk.facadeModuleId ?? '') ? 'assets/native-[name]-[hash].js' : 'assets/[name]-[hash].js'),
         },
       },
     },
@@ -77,8 +81,9 @@ export default defineConfig(({ mode }) => {
         workbox: {
           // App shell only. Live data (/api/*) and map tiles are never cached by the service worker.
           globPatterns: ['**/*.{js,css,html,svg,png,webmanifest}'],
-          // The usage dashboard is for the operator: never downloaded to riders' phones.
-          globIgnores: ['analytics.html', 'assets/analytics-*'],
+          // The usage dashboard is for the operator: never downloaded to riders' phones. Nor are the native apps'
+          // plugins, which a browser never loads.
+          globIgnores: ['analytics.html', 'assets/analytics-*', 'assets/native-*'],
           navigateFallback: 'index.html',
           navigateFallbackDenylist: [/^\/api\//, /^\/analytics/],
           maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
@@ -99,6 +104,8 @@ export default defineConfig(({ mode }) => {
     },
   }
 })
+
+const NATIVE_CHUNK = /node_modules[\\/]@capacitor[\\/]|src[\\/]native[\\/]plugins\.ts$/
 
 /** The native apps load the app from the phone and call the deployed site, so a native build needs its address. */
 function checkWebOrigin(origin: string | undefined): void {

@@ -42,6 +42,20 @@ export const NATIVE_APP = {
   origins: ['capacitor://localhost', 'https://localhost'],
   /** How long a web view may reuse a CORS preflight answer (WebKit caps it at 10 min, Chromium at 2 h). */
   preflightMaxAgeSeconds: 7200,
+  /** The apps' ID (iOS bundle ID, Android application ID): `appId` in capacitor.config.ts. It can't change once published. */
+  appId: 'app.badgerbikes',
+  /**
+   * Share links open the apps instead of the browser once this site vouches for them (Universal Links, App
+   * Links): the Worker serves /.well-known/apple-app-site-association while `appleTeamId` is set and
+   * /.well-known/assetlinks.json while `androidCertFingerprints` has an entry. Both files are public by design.
+   * `appleTeamId`: the Apple Developer Team ID (10 characters; developer.apple.com → Account → Membership details).
+   * `androidCertFingerprints`: SHA-256 fingerprints ("AB:CD:…") of the certificates the Android app is signed
+   * with (Play Console → Test and release → App integrity → App signing).
+   */
+  appleTeamId: '' as string,
+  androidCertFingerprints: [] as readonly string[],
+  /** iPhone reports the link that launched the app twice (launch URL and event): the same link within this long opens once. */
+  repeatedLinkMs: 10_000,
 } as const
 
 /**
@@ -179,6 +193,13 @@ export const LOCATION = {
   /** waitForFix: how long to wait, and how old a known fix may be to reuse it. */
   waitMs: 8_000,
   freshFixMs: 60_000,
+  /**
+   * The iOS/Android apps (native location plugin): high accuracy, or the plugin asks Android 12+ only for
+   * approximate location (blurred to about 2 km) and asks iPhones for 3 km accuracy; a new position this often
+   * while watching (Android).
+   */
+  nativeHighAccuracy: true,
+  nativeIntervalMs: 5_000,
 } as const
 
 export const GEOCODE = {

@@ -4,11 +4,15 @@ import { useShallow } from 'zustand/react/shallow'
 import { RIDE } from '../../config'
 import { useNow, useStationsSnapshot } from '../../data/hooks'
 import { haversine } from '../../lib/geo'
+import { locationAllowed } from '../../location/geoSource'
 import { useLocationStore } from '../../location/locationStore'
-import { ALERT_TAGS, endDockState, replacementDocks, rideTimer } from '../../ride/rideProgress'
+import { showAlertNow } from '../../native/notifications'
+import { ALERT_TAGS, endDockState, replacementDocks, rideTimer, type AlertKind } from '../../ride/rideProgress'
 import { useRideStore } from '../../ride/rideStore'
 import { useAppStore } from '../../store/appStore'
 import { currentMessages } from '../../i18n/useT'
+import { notificationAccess } from '../notifications'
+import { isNativeApp } from '../platform'
 import type { RidePlan } from './useRidePlan'
 
 export function useRideStatus(plan: RidePlan) {
@@ -34,14 +38,11 @@ export function useArrivalCheck(): void {
   const { active, destination } = useRideStore(useShallow((s) => ({ active: s.openedParts.length > 0, destination: s.destination })))
   const fix = useLocationStore((s) => s.fix)
   useEffect(() => {
-    if (!active || typeof navigator === 'undefined' || !navigator.permissions?.query) return
+    if (!active) return
     let cancelled = false
-    navigator.permissions
-      .query({ name: 'geolocation' })
-      .then((p) => {
-        if (!cancelled && p.state === 'granted') useLocationStore.getState().requestLocation()
-      })
-      .catch(() => {})
+    void locationAllowed().then((allowed) => {
+      if (!cancelled && allowed) useLocationStore.getState().requestLocation()
+    })
     return () => {
       cancelled = true
     }
@@ -58,7 +59,8 @@ export function useArrivalCheck(): void {
 /**
  * Fires a vibration + system notification (when allowed) once per condition while a ride is active and the
  * app is open. In the background the Worker sends the same alerts (backgroundAlerts.ts) with the same tags,
- * so one replaces the other instead of both showing.
+ * so one replaces the other instead of both showing; in the iOS/Android apps the timer's are scheduled on the
+ * phone instead (nativeRideAlerts.ts).
  */
 export function useRideAlerts(plan: RidePlan): void {
   const { active, startedAt, timer, endStation, dock } = useRideStatus(plan)
@@ -69,24 +71,30 @@ export function useRideAlerts(plan: RidePlan): void {
       return
     }
     const t = currentMessages()
-    const alerts: Array<[key: string, tag: string, title: string, body: string]> = []
+    const alerts: Array<[key: string, kind: AlertKind, title: string, body: string]> = []
     // Keyed by the timer's start: re-docking starts a new BCycle ride (a new timer), which warns again.
-    if (timer?.state === 'warn') alerts.push([`warn:${startedAt}`, ALERT_TAGS.warn, t.notifyWarnTitle, t.notifyWarnBody(Math.ceil((timer.leftS ?? 0) / 60))])
-    if (timer?.state === 'over') alerts.push([`over:${startedAt}`, ALERT_TAGS.over, t.notifyOverTitle, t.extraFees])
-    if (endStation && dock === 'full') alerts.push([`full:${endStation.id}`, ALERT_TAGS.full, t.notifyFullTitle, t.notifyFullBody(endStation.name)])
-    else if (endStation && dock === 'low') alerts.push([`low:${endStation.id}`, ALERT_TAGS.low, t.notifyLowTitle, t.notifyLowBody(endStation.name, endStation.status?.docks ?? 0)])
-    for (const [key, tag, title, body] of alerts) {
+    if (timer?.state === 'warn') alerts.push([`warn:${startedAt}`, 'warn', t.notifyWarnTitle, t.notifyWarnBody(Math.ceil((timer.leftS ?? 0) / 60))])
+    if (timer?.state === 'over') alerts.push([`over:${startedAt}`, 'over', t.notifyOverTitle, t.extraFees])
+    if (endStation && dock === 'full') alerts.push([`full:${endStation.id}`, 'full', t.notifyFullTitle, t.notifyFullBody(endStation.name)])
+    else if (endStation && dock === 'low') alerts.push([`low:${endStation.id}`, 'low', t.notifyLowTitle, t.notifyLowBody(endStation.name, endStation.status?.docks ?? 0)])
+    for (const [key, kind, title, body] of alerts) {
       if (fired.current.has(key)) continue
       fired.current.add(key)
-      notify(title, body, tag)
+      notify(kind, title, body)
     }
   }, [active, startedAt, timer?.state, timer?.leftS, endStation, dock])
 }
 
-function notify(title: string, body: string, tag: string): void {
+function notify(kind: AlertKind, title: string, body: string): void {
   if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') navigator.vibrate([200, 100, 200])
+  if (isNativeApp()) {
+    // The timer's alerts are already scheduled on the phone and show themselves, in front of the app too: shown
+    // again here they would alert twice. The end dock's can only come from here.
+    if ((kind === 'full' || kind === 'low') && notificationAccess() === 'granted') showAlertNow(kind, title, body, currentMessages().notifyChannel)
+    return
+  }
   if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return
-  const options: NotificationOptions = { body, icon: '/icons/icon-192.png', tag }
+  const options: NotificationOptions = { body, icon: '/icons/icon-192.png', tag: ALERT_TAGS[kind] }
   const page = () => {
     try {
       const n = new Notification(title, options)

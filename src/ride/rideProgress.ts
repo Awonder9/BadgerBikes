@@ -1,6 +1,7 @@
 // Pure helpers for a ride in progress: the BCycle ride timer against the pass's included minutes, the
 // end dock's state, and nearby replacement docks. No React, no browser globals.
 import { RIDE } from '../config'
+import type { Messages } from '../i18n'
 import { haversine, kNearest } from '../lib/geo'
 import { canReturn } from '../lib/stationState'
 import type { LngLat, PassOption, Station } from '../types'
@@ -10,6 +11,11 @@ import type { LngLat, PassOption, Station } from '../types'
  * notification replaces the one with the same tag instead of stacking up.
  */
 export const ALERT_TAGS = { warn: 'ride-warn', over: 'ride-over', full: 'dock-full', low: 'dock-low' } as const
+
+export type AlertKind = keyof typeof ALERT_TAGS
+
+/** The same for the iOS/Android apps' notifications, whose ids are numbers. */
+export const NATIVE_ALERT_IDS: Record<AlertKind, number> = { warn: 1, over: 2, full: 3, low: 4 }
 
 export type TimerState = 'ok' | 'warn' | 'over'
 
@@ -25,6 +31,34 @@ export function rideTimer(startedAtMs: number, nowMs: number, includedMinutes: n
   if (!includedMinutes) return { elapsedS, leftS: null, state: 'ok' }
   const leftS = includedMinutes * 60 - elapsedS
   return { elapsedS, leftS, state: leftS <= 0 ? 'over' : leftS <= RIDE.timerWarnMinutes * 60 ? 'warn' : 'ok' }
+}
+
+/** When the timer's alerts are due: "almost up" RIDE.timerWarnMinutes before the included time runs out, and "over". */
+export function timerAlertTimes(startedAtMs: number | null, includedMinutes: number | null): { warnAtMs: number; overAtMs: number } | null {
+  if (startedAtMs === null || !includedMinutes) return null
+  const overAtMs = startedAtMs + includedMinutes * 60_000
+  return { warnAtMs: overAtMs - RIDE.timerWarnMinutes * 60_000, overAtMs }
+}
+
+export interface TimedAlert {
+  kind: 'warn' | 'over'
+  atMs: number
+  title: string
+  body: string
+}
+
+/**
+ * The timer alerts the iOS/Android apps schedule on the phone during a ride, so they arrive while Google Maps is
+ * in front without a server: the ones still ahead. One already due shows in the app, which is open then.
+ */
+export function upcomingTimerAlerts(startedAtMs: number | null, includedMinutes: number | null, nowMs: number, t: Messages): TimedAlert[] {
+  const times = timerAlertTimes(startedAtMs, includedMinutes)
+  if (!times) return []
+  const alerts: TimedAlert[] = [
+    { kind: 'warn', atMs: times.warnAtMs, title: t.notifyWarnTitle, body: t.notifyWarnBody(RIDE.timerWarnMinutes) },
+    { kind: 'over', atMs: times.overAtMs, title: t.notifyOverTitle, body: t.extraFees },
+  ]
+  return alerts.filter((a) => a.atMs > nowMs)
 }
 
 export const clock = (s: number) => `${Math.floor(Math.abs(s) / 60)}:${String(Math.abs(s) % 60).padStart(2, '0')}`

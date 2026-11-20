@@ -44,6 +44,16 @@ dependencies {
 
 apply from: 'capacitor.build.gradle'
 
+// The build directory is in the temp folder (../build.gradle). The finished APK/AAB (a few MB) is copied back to
+// app/build/outputs, where the Capacitor CLI expects it (`npx cap run android`, `npx cap build android`).
+def copyOutputsToProject = tasks.register('copyOutputsToProject', Copy) {
+    from(layout.buildDirectory.dir('outputs')) {
+        include 'apk/**', 'bundle/**'
+    }
+    into(file('build/outputs'))
+}
+tasks.matching { it.name ==~ /(assemble|bundle)\w*(Debug|Release)/ }.configureEach { finalizedBy(copyOutputsToProject) }
+
 try {
     def servicesJSON = file('google-services.json')
     if (servicesJSON.text) {

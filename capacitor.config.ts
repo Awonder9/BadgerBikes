@@ -6,8 +6,9 @@ import { join } from 'node:path'
 import type { CapacitorConfig } from '@capacitor/cli'
 
 const config: CapacitorConfig = {
-  // The apps' identity in the App Store and Google Play (reverse domain of badgerbikes.app): it can't change once
-  // published. Forks: use your own.
+  // The apps' identity in the App Store and Google Play (badgerbikes.app reversed): it can't change once
+  // published. NATIVE_APP.appId in src/config.ts repeats it for the Worker's link files (a test keeps them
+  // equal). Forks: use your own.
   appId: 'app.badgerbikes',
   appName: 'Badger Bikes',
   // Outside the cloud-synced project folder, like the web build (vite.config.ts builds here in native mode).
@@ -22,6 +23,9 @@ const config: CapacitorConfig = {
     // Android: edge to edge, with env(safe-area-inset-*) set as in a browser (index.html has viewport-fit=cover
     // and the app pads itself with them).
     SystemBars: { insetsHandling: 'native', initialViewportFitValueHint: 'cover' },
+    // Android's status-bar icon for the ride alerts (white bike, android/app/src/main/res/drawable-*; drawn by
+    // scripts/generate-icons.mjs), tinted with the app's teal in the notification shade.
+    LocalNotifications: { smallIcon: 'ic_stat_bike', iconColor: '#0f766e' },
   },
 }
 

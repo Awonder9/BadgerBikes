@@ -32,17 +32,3 @@ export function isStandalone(): boolean {
 export function shareOrigin(): string {
   return NATIVE_APP.webOrigin || window.location.origin
 }
-
-/**
- * Whether the page can hand the rider a file (the GPX export). A browser downloads what it can't share; the native
- * apps' web views can't download, so there it takes Web Share with files: iOS has it, Android's web view doesn't
- * (until a native share plugin is added).
- */
-export function canHandOverFiles(): boolean {
-  if (!isNativeApp()) return true
-  try {
-    return typeof navigator.canShare === 'function' && navigator.canShare({ files: [new File([''], 'route.gpx', { type: 'application/gpx+xml' })] })
-  } catch {
-    return false
-  }
-}

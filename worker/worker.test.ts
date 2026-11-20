@@ -108,6 +108,30 @@ describe('worker app', () => {
   })
 })
 
+describe('the apps’ link files (/.well-known/*)', () => {
+  const ids = { appId: NATIVE_APP.appId, appleTeamId: 'ABCDE12345', androidCertFingerprints: ['AB:CD:EF'] }
+
+  it('vouch for the apps once their IDs are configured, as plain JSON (Apple’s CDN insists)', async () => {
+    const app = createApp(deps({ appLinks: ids }))
+    const apple = await call(app, '/.well-known/apple-app-site-association')
+    expect([apple.status, apple.headers.get('Content-Type')]).toEqual([200, 'application/json'])
+    expect(await apple.json()).toEqual({ applinks: { details: [{ appIDs: [`ABCDE12345.${NATIVE_APP.appId}`], components: [{ '/': '/', comment: expect.any(String) }] }] } })
+    const android = await call(app, '/.well-known/assetlinks.json')
+    expect(await android.json()).toEqual([
+      { relation: ['delegate_permission/common.handle_all_urls'], target: { namespace: 'android_app', package_name: NATIVE_APP.appId, sha256_cert_fingerprints: ['AB:CD:EF'] } },
+    ])
+  })
+
+  it('are 404 until configured, and so is anything else under /.well-known/', async () => {
+    const unset = createApp(deps({ appLinks: { appId: NATIVE_APP.appId, appleTeamId: '', androidCertFingerprints: [] } }))
+    for (const path of ['/.well-known/apple-app-site-association', '/.well-known/assetlinks.json']) expect((await call(unset, path)).status).toBe(404)
+    expect((await call(createApp(deps()), '/.well-known/assetlinks.json')).status).toBe(404)
+    const app = createApp(deps({ appLinks: ids }))
+    expect((await call(app, '/.well-known/security.txt')).status).toBe(404)
+    expect((await call(app, '/.well-known/assetlinks.json', { method: 'POST' })).status).toBe(404)
+  })
+})
+
 describe('the native apps (CORS)', () => {
   const from = (origin: string, path = '/api/stations?system=bcycle_madison', init: { method?: string; body?: string; headers?: Record<string, string> } = {}) =>
     call(createApp(deps()), path, { ...init, headers: { Origin: origin, ...init.headers } })

@@ -2,9 +2,9 @@
 // RideAlerts Durable Object (worker/rideAlerts.ts) stores this state per device and runs it on alarms. The
 // alert text comes from the app's own messages (src/i18n) and the station feed — never from the request.
 import type { PushRideRequest } from '../src/api/contract'
-import { PUSH, RIDE } from '../src/config'
+import { PUSH } from '../src/config'
 import { MESSAGES, type Lang } from '../src/i18n'
-import { ALERT_TAGS, type EndDockState } from '../src/ride/rideProgress'
+import { ALERT_TAGS, timerAlertTimes, type EndDockState } from '../src/ride/rideProgress'
 
 export type AlertKind = 'warn' | 'over' | 'full'
 
@@ -32,8 +32,9 @@ export interface RideAlertState {
  */
 export function planRide(req: PushRideRequest, nowMs: number, prev: RideAlertState | null): RideAlertState {
   const startedAtMs = req.rideStartedAtMs
-  const overAtMs = startedAtMs !== null && req.includedMinutes ? startedAtMs + req.includedMinutes * 60_000 : null
-  const warnAtMs = overAtMs !== null ? overAtMs - RIDE.timerWarnMinutes * 60_000 : null
+  const times = timerAlertTimes(startedAtMs, req.includedMinutes)
+  const overAtMs = times?.overAtMs ?? null
+  const warnAtMs = times?.warnAtMs ?? null
   const sameTimer = !!prev && prev.overAtMs === overAtMs && prev.startedAtMs === startedAtMs
   const sameDock = !!prev && prev.endStationId === req.endStationId
   return {

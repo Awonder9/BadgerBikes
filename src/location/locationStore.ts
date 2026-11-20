@@ -5,8 +5,9 @@ import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
 import { LOCATION } from '../config'
 import type { GeoFix, LngLat } from '../types'
+import { geoSource, type GeoErrorCode } from './geoSource'
 
-export type GeoErrorCode = 'geo_denied' | 'geo_unavailable' | 'geo_timeout' | 'geo_unsupported'
+export type { GeoErrorCode } from './geoSource'
 
 export interface LocationState {
   fix: GeoFix | null
@@ -34,14 +35,6 @@ export const useLocationStore = create<LocationState>()(
   })),
 )
 
-export function toGeoFix(pos: GeolocationPosition): GeoFix {
-  const c = pos.coords
-  const num = (v: number | null) => (v === null || Number.isNaN(v) || v < 0 ? null : v)
-  return { coord: [c.longitude, c.latitude], accuracy: c.accuracy, heading: num(c.heading), speed: num(c.speed), timestampMs: pos.timestamp }
-}
-
-const ERR: Record<number, GeoErrorCode> = { 1: 'geo_denied', 2: 'geo_unavailable', 3: 'geo_timeout' }
-
 /**
  * Mounted once (App): watches the position once requested (attempt > 0), restarting a watch that went quiet,
  * and starting over when the rider asks again after an error.
@@ -50,22 +43,20 @@ export function useLocationWatcher(): void {
   const attempt = useLocationStore((s) => s.attempt)
   useEffect(() => {
     if (attempt === 0) return
-    const geo = typeof navigator !== 'undefined' ? navigator.geolocation : undefined
-    const store = useLocationStore.getState()
-    if (!geo) {
-      store.setGeoError('geo_unsupported')
+    const source = geoSource()
+    if (!source) {
+      useLocationStore.getState().setGeoError('geo_unsupported')
       return
     }
-    let watchId: number | null = null
+    let stop: (() => void) | null = null
     let lastFixAt = Date.now()
     const begin = () => {
-      watchId = geo.watchPosition(
-        (pos) => {
+      stop = source.watch(
+        (fix) => {
           lastFixAt = Date.now()
-          useLocationStore.getState().setFix(toGeoFix(pos))
+          useLocationStore.getState().setFix(fix)
         },
-        (err) => useLocationStore.getState().setGeoError(ERR[err.code] ?? 'geo_unavailable'),
-        { enableHighAccuracy: false, maximumAge: LOCATION.maximumAgeMs, timeout: LOCATION.timeoutMs },
+        (code) => useLocationStore.getState().setGeoError(code),
       )
     }
     begin()
@@ -75,8 +66,8 @@ export function useLocationWatcher(): void {
       if (watchdog) clearTimeout(watchdog)
       watchdog = setTimeout(() => {
         watchdog = null
-        if (Date.now() - lastFixAt > LOCATION.watchdogMs && watchId !== null) {
-          geo.clearWatch(watchId)
+        if (Date.now() - lastFixAt > LOCATION.watchdogMs && stop) {
+          stop()
           begin()
         }
       }, LOCATION.watchdogMs)
@@ -85,7 +76,7 @@ export function useLocationWatcher(): void {
     return () => {
       document.removeEventListener('visibilitychange', onVisible)
       if (watchdog) clearTimeout(watchdog)
-      if (watchId !== null) geo.clearWatch(watchId)
+      stop?.()
     }
   }, [attempt])
 }

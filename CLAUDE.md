@@ -37,6 +37,8 @@ turn-by-turn directions, with ride progress tracked in the app.
 - `ios/`, `android/` — Capacitor native shells around the same bundle (`capacitor.config.ts`; docs/ARCHITECTURE.md
   §12); their `public/` copies of it are generated and gitignored. There the page is cross-origin to the Worker
   (CORS allows only `NATIVE_APP.origins`); tell the app apart with `isNativeApp()` (`src/ui/platform.ts`).
+  `src/native/` wraps the Capacitor plugins (location, local notifications, share links, back button, sharing a
+  file). Android's Gradle builds outside the project (`android/gradle.properties`: OneDrive breaks Gradle's locks).
 - Pure modules in `src/` that the Worker imports must be runtime-agnostic: no DOM, no Node APIs.
   `tsconfig.worker.json` (no DOM lib) enforces this for everything the Worker imports.
 
@@ -65,6 +67,10 @@ oxlint (not ESLint). Before using a library API you are not certain about, check
   only in `src/map/maplibre.ts`, which also calls `setWorkerUrl()` (Vite's dependency pre-bundling breaks
   maplibre's default worker URL resolution). Everywhere else use `import type`: a static import would pull the
   ~1 MB library back into the startup bundle. Check with `npm run build`: index.html must not modulepreload it.
+- Capacitor plugins (`@capacitor/*` except the CLI and platforms) are imported only in `src/native/plugins.ts`,
+  loaded by `nativePlugins()` (`src/native/index.ts`) and only inside the apps (`isNativeApp()`), so the web app
+  never downloads them; call them through the wrappers in `src/native/`. A new plugin needs `npm run build:native`
+  (its `cap sync` registers it in both native projects).
 - `tsconfig` has `noUncheckedIndexedAccess`: array/record indexing returns `T | undefined`; handle it.
 - Import paths omit file extensions (`import { x } from '../lib/geo'`), except in the root config files.
 - Coordinates are `[lon, lat]` (`LngLat`) everywhere in app code, matching GeoJSON/maplibre. Distances
