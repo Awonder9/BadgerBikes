@@ -325,10 +325,12 @@ test('start from my location: walk to the best dock, trip total, walk-instead, p
   await page.evaluate(([lon, lat]) => (window as unknown as { __bcycle: { ride: { getState: () => { setDestination: (p: unknown) => void } } } }).__bcycle.ride.getState().setDestination({ kind: 'search', name: 'Coffee Shop', coord: [lon + 0.004, lat] }), C)
   await expect(page.getByText(/^Total ~/)).toBeVisible()
   await expect(page.getByText(/Walk straight there: ~/)).toBeVisible()
-  // Direct (the default) is only a preview: Google picks the streets, so no path details.
+  // Direct (the default): Google picks the streets, so the path details are for the suggested route and say so.
   await expect(page.getByText(/The line is a preview/)).toBeVisible()
-  await expect(page.getByRole('region', { name: 'Path details' })).toHaveCount(0)
+  await expect(page.getByRole('region', { name: 'Path details' })).toContainText('For the suggested route')
+  await expect(page.getByRole('region', { name: 'Path details' })).toContainText('74% bike path')
   await page.getByRole('radio', { name: /^Bike-friendly:/ }).click()
+  await expect(page.getByRole('region', { name: 'Path details' })).not.toContainText('For the suggested route')
   await expect(page.getByRole('region', { name: 'Path details' })).toContainText('74% bike path')
   await expect(page.getByRole('region', { name: 'Path details' })).toContainText('▲ 59 ft')
   // Walking first: opening Part 1 shows "Walking to …" and the timer waits for the unlock.

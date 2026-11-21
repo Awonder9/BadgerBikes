@@ -276,7 +276,7 @@ export const zhHant: Messages = {
   pickUpAt: '取車站點',
   otherStartDocks: '其他可出發的站點',
   noDockNearby: '附近目前沒有有單車的站點。',
-  intoRide: (dur, off) => `騎乘約 ${dur}後抵達 · 偏離路線 ${off}`,
+  rideFrom: (dur, fromStart, off) => `從${fromStart ? '起點' : '上一站'}騎乘約 ${dur} · 偏離路線 ${off}`,
   rideEndsHere: '· 騎乘在此結束',
   offRouteRedock: (max) => `偏離路線 — 為了讓你在 ${max} 分鐘內換車而加入`,
   offRouteNearDestination: '偏離路線 — 離目的地最近的站點',
@@ -314,6 +314,7 @@ export const zhHant: Messages = {
   loadingPathDetails: '正在載入路況詳情…',
   pathDetailsUnavailable: '目前無法取得路況詳情。',
   pathDetails: '路況詳情',
+  pathDetailsSuggested: '以下為建議路線的資訊 — Google 地圖可能會選擇附近的街道。',
   pathShare: (pct, kind) => `${kind} ${pct}%`,
   pathKind: {
     bikePath: '自行車道',

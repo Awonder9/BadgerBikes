@@ -24,7 +24,7 @@ location — no location prompt; Madison if none is near), and Settings → City
    Google Maps: *Direct* (the default: Google Maps picks the streets between your docks, so the line is a
    preview and there are no waypoints) and *Bike-friendly* (as few cars as possible; Google Maps is held to
    its trails and paths with a waypoint on each). When the two are the same path, the card says so. Below them: the **whole trip** (walk → ride → walk),
-   **walking straight there** for comparison, and (Bike-friendly) the chosen route's **path breakdown** (bike path,
+   **walking straight there** for comparison, and the chosen route's **path breakdown** (bike path,
    shared-use path, bike lane, shared lane, quiet street, road with traffic) and **elevation** (▲ climb ·
    ▼ descent with a small profile). On the map, the chosen route is colored by type of road in the same
    colors as the breakdown (greens = away from cars, blue/teal = bike lanes, amber = shared lane, gray =
@@ -57,7 +57,7 @@ Also: **Nearest open dock** (where can I return this bike?) finds the closest do
 location; each station card has walking **Directions**, **Share** and **Street View** (what the dock looks like
 from the street); **Prefer e-bikes** (in cities with both kinds) makes the map count e-bikes; the home panel and
 the planner show the city's **weather** (temperature, wind and gusts, sunrise and sunset); a multi-stop trip
-keeps its finished legs on the map in gray and keeps your route option from leg to leg; and an offline banner
+keeps its finished legs on the map in violet and keeps your route option from leg to leg; and an offline banner
 says when the counts can't update. Follow the app on Instagram: [@badgerbikes.app](https://www.instagram.com/badgerbikes.app/).
 
 If the free routing server is busy, the app says so and asks you to try again in a few seconds.

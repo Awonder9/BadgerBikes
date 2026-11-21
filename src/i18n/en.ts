@@ -285,7 +285,8 @@ export const en = {
   pickUpAt: 'Pick up at',
   otherStartDocks: 'Other docks to start from',
   noDockNearby: 'No dock with bikes near here right now.',
-  intoRide: (dur: string, off: string) => `~${dur} into the ride · ${off} off route`,
+  /** A dock in the planner: the ride to it from the previous stop (or the start of the ride). */
+  rideFrom: (dur: string, fromStart: boolean, off: string) => `~${dur} ride from ${fromStart ? 'the start' : 'the previous stop'} · ${off} off route`,
   rideEndsHere: '· Ride ends here',
   offRouteRedock: (max: number) => `Off route — added so you can re-dock within ${max} min`,
   offRouteNearDestination: 'Off route — closest dock to your destination',
@@ -326,6 +327,7 @@ export const en = {
   loadingPathDetails: 'Loading path details…',
   pathDetailsUnavailable: 'Path details are unavailable right now.',
   pathDetails: 'Path details',
+  pathDetailsSuggested: 'For the suggested route — Google Maps may pick nearby streets.',
   pathShare: (pct: number, kind: string) => `${pct}% ${kind.toLowerCase()}`,
   pathKind: {
     bikePath: 'Bike path',

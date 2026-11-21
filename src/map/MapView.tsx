@@ -162,9 +162,10 @@ export function MapView({ ref, onStationClick, onBackgroundClick, onMapPick, onE
   const { snapshot } = useStationsSnapshot(systemId)
   const mixedFleet = useMemo(() => !!snapshot && fleetComposition(snapshot.stations) === 'mixed', [snapshot])
   const view: StationView = mode === 'bikes' && settings.preferEbikes && mixedFleet ? 'ebikes' : mode
-  // A route option that lets Google Maps pick the streets is only a preview: drawn light, without path details.
+  // A route option that lets Google Maps pick the streets (Direct) is drawn thin under its road-type colors, so
+  // when those can't load it still reads as a preview.
   const preview = BIKE_ROUTING.options[ride.routeIndex]?.handoff === 'docks'
-  const { details } = useRouteDetails(systemId, preview ? null : ride.route)
+  const { details, pending: colorsPending } = useRouteDetails(systemId, ride.route)
   // With the planner open on a route, only the docks that matter stay on the map: the start dock, the chosen
   // stops and the other docks offered along the route (the planner's own list, so the two never disagree). Mid-ride
   // also the end dock's replacements once it is low or full, and a dock the rider picked (say "Nearest open dock")
@@ -197,8 +198,8 @@ export function MapView({ ref, onStationClick, onBackgroundClick, onMapPick, onE
   const tripStops = useMemo(() => (tripStopList.length >= 2 ? tripStopList.filter((_, i) => i !== tripLeg).map((p) => p.coord) : []), [tripStopList, tripLeg])
   // Everything the route layers depend on.
   const routeScene = useMemo(
-    () => ({ route: ride.route, routes: ride.routes, destination: ride.destination, origin: ride.origin, segments: preview ? undefined : details?.segments, track: lines.track, walks: lines.walks, others: lines.others, endAlong, tripStops, preview, pastLegs: ride.pastLegs }),
-    [ride.route, ride.routes, ride.destination, ride.origin, details, lines.track, lines.walks, lines.others, endAlong, tripStops, preview, ride.pastLegs],
+    () => ({ route: ride.route, routes: ride.routes, destination: ride.destination, origin: ride.origin, segments: details?.segments, track: lines.track, walks: lines.walks, others: lines.others, endAlong, tripStops, preview, pastLegs: ride.pastLegs, colorsPending }),
+    [ride.route, ride.routes, ride.destination, ride.origin, details, lines.track, lines.walks, lines.others, endAlong, tripStops, preview, ride.pastLegs, colorsPending],
   )
 
   const emitStation = useEffectEvent((id: string) => onStationClick(id))
@@ -236,16 +237,18 @@ export function MapView({ ref, onStationClick, onBackgroundClick, onMapPick, onE
   const syncRoute = useEffectEvent((scene: typeof routeScene) => {
     const map = mapRef.current
     if (!map || !readyRef.current) return
-    const { route, destination } = scene
-    // Other route options faded underneath, the chosen one on top — drawn only as far as its end dock.
-    const others = scene.routes.filter((r) => r !== route).map((r, i) => ({ ...r, geometry: scene.others[i] ?? r.geometry }))
+    const { destination } = scene
+    // The route appears together with its road-type colors: while those load it isn't drawn (when they can't load,
+    // the plain line is). Other route options faded underneath, the chosen one on top — only as far as its end dock.
+    const route = scene.colorsPending ? null : scene.route
+    const others = route ? scene.routes.filter((r) => r !== scene.route).map((r, i) => ({ ...r, geometry: scene.others[i] ?? r.geometry })) : []
     const chosen = route && scene.track ? { ...route, geometry: scene.track } : route
     const routes = buildRouteFeatures(chosen ? [...others, chosen] : [], others.length, scene.preview)
     // A trip's finished legs, in one muted color, under everything else.
     routes.features.unshift(...buildPastLegFeatures(scene.pastLegs))
     // Walking legs: from a starting place to the pickup dock, and from the end dock to the destination.
     const origin = scene.origin && !scene.origin.stationId ? scene.origin.coord : null
-    routes.features.push(...buildWalkFeatures(scene.walks))
+    if (route) routes.features.push(...buildWalkFeatures(scene.walks))
     void source(map, S.route)?.setData(routes as never)
     const segments = route ? (scene.segments ?? []) : []
     void source(map, S.routeKinds)?.setData(buildPathKindFeatures(scene.endAlong !== undefined ? clipSegments(segments, scene.endAlong) : segments) as never)

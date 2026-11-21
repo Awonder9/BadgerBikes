@@ -244,7 +244,7 @@ ends the trip. Editing stops re-plans the leg on screen only when its two ends c
   arrival) includes such a ride before any of the leg's links is opened. *End ride* clears it. Planning a
   finished leg again un-finishes it. Plans from before this (a finished leg not saved) still open on the next
   leg at launch (`reconcileTrip`); a trip that doesn't match the saved plan is dropped. The
-trip's other stops are violet dots on the map, and its finished legs stay on it in one muted color
+trip's other stops are violet dots on the map, and its finished legs stay on it in one muted violet (`ROUTE_COLORS.past`, unused by the path colors)
 (`rideStore.pastLegs`: each leg's drawn line, recorded by *Finish leg*; kept when the trip is down to an ordinary
 ride, dropped by *Clear* or choosing another leg), under the leg on screen with its path colors. Share links carry the whole trip (below); the GPX file covers the leg on screen.
 
@@ -258,7 +258,8 @@ colored line on the map (`PATH_COLORS` in `src/map/colors.ts`, shared with the b
 planner card and the map share one cached request (`src/data/routeDetails.ts`).
 
 **Docks along the route** (`stationsAlongRoute.ts`): only docks on the route line (≤ 50 m) are offered, in
-ride order. Two labeled exceptions add an off-route dock: a re-dock option (≤ 300 m off the line) when a
+ride order. Each row shows the ride to it from the previous chosen stop (or the start) — for an optional dock, the
+ride it would be if added — its distance off the route, and a Street View link (`streetViewUrl`). Two labeled exceptions add an off-route dock: a re-dock option (≤ 300 m off the line) when a
 stretch would exceed the rider's max ride time (`settings.maxRideMinutes`, default
 `RIDE.defaultMaxRideMinutes` = 25, 0 = unlimited) without one, and the dock closest to the destination when
 the last on-route dock is more than a 400 m walk away — however far off the line, as long as it is closer to the
@@ -278,8 +279,10 @@ to confirm in Google Maps (*Continue*) — Google has no pass-through points —
 mid-ride. How much each option steers is its `handoff` (`BIKE_ROUTING.options`):
 - docks within `GOOGLE_HANDOFF.snapToRouteMeters` of the line are sent as the point on the line (a dock on a
   side street makes Google loop around the block); the end dock keeps its real location (every hand-off);
-- `docks` (Direct): nothing more. Google picks the streets, so the map draws the route thin and translucent as
-  a preview, and neither the map nor the planner shows its path details (none are requested);
+- `docks` (Direct): nothing more. Google picks the streets, so the route is a suggestion: the map draws it thin
+  and translucent under its road-type colors, and the path details card says it describes the suggested route
+  (`pathDetailsSuggested`). On every option the route lines (and walks) are drawn only once the road-type colors
+  have loaded, so the line appears in one go; when they can't load, the plain line is drawn;
 - `trails` (Bike-friendly): a via point on each trail/path section (`trailPoints`; maneuver street names, see
   `trailRangesOf`) — where Google most likely takes a parallel road instead. Sections under
   `GOOGLE_HANDOFF.trailMinMeters` get none, longer ones one per `trailPointEveryMeters`; sections less than

@@ -12,9 +12,12 @@ export const AVAILABILITY_COLORS: Readonly<Record<AvailabilityState, string>> = 
 }
 
 export const ROUTE_COLORS = {
-  /** `past`: a multi-stop trip's finished legs (one muted color, so the leg on screen stands out). */
-  light: { walk: '#475569', bike: '#0f766e', bikeCasing: '#ffffff', past: '#64748b' },
-  dark: { walk: '#cbd5e1', bike: '#2dd4bf', bikeCasing: '#0f172a', past: '#94a3b8' },
+  /**
+   * `past`: a multi-stop trip's finished legs — one muted violet (the trip's color: its stops are violet dots), which
+   * no PATH_COLORS kind uses, so a finished leg never reads as a stretch of the leg on screen (gray = quiet street).
+   */
+  light: { walk: '#475569', bike: '#0f766e', bikeCasing: '#ffffff', past: '#a78bfa' },
+  dark: { walk: '#cbd5e1', bike: '#2dd4bf', bikeCasing: '#0f172a', past: '#7c6bb3' },
 } as const
 
 /**

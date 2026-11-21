@@ -11,7 +11,7 @@ import { useRouteDetails } from '../../data/routeDetails'
 import { PATH_COLORS } from '../../map/colors'
 import { buildRideShareUrl } from '../../lib/urlParams'
 import { gpxFileName, rideGpx } from '../../ride/gpx'
-import { viaPointCount } from '../../ride/googleMaps'
+import { streetViewUrl, viaPointCount } from '../../ride/googleMaps'
 import { shareTextFile } from '../../native/share'
 import { waitForFix } from '../../location/locationStore'
 import { useMapApiGetter } from '../../map/mapApiContext'
@@ -169,8 +169,8 @@ export function RidePlannerPanel() {
           </div>
           <TripSummary plan={plan} units={units} />
           <WeatherStrip />
-          {/* A Direct route is only a preview (Google picks the streets), so its path details would mislead. */}
-          {plan.handoff !== 'docks' && <RouteDetailsCard systemId={systemId} units={units} />}
+          {/* On Direct, Google picks the streets: the details are for the suggested route, and say so. */}
+          <RouteDetailsCard systemId={systemId} units={units} suggested={plan.handoff === 'docks'} />
           {systemId && <PassPrompt systemId={systemId} />}
 
           {along.length === 0 ? (
@@ -474,11 +474,15 @@ function StartFromPlace({ plan, partySize, units }: { plan: RidePlan; partySize:
 
 function DockList({ docks, order, plan, partySize, units }: { docks: readonly RouteDock[]; order: readonly string[]; plan: RidePlan; partySize: number; units: 'imperial' | 'metric' }) {
   const stopIds = useRideStore((s) => s.stopIds)
-  const { end, segments, electric, pace, maxRideMinutes } = plan
+  const { end, segments, electric, pace, maxRideMinutes, chosen } = plan
   const { t, lang } = useI18n()
   return (
     <ul className="divide-y divide-slate-200 rounded-xl ring-1 ring-slate-200 dark:divide-slate-800 dark:ring-slate-800">
       {docks.map((s) => {
+        // The ride to this dock from the stop before it (the last chosen one earlier on the route, else the start):
+        // for a chosen dock that's its ride segment, for an optional one the ride it would be if added.
+        const prev = chosen.filter((c) => c.along < s.along && c.station.id !== s.station.id).at(-1)
+        const legSeconds = rideSeconds(Math.max(0, s.along - (prev?.along ?? 0)) + s.offset, electric, pace)
         const checked = stopIds.includes(s.station.id)
         const isEnd = end?.station.id === s.station.id
         const docksFree = s.station.status?.docks ?? 0
@@ -491,7 +495,19 @@ function DockList({ docks, order, plan, partySize, units }: { docks: readonly Ro
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-medium">{s.station.name}</span>
                 <span className="block text-sm text-slate-500">
-                  {t.intoRide(formatDuration(rideSeconds(s.along, electric, pace), lang), formatDistance(s.offset, units, lang))}
+                  {t.rideFrom(formatDuration(legSeconds, lang), !prev, formatDistance(s.offset, units, lang))}
+                  {' · '}
+                  {/* What the dock looks like from the street (a link, so it doesn't toggle the checkbox). */}
+                  <a
+                    href={streetViewUrl(s.station.coord)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={t.streetViewAria(s.station.name)}
+                    onClick={(e) => e.stopPropagation()}
+                    className="font-medium text-brand-700 underline dark:text-brand-300"
+                  >
+                    {t.streetView}
+                  </a>
                   {isEnd && <span className="ml-1 font-semibold text-brand-700 dark:text-brand-300">{t.rideEndsHere}</span>}
                 </span>
                 {s.reason === 'redock' && <span className="block text-sm text-slate-600 dark:text-slate-300">{t.offRouteRedock(maxRideMinutes)}</span>}
@@ -764,8 +780,11 @@ function PassPrompt({ systemId }: { systemId: string }) {
   )
 }
 
-/** What the chosen route rides on (same colors as the line on the map), and its hills. One request per route. */
-function RouteDetailsCard({ systemId, units }: { systemId: string | null; units: 'imperial' | 'metric' }) {
+/**
+ * What the chosen route rides on (same colors as the line on the map), and its hills. One request per route.
+ * `suggested`: Google Maps picks its own streets on this option (Direct), so these describe the suggested route.
+ */
+function RouteDetailsCard({ systemId, units, suggested = false }: { systemId: string | null; units: 'imperial' | 'metric'; suggested?: boolean }) {
   const route = useRideStore((s) => s.route)
   const { details, pending, failed, retrying, retry } = useRouteDetails(systemId, route)
   const { t, lang } = useI18n()
@@ -788,6 +807,7 @@ function RouteDetailsCard({ systemId, units }: { systemId: string | null; units:
   const ft = (m: number) => (units === 'imperial' ? `${Math.round(m * 3.28084)} ${unitWord('ft', lang)}` : `${Math.round(m)} ${unitWord('m', lang)}`)
   return (
     <section aria-label={t.pathDetails} className="space-y-2 rounded-xl ring-1 ring-slate-200 p-3 dark:ring-slate-800">
+      {suggested && <p className="text-xs text-slate-500">{t.pathDetailsSuggested}</p>}
       <div className="flex h-3 w-full overflow-hidden rounded-full" aria-hidden>
         {breakdown.map((b) => (
           <span key={b.kind} style={{ width: `${(b.meters / total) * 100}%`, background: PATH_COLORS[b.kind] }} />

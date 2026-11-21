@@ -276,7 +276,7 @@ export const zhHans: Messages = {
   pickUpAt: '取车站点',
   otherStartDocks: '其他可出发的站点',
   noDockNearby: '附近目前没有有单车的站点。',
-  intoRide: (dur, off) => `骑行约 ${dur}后到达 · 偏离路线 ${off}`,
+  rideFrom: (dur, fromStart, off) => `从${fromStart ? '起点' : '上一站'}骑行约 ${dur} · 偏离路线 ${off}`,
   rideEndsHere: '· 骑行在此结束',
   offRouteRedock: (max) => `偏离路线 — 为让你在 ${max} 分钟内换车而添加`,
   offRouteNearDestination: '偏离路线 — 离目的地最近的站点',
@@ -314,6 +314,7 @@ export const zhHans: Messages = {
   loadingPathDetails: '正在加载路况详情…',
   pathDetailsUnavailable: '路况详情暂时不可用。',
   pathDetails: '路况详情',
+  pathDetailsSuggested: '以下为建议路线的信息 — Google 地图可能会选择附近的街道。',
   pathShare: (pct, kind) => `${kind} ${pct}%`,
   pathKind: {
     bikePath: '自行车道',
