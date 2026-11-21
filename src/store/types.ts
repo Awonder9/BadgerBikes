@@ -27,6 +27,11 @@ export interface Settings {
   setupConfirmed: boolean
   /** The first-visit "add to home screen" pop-up was shown and dismissed. */
   installTipSeen: boolean
+  /**
+   * The rider dismissed the iPhone "To get alerts while Google Maps is open, add the app to your Home Screen" help in
+   * the planner and ride card; it shows in Settings instead (AlertsHelp.tsx).
+   */
+  alertsHintHidden: boolean
   passBySystem: Record<string, PassChoice>
 }
 

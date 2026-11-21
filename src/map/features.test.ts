@@ -1,6 +1,22 @@
 import { describe, expect, it } from 'vitest'
 import { makeSnapshot, makeStation } from '../test/factories'
-import { buildSavedPlaceFeatures, buildStationFeatures } from './features'
+import { destination, lineLength } from '../lib/geo'
+import { buildSavedPlaceFeatures, buildStationFeatures, clipSegments } from './features'
+
+describe('clipSegments', () => {
+  it('keeps the colored segments only up to the end dock', () => {
+    const at = (m: number) => destination([-89.4, 43.07], m, 90)
+    const segs = [
+      { kind: 'bikePath', coords: [at(0), at(1000)] },
+      { kind: 'bikeLane', coords: [at(1000), at(2000)] },
+      { kind: 'road', coords: [at(2000), at(3000)] },
+    ]
+    const cut = clipSegments(segs, 1500)
+    expect(cut.map((s) => s.kind)).toEqual(['bikePath', 'bikeLane'])
+    expect(lineLength(cut[1]!.coords)).toBeCloseTo(500, 0)
+    expect(clipSegments(segs, 99_999)).toEqual(segs)
+  })
+})
 
 describe('buildSavedPlaceFeatures', () => {
   it('keeps only this city’s saved places, with their id and icon', () => {

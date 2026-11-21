@@ -22,11 +22,12 @@ cleared, since it belongs to the old city's stations).
    without WebGL2), *Nearest open dock* (where can I return this bike?), an offline banner. A launch screen
    covers the app until the first live snapshot arrives (Retry / Continue if BCycle is unreachable).
 2. **Station card**: status banner, live counts with trend, ~walk estimate, *Start ride here* / *Ride to
-   here*, walking *Directions* (Google Maps), *Share*, a *BCycle* button (app hand-off), *Watch this
-   station*, star.
+   here*, walking *Directions* (Google Maps), *Share*, *Street View* (`streetViewUrl`: a Maps URL that opens
+   Google's panorama nearest the dock; no API key), a *BCycle* button (app hand-off), *Watch this station*, star.
 3. **Ride planner** (§7): start dock (search, map tap, or *Nearest dock with bikes*) with its e-bike/classic
-   mix → destination (search, map tap, quick chips for saved and recent places) → three route options
-   (*Bike-friendly*, *Balanced*, *Fastest*) → docks along the route (preselected, uncheck to skip) →
+   mix, or *I'm already on a bike* (plan from the rider's position, timer running) → destination (search, map tap, quick chips for saved and recent places) → two route options
+   (*Direct*: Google Maps picks the streets between docks, the line is a preview; *Bike-friendly*: Google is
+   held to its trails by a few waypoints) → docks along the route (preselected, uncheck to skip) →
    Google Maps links (split into parts) + a walking link.
 4. **Ride in progress**: parts opened are tracked ("Next: Part 2 → dock"), ride timer against the pass's
    included minutes (the planner asks for the pass on the first ride in a city), end-dock watch with nearby
@@ -40,7 +41,12 @@ cleared, since it belongs to the old city's stations).
    in Settings).
 7. **First-visit tip**: how to add the app to the home screen (iOS Safari / Android Chrome), shown once (never
    in an installed app or the native apps).
-8. **About**: attributions, operator contact, "Report a map problem".
+8. **About**: attributions, operator contact, "Report a map problem", the app's Instagram (`APP.instagram`; also a
+   row in Settings; null hides both).
+9. **Weather** (`WeatherStrip`, home panel and planner): the city's temperature and conditions, feels-like, wind
+   with direction (gusts when they beat it by `WEATHER.gustShowDeltaKph`), and today's sunrise/sunset in the
+   city's time zone — from `GET /api/weather` (Open-Meteo, for the city's center: nothing about the rider is
+   sent), refreshed every `CACHE_TTL_MS.weather`; hidden until it loads or when it can't.
 
 **Non-goals**: unlocking bikes or accounts (the official BCycle app does that), turn-by-turn guidance
 (Google Maps does that), fare calculation, offline maps, accounts/sync (saved data is device-only).
@@ -85,6 +91,7 @@ Browser (React app, static assets on Cloudflare)       Cloudflare Worker (/api/*
 | Valhalla (FOSSGIS, `valhalla1.openstreetmap.de`) | routes, text | Primary for everything routing. `units` (`miles`/`kilometers`) changes lengths AND spoken text. Shape = polyline **precision 6**, decodes to [lat, lon] → swap. Maneuvers share boundary indices; arrive has begin == end. `verbal_transition_alert_instruction` has **no distance** and often equals the pre text. Default `search_cutoff` is 35 km (silently snaps a lake pin 1.6 km away). Errors: HTTP 400 `{error_code}` — 170 unconnected, 171 no edges near location, 154 distance limit (bike 150 km), 442 no path. |
 | OSRM (FOSSGIS, `routing.openstreetmap.de/routed-{bike,foot}`) | **route-only** fallback | **Never use `/table`** (6 req/min per IP, burst 1, each cell counts as a request). HTTP 200 can carry `code != 'Ok'` (treat as error). Steps carry no text and no shape indices; arrive step geometry is degenerate. `radiuses` for user points; never send hints. |
 | Photon (`photon.komoot.io`) | search, reverse | `bbox` hard filter (`minLon,minLat,maxLon,maxLat`), `zoom=14`, `location_bias_scale=0.2`, `limit=8` then de-dup to 5. `extent` is `[minLon, maxLat, maxLon, minLat]`. Empty reverse → "Dropped pin". Fair use; extensive use gets throttled. |
+| Open-Meteo (`api.open-meteo.com/v1/forecast`) | weather | No key; free for non-commercial use, attribution "Weather data by Open-Meteo.com" (CC BY 4.0, shown under the weather and in About). Asked for the **city's center** in its IANA zone (`timezone`, so sunrise/sunset are the city's day) with `timeformat=unixtime`; metric units (the client converts). Errors: HTTP 400 `{error, reason}`. Gate group `openmeteo`; cached `CACHE_TTL_MS.weather` (its current values update every 15 min). |
 | OpenFreeMap (`tiles.openfreemap.org/styles/{liberty,dark}`) | tiles | Fonts: **Noto Sans Regular/Bold/Italic only** (MapLibre's default font 404s). Attribution comes from TileJSON — keep the attribution control on. |
 
 **Usage policies (must comply):** FOSSGIS = at most 1 request/second **for both hosts combined**, no heavy use,
@@ -103,9 +110,10 @@ endpoints (the code supports this via env).
 (`system=nearest` on a first visit: the nearest city's stations — the response's `systemId` names the city —
 so the launch screen waits for one request, not a city lookup and then the stations),
 `GET /api/system?system=`, `GET /api/locate` (nearest city; the client's fallback if that first request
-fails), `POST /api/routes` (three bike route options), `POST /api/route-details`
+fails), `POST /api/routes` (the bike route options), `POST /api/route` (one leg, only drawn: walks and the
+stretch to an off-route end dock; background priority; a straight leg when both routers fail), `POST /api/route-details`
 (path breakdown + elevation), `GET /api/geocode?q=&system=[&lat=&lon=]`,
-`GET /api/reverse?lat=&lon=`, `POST /api/push/ride` and `POST /api/push/cancel` (background ride alerts;
+`GET /api/reverse?lat=&lon=`, `GET /api/weather?system=` (the city's weather, §1; geocode rate limit), `POST /api/push/ride` and `POST /api/push/cancel` (background ride alerts;
 404 when the deployment has no VAPID keys — `/api/meta` then reports `pushPublicKey: null`),
 `POST /api/usage` and `GET /api/analytics?days=` (anonymous usage counts and the dashboard, §8a). Errors:
 `{ error: { code, message, retryable } }` with 4xx/5xx; codes from `AppErrorCode`.
@@ -125,8 +133,8 @@ a pure core (`worker/gateCore.ts`) tested in Node; `worker/gate.ts` is the thin 
 response doesn't wait for runs under `ctx.waitUntil`: Cache API writes (the in-isolate copy is stored at
 once) and gate releases (a lost release would hold FOSSGIS's single slot until the 30 s reclaim).
 
-**Capacity**: FOSSGIS allows ~1 request/second for the whole site, and one `/api/routes` call makes three
-Valhalla requests. When the gate or the servers refuse, the route options would degrade to straight-line
+**Capacity**: FOSSGIS allows ~1 request/second for the whole site, and one `/api/routes` call makes one
+Valhalla request per route option (two). When the gate or the servers refuse, the route options would degrade to straight-line
 guesses, which are useless for finding docks — so `/api/routes` returns 503 `upstream_unavailable` instead
 and the planner shows "Route server busy … try again in a few seconds" with a short countdown
 (`RIDE.busyRetrySeconds` = 3). Already-computed options are cached, so the retry is cheap. When both routers
@@ -171,10 +179,12 @@ planner asks for a destination on a street or path. Other failures are worded by
 use_living_streets, avoid_bad_surfaces }` (`BIKE_ROUTING`); `directions_options: { units, language }`.
 User-supplied destinations get `search_cutoff: BIKE_ROUTING.userPointSearchCutoffMeters`.
 
-**Route options** (`routeLadder`): one route per `BIKE_ROUTING.options` level — Bike-friendly
-(`use_roads` 0), Balanced (0.35), Fastest (1.0) — in that order. The Fastest slot is replaced by the
-quickest of the three, so the label is always true; identical options are kept (positions are labels)
-and the UI marks them "Same as …".
+**Route options** (`routeLadder`): one route per `BIKE_ROUTING.options` level, in that order — Direct
+(`use_roads` 0.5, the default; a first guess at Google's own bike routing, to be tuned against recorded rides)
+and Bike-friendly (0). Each option also names its Google Maps hand-off (§7). Identical options are kept
+(positions are labels) and the UI marks them "Same as …". When routes arrive, the option the rider had stays
+chosen (a share link's option wins), so a new destination or the next trip leg keeps their choice. A saved plan whose routes don't match the options
+(an older app version) is routed again (`restoreRide`).
 
 **Normalization** (both providers satisfy the `RouteLeg` invariants in `src/types.ts`): lengths → meters;
 polyline6 → `[lon, lat]`; connectors when snapped > 3 m; duplicate points removed; Valhalla maneuver types →
@@ -189,12 +199,25 @@ when both routers found no route for an option, else with `upstream_unavailable`
 
 ## 7. Ride planning and the Google Maps hand-off (`src/ride`, `src/ui/ride`)
 
+**Already on a bike** (`startOnBike`, *I'm already on a bike* in the planner's start step): the rider picks when
+they unlocked the bike (`RIDE.onBikeUnlockedAgoMinutes`), the app finds them once, and the plan starts there:
+`bikeAt` is the rider's position (routes are requested from it, `fromIsUserPoint`; the first Google link starts at
+it and isn't a dock unlock), the dock nearest it is the plan's start dock (bookkeeping only; `continuingRide`), and
+the ride timer starts at the chosen time. A new destination keeps it; changing the start or *End ride* ends it.
+
 **Start from anywhere** (`pickup.ts`): the start (`ride.origin`) is a place or a dock. From a place, up to
 `RIDE.pickupCandidates` docks with bikes within `RIDE.pickupWalkMeters` are ranked by estimated walk +
 estimated ride to the destination (+ a penalty for nearly empty docks); the best is used until the rider
 picks one (`pickupPinned`). It is chosen only before routing, so live count changes never re-route a plan
 on screen. Walk legs (to the pickup, from the end dock, and "walk straight there") are straight-line
-estimates (`estimateBetween`), shown with "~", drawn as dashed lines, with Google walking links. Opening the
+estimates (`estimateBetween`), shown with "~", with Google walking links. On the map (`useRideLines`), the walks
+that get a Google link are drawn dotted along the streets once `POST /api/route` has routed them (one request
+each, background priority, cached per leg by React Query — `src/data/legRoutes.ts`), straight until then or
+when they can't be routed; walks are drawn above the route lines, which often share their streets. The chosen
+route is drawn only up to the end dock (`rideTrack`), its path colors too (`clipSegments`), and the other options
+up to where they pass closest to it. An end dock more than `RIDE.offRouteTailMeters` off the line (the dock closest
+to a far destination) is reached by a routed bike leg from the line's nearest point (straight until it loads); the
+GPX file uses the same leg. Opening the
 first ride part does not start the ride timer when there is a walk to the dock first; the ride card asks
 "I've unlocked a bike".
 
@@ -221,7 +244,9 @@ ends the trip. Editing stops re-plans the leg on screen only when its two ends c
   arrival) includes such a ride before any of the leg's links is opened. *End ride* clears it. Planning a
   finished leg again un-finishes it. Plans from before this (a finished leg not saved) still open on the next
   leg at launch (`reconcileTrip`); a trip that doesn't match the saved plan is dropped. The
-trip's other stops are violet dots on the map. Share links carry the whole trip (below); the GPX file covers the leg on screen.
+trip's other stops are violet dots on the map, and its finished legs stay on it in one muted color
+(`rideStore.pastLegs`: each leg's drawn line, recorded by *Finish leg*; kept when the trip is down to an ordinary
+ride, dropped by *Clear* or choosing another leg), under the leg on screen with its path colors. Share links carry the whole trip (below); the GPX file covers the leg on screen.
 
 **Path breakdown + elevation** (`details.ts`, `POST /api/route-details`): one Valhalla `/trace_attributes`
 request for the selected route only (polyline6 of our geometry, `shape_match: walk_or_snap` because of the
@@ -236,7 +261,9 @@ planner card and the map share one cached request (`src/data/routeDetails.ts`).
 ride order. Two labeled exceptions add an off-route dock: a re-dock option (≤ 300 m off the line) when a
 stretch would exceed the rider's max ride time (`settings.maxRideMinutes`, default
 `RIDE.defaultMaxRideMinutes` = 25, 0 = unlimited) without one, and the dock closest to the destination when
-the last on-route dock is more than a 400 m walk away. `optimizedStops` preselects the fewest docks that keep
+the last on-route dock is more than a 400 m walk away — however far off the line, as long as it is closer to the
+destination than every dock already listed (past the network's edge, a 1.5 km walk beats a 4.5 km one). A
+re-dock option that is also that closest dock is labeled as the dock near the destination (the ride ends there). `optimizedStops` preselects the fewest docks that keep
 every ride within the limit (greedy: re-dock at the farthest usable dock still in range), ending at the
 usable dock closest to the destination; the rest are shown as optional stops. Ride times use the chosen
 route's pace (duration ÷ distance) so they match the route cards; on an e-bike the routes are requested with
@@ -246,12 +273,24 @@ dock that fills up stays the end of the ride and is reported as full (with a usa
 instead of silently dropping out of the plan and its Google links.
 
 **Google Maps links** (`googleMaps.ts`, Maps URLs, no API key): a link carries only an origin, a destination
-and ≤ 3 waypoints (mobile), and Google picks its own path between them. To keep it on the chosen route:
+and ≤ 3 waypoints (mobile), and Google picks its own path between them. Every waypoint is a stop the rider has
+to confirm in Google Maps (*Continue*) — Google has no pass-through points — so steering Google costs taps
+mid-ride. How much each option steers is its `handoff` (`BIKE_ROUTING.options`):
 - docks within `GOOGLE_HANDOFF.snapToRouteMeters` of the line are sent as the point on the line (a dock on a
-  side street makes Google loop around the block); the end dock keeps its real location;
-- via points are added so no stretch exceeds `GOOGLE_HANDOFF.maxGuidedGapMeters`, using the fewest points,
-  placed on trail/cycleway sections where that costs no extra point (Google turns a coordinate into the
-  nearest address or business, so a point mid-trail anchors best);
+  side street makes Google loop around the block); the end dock keeps its real location (every hand-off);
+- `docks` (Direct): nothing more. Google picks the streets, so the map draws the route thin and translucent as
+  a preview, and neither the map nor the planner shows its path details (none are requested);
+- `trails` (Bike-friendly): a via point on each trail/path section (`trailPoints`; maneuver street names, see
+  `trailRangesOf`) — where Google most likely takes a parallel road instead. Sections under
+  `GOOGLE_HANDOFF.trailMinMeters` get none, longer ones one per `trailPointEveryMeters`; sections less than
+  `trailJoinGapMeters` apart count as one, and a point within `trailNearStopMeters` of a dock stop is dropped.
+  A mid-trail point also anchors best (Google turns a coordinate into the nearest address or business);
+- `exact` (not used by an option now; switch one to it in config): via points so no stretch exceeds
+  `GOOGLE_HANDOFF.maxGuidedGapMeters`, using the fewest points, on trail sections where that costs no extra
+  point. It follows the line closely, at the cost of a stop every few minutes;
+- each route card shows its waypoints (`viaPointCount`, counted without docks; called waypoints, not stops, which
+  are the docks), and a line under the cards
+  explains the chosen option's hand-off with its actual count;
 - the result is split into parts of ≤ 3 waypoints, ending a part at a dock when possible; each part records
   where it ends and whether it starts at a dock. A walking link covers dock → destination.
 
@@ -283,6 +322,13 @@ card's *Ride to here* — and a dropped pin's *Ride here* (a long press, or a sa
 Maps bike link from the rider's position, like the replacement docks', instead of a new plan (which would start
 from the first dock and clear the timer). The first ride in a city asks which pass the rider has (only when its
 passes include different times; `passChoiceMatters`), so the timer warns at the right moment.
+- **Docked along the way** (`redockAlongWay`, ride card while a timer runs): the rider docked at a dock the plan
+  didn't stop at and took a bike again — say on the bike kept from an earlier trip leg. Only `rideStartedAtMs`
+  restarts (now); the leg, its opened links, a kept bike (`continuingRide`) and the trip stay. Every alert follows
+  the timer's start (in-app alerts are keyed by it, the Worker treats a new start as a new ride, the apps
+  reschedule), so they re-arm. Undo for `RIDE.redockUndoSeconds` (a stray tap would lose the ride time).
+  `redockedAtMs` (saved) marks the claim: a link starting at a dock opened within `RIDE.redockLinkGraceSeconds`
+  is that same unlock and keeps the claimed, earlier start instead of restarting again; later it is a new ride.
 
 **Background ride alerts** (Web Push; `src/ui/ride/backgroundAlerts.ts`, `worker/rideAlerts*.ts`,
 `worker/webPush.ts`): a web page cannot run while Google Maps is in front, so while a ride is under way and
@@ -302,11 +348,13 @@ alerts still work. The ride card's alerts section (`src/ui/ride/AlertsHelp.tsx`,
 tells the rider what this phone needs: on iPhone in a Safari tab, the Add to Home Screen steps (tabs can't
 receive web push; the Home Screen app keeps its own storage, so the ride is planned there); on Android, to
 allow Chrome's notifications too if Android asks; once blocked, how to allow them again (Android tab,
-installed Android app, iPhone Settings); in an Android browser without notifications, to use Chrome. It never
+installed Android app, iPhone Settings); in an Android browser without notifications, to use Chrome. The iPhone
+Home Screen steps (planner footer and ride card) have ✕: `settings.alertsHintHidden` hides them there and shows
+them in Settings → *Alerts during a ride* instead (`AlertsSettings`, with *Show it in the ride planner again*). It never
 promises background alerts when the server has no VAPID keys. The iOS/Android apps have no Web Push: they
 schedule the timer's alerts on the phone instead, and "end dock full" shows while the app is open (§12).
 
-**Share links** (`src/lib/urlParams.ts`): `?system=<id>&start=<station id>&stop=…&toName=&to=<lat,lon>&toStation=&route=<0-2>&leg=<n>`.
+**Share links** (`src/lib/urlParams.ts`): `?system=<id>&start=<station id>&stop=…&toName=&to=<lat,lon>&toStation=&route=<0-1>&leg=<n>`.
 Names have no whitespace (spaces are written as `_` and read back as spaces; older `+` / `%20` links still
 work) and come before coordinates and ids, so chat apps can't split the link at a space or drop a name's
 trailing `.`. A multi-stop trip is shared whole: `start` is leg 1's start dock, `to*` stop 1, then one repeated
@@ -332,7 +380,10 @@ like Settings → City), then removed from the address bar.
   the city, data revision, party size, plan roles or stars change; chosen route on top of faded alternatives;
   start/stops/end rings; selection via feature-state (re-applied after a style reload); user location dot
   from `useLocationStore` (outside React). The theme follows the OS (`prefers-color-scheme`) live; the style
-  is only reloaded when it actually changes. Taps hit the nearest station dot within 12 px; a long press
+  is only reloaded when it actually changes. `usePrefersDark` ignores changes while the page is hidden and
+  re-reads the OS setting on every return (`visibilitychange`, `pageshow`, `focus`): iOS flips a backgrounded app
+  between light and dark for its app-switcher snapshots and doesn't always report flipping back, which used to
+  leave the app (and map) light. Taps hit the nearest station dot within 12 px; a long press
   (touch timer or the browser's contextmenu) picks a point once. While planning, a tapped dock fills the
   planner (start, then destination) instead of opening the station card. A station opened from search, the
   list, a star or a link is brought into view at street level (`MAP.revealZoom`) when it is off screen, under
@@ -355,8 +406,10 @@ like Settings → City), then removed from the address bar.
   the ride clock only while a ride timer runs, the launch screen's only while it is up; ride alerts, the
   arrival check and the station watch are leaf components of `AppShell`. `useRidePlan` memoizes each
   derivation and shares the docks-along-route computation across its callers.
-- **Map while planning**: once a route is shown, only the start dock and the docks along the route (the
-  selectable stops) stay on the map; other docks are filtered out until you leave the planner.
+- **Map while planning and riding**: once a route is shown, only the start dock and the docks along the route
+  (the selectable stops) stay on the map, also after a Google Maps part is opened; mid-ride the end dock's
+  replacements join them once it is low or full, and a dock the rider picked (a tap, *Nearest open dock*) always
+  shows. Other docks are filtered out until you leave the planner (the browse panel shows every dock).
 - **Prefer e-bikes** (`settings.preferEbikes`, offered only when `fleetComposition` is `mixed`): the Bikes
   view counts e-bikes (`ebikeState` / `ebikes` feature properties; the toggle reads *E-bikes*), pickup
   ranking adds `RIDE.pickupNoEbikePenaltyS` for docks without enough e-bikes, and planner estimates use
@@ -406,7 +459,10 @@ how, without tracking anyone. **No identifier leaves the device**, and nothing s
   Riders in Google Maps aren't counted until they return to the app (the page can't run then).
 - The Worker counts `routes` (route options served), `routes_busy` (the busy routing server asked the rider
   to retry) and `alerts_sent` itself.
-- Storage: one `Usage` Durable Object (SQLite, KV API): `d:YYYY-MM-DD` day records, `window`, `total`. Days
+- **Dashboard views**: the dashboard's first request of a page load carries `view=1`; the Worker counts it
+  (`dashboard_views`, a server counter: per day, plus an all-time `dashboardViews` total) before its cache
+  answers, not for bot User-Agents. Refreshes and range changes aren't views; no identifier, so views, not viewers.
+- Storage: one `Usage` Durable Object (SQLite, KV API): `d:YYYY-MM-DD` day records, `window`, `total`, `dashboardViews`. Days
   older than `USAGE.keepDays` are deleted. No IP, User-Agent, location or identifier is stored.
 - Not counted: Do Not Track / Global Privacy Control on, `navigator.webdriver` (automation, tests),
   bot-like User-Agents (server side), browsers without working site storage. Settings → storage note says so.

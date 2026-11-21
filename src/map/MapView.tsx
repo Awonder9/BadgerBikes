@@ -4,7 +4,7 @@
 import type { GeoJSONSource, MapGeoJSONFeature, MapMouseEvent, Map as MlMap } from 'maplibre-gl'
 import { useEffect, useEffectEvent, useImperativeHandle, useMemo, useRef } from 'react'
 import { useShallow } from 'zustand/react/shallow'
-import { MAP } from '../config'
+import { BIKE_ROUTING, MAP } from '../config'
 import { getSystem } from '../data/systems'
 import { useStationsSnapshot } from '../data/hooks'
 import { AppError } from '../lib/errors'
@@ -13,16 +13,18 @@ import { useAppStore } from '../store/appStore'
 import { useT } from '../i18n/useT'
 import { useLocationStore } from '../location/locationStore'
 import type { BBox, LngLat, MapMode } from '../types'
+import { endDockState, replacementDocks } from '../ride/rideProgress'
 import { useRideStore, rideActive } from '../ride/rideStore'
 import { useTripStore } from '../ride/tripStore'
 import { isDarkStyle, usePrefersDark } from '../ui/useMediaQuery'
 import { useRidePlan } from '../ui/ride/useRidePlan'
+import { useRideLines } from '../ui/ride/useRideLines'
 import { AVAILABILITY_COLORS, PATH_COLORS, ROUTE_COLORS, STAR_GOLD, USER_PUCK } from './colors'
 import { markMapSettled } from './mapSettled'
 import { addSavedIcons, savedImageId } from './savedIcons'
 import { useRouteDetails } from '../data/routeDetails'
 import type { PathKind } from '../routing/details'
-import { buildEndpointFeatures, buildSavedPlaceFeatures, buildPathKindFeatures, buildRouteFeatures, buildWalkFeatures, buildStationFeatures, buildUserFeatures, emptyCollection, rideRoles } from './features'
+import { buildEndpointFeatures, buildSavedPlaceFeatures, buildPastLegFeatures, buildPathKindFeatures, clipSegments, buildRouteFeatures, buildWalkFeatures, buildStationFeatures, buildUserFeatures, emptyCollection, rideRoles } from './features'
 import { LAYER_IDS as L, SOURCE_IDS as S, type MapViewProps, type Padding, type StationFeatureProps } from './types'
 
 // Starts downloading the map runtime as soon as the app starts. A failure is reported when the map is created.
@@ -70,16 +72,17 @@ function ensureLayers(map: MlMap, view: StationView, dark: boolean) {
   if (!map.getSource(S.user)) map.addSource(S.user, { type: 'geojson', data: emptyCollection() })
   if (!map.getSource(S.saved)) map.addSource(S.saved, { type: 'geojson', data: emptyCollection() })
   addSavedIcons(map)
-  if (!map.getLayer(L.routeWalk))
-    map.addLayer({ id: L.routeWalk, type: 'line', source: S.route, filter: ['==', ['get', 'mode'], 'walk'], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': rc.walk, 'line-width': 4, 'line-dasharray': [0.1, 2], 'line-opacity': ['case', ['==', ['get', 'done'], 1], 0.35, 1] } })
   if (!map.getLayer(L.routeBikeCasing))
-    map.addLayer({ id: L.routeBikeCasing, type: 'line', source: S.route, filter: ['==', ['get', 'mode'], 'bike'], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': rc.bikeCasing, 'line-width': 9 } })
+    map.addLayer({ id: L.routeBikeCasing, type: 'line', source: S.route, filter: ['==', ['get', 'mode'], 'bike'], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': rc.bikeCasing, 'line-width': ['case', ['==', ['get', 'light'], 1], 6, ['==', ['get', 'past'], 1], 7, 9] } })
   if (!map.getLayer(L.routeBike))
-    map.addLayer({ id: L.routeBike, type: 'line', source: S.route, filter: ['==', ['get', 'mode'], 'bike'], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': rc.bike, 'line-width': 6, 'line-opacity': ['case', ['==', ['get', 'done'], 1], 0.35, 1] } })
+    map.addLayer({ id: L.routeBike, type: 'line', source: S.route, filter: ['==', ['get', 'mode'], 'bike'], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ['case', ['==', ['get', 'past'], 1], rc.past, rc.bike], 'line-width': ['case', ['==', ['get', 'light'], 1], 3.5, ['==', ['get', 'past'], 1], 4.5, 6], 'line-opacity': ['case', ['==', ['get', 'done'], 1], 0.35, ['==', ['get', 'light'], 1], 0.7, ['==', ['get', 'past'], 1], 0.85, 1] } })
   // The chosen route colored by kind of way (bike path, lane, shared lane, quiet street, busy road…), drawn
   // over the plain line once its details have loaded.
   if (!map.getLayer(L.routeKinds))
     map.addLayer({ id: L.routeKinds, type: 'line', source: S.routeKinds, layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': pathColorExpr(dark), 'line-width': 6 } })
+  // Walks on top: they often follow the same streets as a route line, which would hide them.
+  if (!map.getLayer(L.routeWalk))
+    map.addLayer({ id: L.routeWalk, type: 'line', source: S.route, filter: ['==', ['get', 'mode'], 'walk'], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': rc.walk, 'line-width': 4, 'line-dasharray': [0.1, 2], 'line-opacity': ['case', ['==', ['get', 'done'], 1], 0.35, 1] } })
   if (!map.getLayer(L.stationSelected))
     map.addLayer({ id: L.stationSelected, type: 'circle', source: S.stations, paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 11, 9, 15, 20], 'circle-color': 'rgba(0,0,0,0)', 'circle-stroke-width': ['case', ['boolean', ['feature-state', 'selected'], false], 4, ['!=', ['get', 'planRole'], ''], 3, 0], 'circle-stroke-color': ['case', ['==', ['get', 'planRole'], 'backup'], '#94a3b8', '#2563eb'] } })
   // Starred docks: a gold ring just outside the station circle.
@@ -152,29 +155,40 @@ export function MapView({ ref, onStationClick, onBackgroundClick, onMapPick, onE
   const { systemId, mode, selectedStationId, settings, starred, saved } = useAppStore(
     useShallow((s) => ({ systemId: s.systemId, mode: s.mapMode, selectedStationId: s.selectedStationId, settings: s.settings, starred: s.starredStations, saved: s.savedPlaces })),
   )
-  const ride = useRideStore(useShallow((s) => ({ route: s.route, routes: s.routes, startId: s.startId, stopIds: s.stopIds, destination: s.destination, origin: s.origin })))
+  const ride = useRideStore(useShallow((s) => ({ route: s.route, routes: s.routes, routeIndex: s.routeIndex, pastLegs: s.pastLegs, startId: s.startId, stopIds: s.stopIds, destination: s.destination, origin: s.origin })))
   const rolesKey = `${ride.startId ?? ''}|${ride.stopIds.join(',')}`
   const dark = isDarkStyle(settings.mapStyle, usePrefersDark())
   const styleUrl = dark ? MAP.styles.dark : MAP.styles.light
   const { snapshot } = useStationsSnapshot(systemId)
   const mixedFleet = useMemo(() => !!snapshot && fleetComposition(snapshot.stations) === 'mixed', [snapshot])
   const view: StationView = mode === 'bikes' && settings.preferEbikes && mixedFleet ? 'ebikes' : mode
-  const { details } = useRouteDetails(systemId, ride.route)
-  // While planning (route shown, ride not started), only the docks that matter stay on the map: the start
-  // dock, the chosen stops and the other docks offered along the route. During the ride every dock shows
-  // again (the rider may need another one). Uses the planner's own list, so the two never disagree.
+  // A route option that lets Google Maps pick the streets is only a preview: drawn light, without path details.
+  const preview = BIKE_ROUTING.options[ride.routeIndex]?.handoff === 'docks'
+  const { details } = useRouteDetails(systemId, preview ? null : ride.route)
+  // With the planner open on a route, only the docks that matter stay on the map: the start dock, the chosen
+  // stops and the other docks offered along the route (the planner's own list, so the two never disagree). Mid-ride
+  // also the end dock's replacements once it is low or full, and a dock the rider picked (say "Nearest open dock")
+  // is always shown. The browse panel shows every dock.
   const panel = useAppStore((s) => s.panel)
   const riding = useRideStore(rideActive)
   const plan = useRidePlan()
-  const routeDockIds = useMemo(
-    () => (panel === 'ride' && !riding && ride.route && ride.startId ? [...new Set([ride.startId, ...ride.stopIds, ...plan.along.map((d) => d.station.id)])] : null),
-    [panel, riding, ride.route, ride.startId, ride.stopIds, plan.along],
-  )
-  // Walking legs only need the two docks' positions; keyed by value so station polls don't re-upload the route.
-  const endId = ride.stopIds.at(-1)
-  const startCoord = ride.startId ? snapshot?.byId.get(ride.startId)?.coord : undefined
-  const endCoord = endId ? snapshot?.byId.get(endId)?.coord : undefined
-  const walkKey = `${startCoord?.join(',') ?? ''}|${endCoord?.join(',') ?? ''}`
+  const routeDockKey = useMemo(() => {
+    if (panel !== 'ride' || !ride.route || !ride.startId) return null
+    const ids = [ride.startId, ...ride.stopIds, ...plan.along.map((d) => d.station.id)]
+    const end = plan.end?.station
+    if (riding && end && snapshot && endDockState(end, settings.partySize) !== 'ok') {
+      ids.push(...replacementDocks(snapshot.stations, end.id, ride.destination?.coord ?? end.coord, settings.partySize).map((r) => r.station.id))
+    }
+    if (selectedStationId) ids.push(selectedStationId)
+    // A string, so a station poll that changes nothing doesn't re-apply the filter.
+    return [...new Set(ids)].join('\n')
+  }, [panel, riding, ride.route, ride.startId, ride.stopIds, ride.destination, plan.along, plan.end, snapshot, settings.partySize, selectedStationId])
+  const routeDockIds = useMemo(() => (routeDockKey === null ? null : routeDockKey.split('\n')), [routeDockKey])
+  // The ride up to its end dock and the walks around it (routed once loaded; useRideLines keeps them stable
+  // across station polls, so the route isn't re-uploaded every poll).
+  const otherRoutes = useMemo(() => ride.routes.filter((r) => r !== ride.route), [ride.routes, ride.route])
+  const lines = useRideLines(systemId, plan, ride.route, otherRoutes)
+  const endAlong = plan.end?.along
   // Everything the station features depend on: the city (revisions restart at 1 in each city), its data
   // revision, the party size (availability colors), plan roles and stars.
   const stationsKey = snapshot ? `${snapshot.systemId}|${snapshot.revision}|${settings.partySize}|${rolesKey}|${starred.join(',')}` : ''
@@ -183,8 +197,8 @@ export function MapView({ ref, onStationClick, onBackgroundClick, onMapPick, onE
   const tripStops = useMemo(() => (tripStopList.length >= 2 ? tripStopList.filter((_, i) => i !== tripLeg).map((p) => p.coord) : []), [tripStopList, tripLeg])
   // Everything the route layers depend on.
   const routeScene = useMemo(
-    () => ({ route: ride.route, routes: ride.routes, destination: ride.destination, origin: ride.origin, segments: details?.segments, walkKey, tripStops }),
-    [ride.route, ride.routes, ride.destination, ride.origin, details, walkKey, tripStops],
+    () => ({ route: ride.route, routes: ride.routes, destination: ride.destination, origin: ride.origin, segments: preview ? undefined : details?.segments, track: lines.track, walks: lines.walks, others: lines.others, endAlong, tripStops, preview, pastLegs: ride.pastLegs }),
+    [ride.route, ride.routes, ride.destination, ride.origin, details, lines.track, lines.walks, lines.others, endAlong, tripStops, preview, ride.pastLegs],
   )
 
   const emitStation = useEffectEvent((id: string) => onStationClick(id))
@@ -223,17 +237,18 @@ export function MapView({ ref, onStationClick, onBackgroundClick, onMapPick, onE
     const map = mapRef.current
     if (!map || !readyRef.current) return
     const { route, destination } = scene
-    // Other route options faded underneath, the chosen one on top.
-    const others = scene.routes.filter((r) => r !== route)
-    const routes = buildRouteFeatures(route ? [...others, route] : [], others.length)
+    // Other route options faded underneath, the chosen one on top — drawn only as far as its end dock.
+    const others = scene.routes.filter((r) => r !== route).map((r, i) => ({ ...r, geometry: scene.others[i] ?? r.geometry }))
+    const chosen = route && scene.track ? { ...route, geometry: scene.track } : route
+    const routes = buildRouteFeatures(chosen ? [...others, chosen] : [], others.length, scene.preview)
+    // A trip's finished legs, in one muted color, under everything else.
+    routes.features.unshift(...buildPastLegFeatures(scene.pastLegs))
     // Walking legs: from a starting place to the pickup dock, and from the end dock to the destination.
     const origin = scene.origin && !scene.origin.stationId ? scene.origin.coord : null
-    const walks: Array<[[number, number], [number, number]]> = []
-    if (origin && startCoord) walks.push([origin, startCoord])
-    if (route && endCoord && destination) walks.push([endCoord, destination.coord])
-    routes.features.push(...buildWalkFeatures(walks))
+    routes.features.push(...buildWalkFeatures(scene.walks))
     void source(map, S.route)?.setData(routes as never)
-    void source(map, S.routeKinds)?.setData(buildPathKindFeatures(route ? (scene.segments ?? []) : []) as never)
+    const segments = route ? (scene.segments ?? []) : []
+    void source(map, S.routeKinds)?.setData(buildPathKindFeatures(scene.endAlong !== undefined ? clipSegments(segments, scene.endAlong) : segments) as never)
     void source(map, S.endpoints)?.setData(buildEndpointFeatures(destination?.coord ?? null, origin, scene.tripStops) as never)
   })
   // User location dot, outside React.

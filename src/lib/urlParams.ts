@@ -21,7 +21,7 @@ export interface LaunchParams {
   rideStartId: string | null
   to: SharedPoint | null
   toStationId: string | null
-  /** 0 = bike-friendly, 1 = balanced, 2 = fastest (for the leg shown, `leg`). */
+  /** Index into BIKE_ROUTING.options: 0 = direct, 1 = bike-friendly (for the leg shown, `leg`). */
   routeIndex: number | null
   /** A multi-stop trip: the stops after `to`, in order (empty for a one-stop ride). */
   stops: SharedStop[]

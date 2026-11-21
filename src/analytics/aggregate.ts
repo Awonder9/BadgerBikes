@@ -21,6 +21,9 @@ export interface RangeSummary {
   opens: number
   ridesStarted: number
   routes: number
+  /** Times the dashboard itself was opened in the range, and today. */
+  dashboardViews: number
+  dashboardViewsToday: number
   /**
    * Device-days by city / platform / how the app is used / language (each device once per day). How: 'browser',
    * 'installed' (the Home Screen web app) or 'app:<platform>' (the iOS/Android app).
@@ -77,6 +80,8 @@ export function summarizeRange(stats: StatsResponse, range: RangeDays): RangeSum
     opens: days.reduce((n, d) => n + d.opens, 0),
     ridesStarted: count(days, 'ride_start'),
     routes: count(days, 'routes'),
+    dashboardViews: count(days, 'dashboard_views'),
+    dashboardViewsToday: last?.counts.dashboard_views ?? 0,
     cities: total(days, (d) => d.cities),
     platforms: total(days, (d) => d.platforms),
     howUsed: ranked([{ key: 'browser', value: deviceDays - installed - inApps }, { key: 'installed', value: installed }, ...apps.map((s) => ({ key: `app:${s.key}`, value: s.value }))]),

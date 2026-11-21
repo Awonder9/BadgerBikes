@@ -8,6 +8,8 @@ import {
   type MetaResponse,
   type OkResponse,
   type PushRideRequest,
+  type RouteResponse,
+  type WeatherResponse,
   type StationsResponse,
   type StatsResponse,
   type UsageCounter,
@@ -22,6 +24,7 @@ import { AppError, toAppError, type AppErrorCode } from '../src/lib/errors'
 import type { UpstreamFetch } from '../src/lib/upstream'
 import type { AltRouter } from '../src/routing/types'
 import type { RouteLeg } from '../src/types'
+import type { fetchWeather as FetchWeather } from '../src/weather/openMeteo'
 import { appLinksResponse, type AppLinkIds } from './appLinks'
 import { geocodeQuery, latLonParams, pushCancelRequest, pushRideRequest, readJsonBody, reportDays, requireSystem, routeDetailsRequest, routeRequest, usageRequest } from './validate'
 
@@ -45,6 +48,7 @@ export interface AppDeps {
   fetchSystemDetails: typeof FetchSystem
   searchPlaces: typeof Search
   reversePlace: typeof Reverse
+  fetchWeather: typeof FetchWeather
   now: () => number
   contactEmail: string | null
   version: string
@@ -193,6 +197,13 @@ export function createApp(deps: AppDeps) {
       return json(await deps.fetchSystemDetails(sys.id, deps.upstream, { signal }))
     }
 
+    if (p === API_PATHS.weather && method === 'GET') {
+      await limit(deps.limiters?.geocode, request)
+      const sys = requireSystem(url.searchParams.get('system'))
+      // The city's center, never the rider's location (nothing about the rider is sent upstream).
+      return json({ weather: await deps.fetchWeather(sys.center, sys.timezone, deps.upstream, { signal }) } satisfies WeatherResponse)
+    }
+
     if (p === API_PATHS.geocode && method === 'GET') {
       await limit(deps.limiters?.geocode, request)
       const sys = requireSystem(url.searchParams.get('system'))
@@ -230,6 +241,14 @@ export function createApp(deps: AppDeps) {
       }
     }
 
+    if (p === API_PATHS.route && method === 'POST') {
+      await limit(deps.limiters?.route, request)
+      const { systemId: _s, priority, ...routeReq } = routeRequest(await readJsonBody(request))
+      // The client asks for background priority: these legs are only drawn, never wait for them.
+      const leg = await deps.createRouter({ upstream: deps.upstream }).route(routeReq, { signal, priority })
+      return json({ route: routeForApp(leg) } satisfies RouteResponse)
+    }
+
     if (p === API_PATHS.usage && method === 'POST') {
       await limit(deps.limiters?.usage, request)
       const report = usageRequest(await readJsonBody(request))
@@ -241,6 +260,8 @@ export function createApp(deps: AppDeps) {
       if (!deps.usage) throw new AppError('not_found', 'Usage counts are not set up on this server')
       await limit(deps.limiters?.usage, request)
       const days = reportDays(url.searchParams.get('days'))
+      // The dashboard's first request of a page load (not its refreshes); counted before the cache answers.
+      if (url.searchParams.get('view') === '1' && !BOT_UA.test(request.headers.get('User-Agent') ?? 'bot')) count('dashboard_views')
       const cached = analyticsCache.get(days)
       if (cached && deps.now() - cached.atMs < ANALYTICS_CACHE_MS) return json(cached.body)
       const body = await deps.usage.report(days)

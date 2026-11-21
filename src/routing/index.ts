@@ -88,9 +88,8 @@ export function createRouter(deps: RouterDeps): AltRouter {
   }
 
   /**
-   * One bike route per use_roads level, in order (identical routes are kept so options stay positional; the
-   * UI marks them). The last option is replaced by the quickest of all, so "Fastest" is always fastest.
-   * A straight-line guess is useless for picking docks along the way: when both routers found no way between
+   * One bike route per use_roads level (at most 3), in order (identical routes are kept so options stay
+   * positional; the UI marks them). A straight-line guess is useless for picking docks along the way: when both routers found no way between
    * the points this rejects with 'no_route' (trying again won't help), and when they are busy or down with
    * 'upstream_unavailable' (the rider is asked to retry shortly).
    */
@@ -104,8 +103,6 @@ export function createRouter(deps: RouterDeps): AltRouter {
       }
       out.push({ ...found, useRoads })
     }
-    const quickest = out.reduce<RouteLeg | undefined>((m, l) => (!m || l.duration < m.duration ? l : m), undefined)
-    if (out.length > 1 && quickest) out[out.length - 1] = quickest
     return out
   }
 

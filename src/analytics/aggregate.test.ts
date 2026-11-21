@@ -21,7 +21,7 @@ const day = (i: number, o: Partial<StatsDay> = {}): StatsDay => ({
   langs: { en: 2 },
   ...o,
 })
-const stats = (days: StatsDay[], since: string | null = days[0]?.day ?? null): StatsResponse => ({ timeZone: 'America/Chicago', generatedAtMs: 0, activeNow: 0, allTimeUsers: 9, since, days })
+const stats = (days: StatsDay[], since: string | null = days[0]?.day ?? null): StatsResponse => ({ timeZone: 'America/Chicago', generatedAtMs: 0, activeNow: 0, allTimeUsers: 9, since, dashboardViews: { allTime: 0, since: null }, days })
 
 describe('usage dashboard numbers', () => {
   const all = Array.from({ length: 180 }, (_, i) => day(i))
@@ -52,6 +52,13 @@ describe('usage dashboard numbers', () => {
       { key: 'app:ios', value: 60 },
       { key: 'app:android', value: 30 },
     ])
+  })
+
+  it('counts the dashboard\'s own views in the range and today', () => {
+    const days = Array.from({ length: 30 }, (_, i) => day(150 + i, { counts: { dashboard_views: i % 3 } }))
+    const r = summarizeRange(stats(days), 7)
+    // The last 7 days have 2, 0, 1, 2, 0, 1, 2 views; today 2.
+    expect([r.dashboardViews, r.dashboardViewsToday]).toEqual([8, 2])
   })
 
   it('makes no comparison before counting had begun', () => {

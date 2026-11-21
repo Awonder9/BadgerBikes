@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { APP, NATIVE_APP } from '../src/config'
+import { APP, BIKE_ROUTING, NATIVE_APP } from '../src/config'
 import { resetHttpState, setFetchImpl } from '../src/lib/http'
 import type { PushRideRequest, StatsResponse, UsageRequest } from '../src/api/contract'
 import { makeSnapshot, makeStation } from '../src/test/factories'
@@ -31,6 +31,7 @@ const deps = (o: Partial<AppDeps> = {}): AppDeps => ({
   fetchSystemDetails: async () => ({}) as never,
   searchPlaces: async () => [],
   reversePlace: async () => null,
+  fetchWeather: async () => ({ tempC: 10, feelsLikeC: 8, code: 0, windKph: 12, gustKph: null, windFromDeg: 270, precipMm: 0, isDay: true, sunriseMs: null, sunsetMs: null, observedMs: 0 }),
   now: () => 1_800_000_000_000,
   contactEmail: null,
   version: 'test',
@@ -91,14 +92,39 @@ describe('worker app', () => {
     expect((await call(app, '/api/plan', { method: 'POST', body: '{}' })).status).toBe(404)
   })
 
-  it('returns the three route options: bike-friendly, balanced, fastest', async () => {
+  it('returns the route options in BIKE_ROUTING.options order: direct, bike-friendly', async () => {
     const app = createApp(deps())
     const body = JSON.stringify({ systemId: 'bcycle_madison', role: 'ride', mode: 'bike', from: [-89.38, 43.07], to: [-89.41, 43.07], units: 'imperial' })
     const res = (await (await call(app, '/api/routes', { method: 'POST', body })).json()) as { routes: Array<{ useRoads: number; maneuvers: unknown[] }> }
-    expect(res.routes.map((r) => r.useRoads)).toEqual([0, 0.35, 1])
+    expect(res.routes.map((r) => r.useRoads)).toEqual(BIKE_ROUTING.options.map((o) => o.useRoads))
     // Without the spoken-instruction text (unused by the app); what finds trail sections stays.
     const { verbalPre: _p, verbalPost: _o, verbalAlert: _a, verbalSuccinct: _s, verbalMultiCue: _m, ...kept } = maneuver
     expect(res.routes[0]?.maneuvers).toEqual([kept])
+  })
+
+  it('returns one leg for drawing (a walk, or the stretch to an off-route dock), at the priority asked for', async () => {
+    const seen: unknown[] = []
+    const route = async (req: unknown, opts: unknown) => {
+      seen.push(req, opts)
+      return { provider: 'valhalla', mode: 'walk', geometry: [[-89.38, 43.07], [-89.41, 43.07]], maneuvers: [maneuver] } as never
+    }
+    const app = createApp(deps({ createRouter: () => ({ ...deps().createRouter({ upstream: deps().upstream }), route }) }))
+    const body = JSON.stringify({ systemId: 'bcycle_madison', role: 'toDestination', mode: 'walk', from: [-89.38, 43.07], to: [-89.41, 43.07], units: 'metric', priority: 'background' })
+    const res = (await (await call(app, '/api/route', { method: 'POST', body })).json()) as { route: { geometry: unknown; maneuvers: unknown[] } }
+    expect(res.route.geometry).toEqual([[-89.38, 43.07], [-89.41, 43.07]])
+    expect(res.route.maneuvers[0]).not.toHaveProperty('verbalPre')
+    expect(seen[0]).toMatchObject({ role: 'toDestination', mode: 'walk' })
+    expect(seen[1]).toMatchObject({ priority: 'background' })
+  })
+
+  it('weather is asked for the city\'s center in its time zone — nothing about the rider is sent', async () => {
+    const asked: unknown[] = []
+    const app = createApp(deps({ fetchWeather: async (at, tz) => (asked.push(at, tz), deps().fetchWeather(at, tz, deps().upstream)) }))
+    const res = await call(app, '/api/weather?system=bcycle_madison&lat=43.1&lon=-89.3')
+    expect(res.status).toBe(200)
+    expect(((await res.json()) as { weather: { tempC: number } }).weather.tempC).toBe(10)
+    expect(asked).toEqual([[-89.39761, 43.07097], 'America/Chicago'])
+    expect((await call(app, '/api/weather?system=nope')).status).toBe(404)
   })
 
   it('applies per-client rate limits', async () => {
@@ -257,7 +283,7 @@ describe('usage counts and the dashboard', () => {
     const usage: UsageRpc = {
       record: async (req) => void recorded.push(req),
       count: async (name) => void counted.push(name),
-      report: async (days) => ({ timeZone: 'America/Chicago', generatedAtMs: 0, activeNow: 3, allTimeUsers: 9, since: null, days: Array.from({ length: days }, () => ({}) as never) }),
+      report: async (days) => ({ timeZone: 'America/Chicago', generatedAtMs: 0, activeNow: 3, allTimeUsers: 9, since: null, dashboardViews: { allTime: 0, since: null }, days: Array.from({ length: days }, () => ({}) as never) }),
     }
     return { recorded, counted, usage }
   }
@@ -295,6 +321,17 @@ describe('usage counts and the dashboard', () => {
     ]
     expect(await Promise.all(bad.map(async (b) => (await call(app, '/api/usage', post(b))).status))).toEqual(bad.map(() => 400))
     expect(recorded).toHaveLength(5)
+  })
+
+  it('counts a dashboard view on the page\'s first request only — not its refreshes, not bots — even when cached', async () => {
+    const { counted, usage } = usageDeps()
+    const app = createApp(deps({ usage }))
+    const ua = { headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh)' } }
+    await call(app, '/api/analytics?days=30&view=1', ua)
+    await call(app, '/api/analytics?days=30', ua) // a refresh
+    await call(app, '/api/analytics?days=30&view=1', ua) // another page load, answered from the cache
+    await call(app, '/api/analytics?days=30&view=1', { headers: { 'User-Agent': 'Googlebot/2.1' } })
+    expect(counted.filter((c) => c === 'dashboard_views')).toHaveLength(2)
   })
 
   it('the dashboard numbers are public, checked, and read from the Usage object at most every 30 s', async () => {

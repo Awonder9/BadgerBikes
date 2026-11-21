@@ -22,13 +22,13 @@ describe('bike route options', () => {
     expect(body(0.8)).toBe(0.8)
   })
 
-  it('returns one route per level in order, and the quickest as the last (Fastest) option', async () => {
+  it('returns one route per level, in order (none is swapped for the quickest)', async () => {
     const seen: number[] = []
     const up = (async (r: UpstreamRequest) => {
       const u = useRoadsOf(r.url)
       seen.push(u)
-      // Levels 0 and 0.35 give the same path; 1.0 a different (shifted) one that is slower.
-      if (u < 0.5) return valhallaBike
+      // Level 0 gives one path; the higher levels a different (shifted) one that is slower.
+      if (u < 0.25) return valhallaBike
       return {
         trip: {
           units: 'kilometers',
@@ -48,9 +48,9 @@ describe('bike route options', () => {
     const levels = BIKE_ROUTING.options.map((o) => o.useRoads)
     const routes = await createRouter({ upstream: up }).routeLadder(req, levels)
     expect(seen).toEqual(levels)
-    expect(routes).toHaveLength(3)
-    // The use_roads 1.0 route was slower than the bike-friendly one, so "Fastest" is the quickest instead.
-    expect(routes.map((r) => r.useRoads)).toEqual([0, 0.35, 0])
+    expect(routes.map((r) => r.useRoads)).toEqual(levels)
+    // Each option keeps its own route, even when another level's is quicker.
+    expect(routes.map((r) => r.duration)).toEqual(levels.map((u) => (u < 0.25 ? routes.find((x) => x.useRoads === 0)!.duration : 99999)))
   })
 
   it('detects same and different paths', () => {

@@ -90,6 +90,12 @@ describe('useAppStore actions', () => {
     useAppStore.getState().updateSettings({ preferEbikes: true })
     expect(useAppStore.getState().settings.preferEbikes).toBe(true)
     expect(sanitizePersisted({ settings: { preferEbikes: 'yes' } }).settings.preferEbikes).toBe(false)
+    // The iPhone alerts help hidden from the planner (shown in Settings instead): off unless it's a real boolean.
+    expect(useAppStore.getState().settings.alertsHintHidden).toBe(false)
+    useAppStore.getState().updateSettings({ alertsHintHidden: true })
+    expect(useAppStore.getState().settings.alertsHintHidden).toBe(true)
+    expect(sanitizePersisted({ settings: { alertsHintHidden: 1 } }).settings.alertsHintHidden).toBe(false)
+    expect(sanitizePersisted({ settings: { alertsHintHidden: true } }).settings.alertsHintHidden).toBe(true)
     useAppStore.getState().setPassChoice('bcycle_madison', { planId: null, includedMinutes: 60 })
     expect(useAppStore.getState().settings.passBySystem.bcycle_madison).toEqual({ planId: null, includedMinutes: 60 })
   })

@@ -11,6 +11,8 @@ export const ENDPOINTS = {
   osrmBike: trimSlash(env.VITE_OSRM_BIKE_URL || 'https://routing.openstreetmap.de/routed-bike'),
   osrmFoot: trimSlash(env.VITE_OSRM_FOOT_URL || 'https://routing.openstreetmap.de/routed-foot'),
   photon: trimSlash(env.VITE_PHOTON_URL || 'https://photon.komoot.io'),
+  /** Weather (no key; free for non-commercial use, attribution "Weather data by Open-Meteo.com", CC BY 4.0). */
+  openMeteo: 'https://api.open-meteo.com',
 } as const
 
 export const APP = {
@@ -22,6 +24,8 @@ export const APP = {
   language: 'en-US',
   /** City used when the rider's approximate location is not near any BCycle system. */
   defaultSystemId: 'bcycle_madison',
+  /** The app's Instagram (Settings and About). Forks: change or set to null to hide the link. */
+  instagram: { handle: '@badgerbikes.app', url: 'https://www.instagram.com/badgerbikes.app/' } as { handle: string; url: string } | null,
 } as const
 
 /**
@@ -78,6 +82,13 @@ export const UPSTREAM = {
       maxInFlight: 2,
       circuitOpenMs: 30_000,
     },
+    /** One request per city per CACHE_TTL_MS.weather at most (cached); the gate only guards against bursts. */
+    openmeteo: {
+      hosts: ['api.open-meteo.com'],
+      minSpacingMs: 250,
+      maxInFlight: 2,
+      circuitOpenMs: 60_000,
+    },
   },
   /** A queued request not granted a slot within this long is rejected (it is stale by then). */
   queueDeadlineMs: { interactive: 10_000, background: 15_000 },
@@ -111,6 +122,8 @@ export const CACHE_TTL_MS = {
   systemInformation: 60 * 60_000,
   route: 10 * 60_000,
   geocode: 24 * 60 * 60_000,
+  /** Open-Meteo's current values update every 15 minutes. */
+  weather: 15 * 60_000,
 } as const
 
 export const MAP = {
@@ -185,14 +198,16 @@ export const ROUTING = {
 /** Bike routing preferences (Valhalla bicycle costing). */
 export const BIKE_ROUTING = {
   /**
-   * The three route options, left to right. `useRoads` is Valhalla's use_roads (0 = avoid roads with cars as
-   * much as possible, 1 = happy on roads). The Fastest option is whichever of the three is quickest.
+   * The route options, left to right; the first is the default. `useRoads` is Valhalla's use_roads (0 = avoid
+   * roads with cars as much as possible, 1 = happy on roads). `handoff` is how Google Maps is steered onto it
+   * (GOOGLE_HANDOFF): 'docks' = only the docks (Google picks the streets; the line is a preview), 'trails' = plus
+   * a point on each trail/path section, 'exact' = plus a point every maxGuidedGapMeters (follows the line, many
+   * stops). Direct's useRoads is a first guess at Google's own bike routing — tune it against recorded rides.
    */
   options: [
-    { key: 'bikeFriendly', label: 'Bike-friendly', useRoads: 0.0 },
-    { key: 'balanced', label: 'Balanced', useRoads: 0.35 },
-    { key: 'fastest', label: 'Fastest', useRoads: 1.0 },
-  ],
+    { key: 'direct', label: 'Direct', useRoads: 0.5, handoff: 'docks' },
+    { key: 'bikeFriendly', label: 'Bike-friendly', useRoads: 0.0, handoff: 'trails' },
+  ] as ReadonlyArray<{ key: string; label: string; useRoads: number; handoff: 'docks' | 'trails' | 'exact' }>,
   /** use_roads for single bike routes (planner, reroutes). */
   defaultUseRoads: 0.15,
   useLivingStreets: 0.6,
@@ -201,6 +216,14 @@ export const BIKE_ROUTING = {
   duplicateRouteMeters: 60,
   /** Valhalla search_cutoff for user-supplied points (stations use the default). */
   userPointSearchCutoffMeters: 500,
+} as const
+
+/** The weather lines (src/ui/browse/WeatherStrip.tsx; data: GET /api/weather, CACHE_TTL_MS.weather). */
+export const WEATHER = {
+  /** Gusts are mentioned only when they beat the steady wind by at least this much (km/h). */
+  gustShowDeltaKph: 8,
+  /** Open-Meteo's attribution link (CC BY 4.0). */
+  creditUrl: 'https://open-meteo.com/',
 } as const
 
 /** Default city from the request's approximate (IP) location — no location prompt. */
@@ -281,6 +304,13 @@ export const ROUTE_DETAILS = {
 export const RIDE = {
   /** Most destinations in one multi-stop trip (src/ride/tripStore.ts): legs = stops, each its own ride. */
   maxTripStops: 10,
+  /**
+   * An end dock farther than this from the route line is reached on the map (and in the GPX file) by a routed
+   * last stretch from the line to the dock (POST /api/route), not a straight segment.
+   */
+  offRouteTailMeters: 60,
+  /** "I'm already on a bike": the choices for when the bike was unlocked (minutes ago; 0 = just now). */
+  onBikeUnlockedAgoMinutes: [0, 5, 10, 15, 20, 30],
   /** Default for settings.maxRideMinutes: the longest ride between docks the planner plans for. */
   defaultMaxRideMinutes: 25,
   /** Starting from a place: pickup docks considered (with bikes) within this walk, else the nearest few. */
@@ -301,6 +331,13 @@ export const RIDE = {
   arrivedMeters: 100,
   /** Ride timer turns amber this many minutes before the pass's included time runs out. */
   timerWarnMinutes: 5,
+  /** "Docked along the way" restarted the timer: Undo is offered this long (an accidental tap would lose the ride time). */
+  redockUndoSeconds: 20,
+  /**
+   * A link starting at a dock opened this soon after "Docked along the way" is the same unlock: the claimed (earlier,
+   * so safer against fees) start is kept instead of restarting the timer again.
+   */
+  redockLinkGraceSeconds: 180,
   /**
    * The longest plausible included ride time: parsed pass times above it are ignored (they come from text such as
    * "charges may take up to 48 hours" or "24-hour pass"), and the Worker refuses it in a ride's alerts.
@@ -361,15 +398,24 @@ export const USAGE = {
   /** What the app counts (each once per use). */
   events: ['ride_start', 'gpx', 'share', 'nearest_dock', 'nearest_bike', 'directions', 'alerts_on'],
   /** What the Worker counts itself. */
-  serverCounters: ['routes', 'routes_busy', 'alerts_sent'],
+  /** `dashboard_views`: the /analytics page opened (its first request; refreshes and range changes don't count). */
+  serverCounters: ['routes', 'routes_busy', 'alerts_sent', 'dashboard_views'],
 } as const
 
 /** Google Maps hand-off (src/ride/googleMaps.ts). */
 export const GOOGLE_HANDOFF = {
   /** Google Maps mobile links accept at most this many waypoints. */
   maxWaypoints: 3,
-  /** No stretch between consecutive Google waypoints may be longer than this (via points are added). */
+  /** 'exact' hand-off: no stretch between consecutive Google waypoints may be longer than this (via points are added). */
   maxGuidedGapMeters: 700,
+  /** 'trails' hand-off: trail/path sections shorter than this get no point (Google rarely skips them). */
+  trailMinMeters: 400,
+  /** 'trails' hand-off: a trail section gets one point per this many meters (at least one). */
+  trailPointEveryMeters: 2000,
+  /** 'trails' hand-off: trail sections less than this apart are one section (a trail crossing a street). */
+  trailJoinGapMeters: 80,
+  /** 'trails' hand-off: no point this close to a dock stop or the ride's ends (the dock already anchors it). */
+  trailNearStopMeters: 200,
   /** Safety cap on via points for very long rides. */
   maxViaPoints: 12,
   /** Docks within this distance of the route line are sent to Google as the point ON the line. */

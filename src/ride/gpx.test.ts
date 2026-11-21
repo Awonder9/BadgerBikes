@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { destination } from '../lib/geo'
 import { MADISON } from '../test/factories'
 import type { LngLat } from '../types'
-import { gpxFileName, rideGpx, sliceRoute, xmlEscape } from './gpx'
+import { gpxFileName, rideGpx, rideTrack, sliceRoute, xmlEscape } from './gpx'
 
 const A = MADISON.capitol
 const at = (m: number): LngLat => destination(A, m, 90)
@@ -22,6 +22,18 @@ describe('GPX export', () => {
     expect(cut).toHaveLength(3)
     expect(cut[2]![0]).toBeCloseTo(at(1500)[0], 6)
     expect(sliceRoute(route, 99_999)).toHaveLength(4)
+  })
+
+  it('the ride line ends at the end dock: cut on the line, then routed (or straight) to a dock off it', () => {
+    const onLine = rideTrack(route, { coord: at(1500), along: 1500 })
+    expect(onLine).toHaveLength(3)
+    const off = destination(at(1500), 600, 0) // 600 m north of the line
+    expect(rideTrack(route, { coord: off, along: 1500 }).at(-1)).toEqual(off) // straight to it
+    const tail = [at(1500), destination(at(1500), 300, 30), off]
+    const routed = rideTrack(route, { coord: off, along: 1500 }, tail)
+    expect(routed.slice(-2)).toEqual(tail.slice(1)) // the cut point isn't repeated
+    expect(routed).toHaveLength(5)
+    expect(rideTrack(route, undefined)).toEqual(route) // docks not known yet: the whole route
   })
 
   it('writes the ride as one track to the end dock, with waypoints for the start, docks and destination', () => {

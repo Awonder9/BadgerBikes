@@ -11,7 +11,8 @@ location — no location prompt; Madison if none is near), and Settings → City
 1. **Start anywhere** — *Start from my location*, search a place or dock, or tap a dock on the map. From
    a place, the app picks the best dock to walk to (nearby docks with bikes, ranked by walking time plus the
    ride toward your destination) and lists a couple of alternatives. The dock card shows its e-bike /
-   classic mix.
+   classic mix. Already riding? *I'm already on a bike* asks when you unlocked it, then plans from where you
+   are with the ride timer running from then.
 2. **Pick where you're going** — any place or a dock, or a one-tap chip for a saved or recent place.
    Going to several places? *Add a stop* (up to 10): each leg is its own ride — dock near a stop, then pick up
    a bike there for the next leg. The planner shows one leg at a time (*Leg 2 of 3*); tap a stop to plan its
@@ -19,10 +20,11 @@ location — no location prompt; Madison if none is near), and Settings → City
    is done and whether you docked: *Finish leg* drops it and plans the next one — after docking with the ride
    timer stopped, or on the same bike with the timer still running. *Share*
    sends the whole trip, opening on the leg you're looking at.
-3. **Choose a route** — three options side by side: *Bike-friendly* (as few cars as possible),
-   *Balanced*, and *Fastest* (the quickest of the three), each with time and distance. When two
-   options are the same path, the card says so. Below them: the **whole trip** (walk → ride → walk),
-   **walking straight there** for comparison, and the chosen route's **path breakdown** (bike path,
+3. **Choose a route** — two options side by side, each with time, distance and the waypoints it sends
+   Google Maps: *Direct* (the default: Google Maps picks the streets between your docks, so the line is a
+   preview and there are no waypoints) and *Bike-friendly* (as few cars as possible; Google Maps is held to
+   its trails and paths with a waypoint on each). When the two are the same path, the card says so. Below them: the **whole trip** (walk → ride → walk),
+   **walking straight there** for comparison, and (Bike-friendly) the chosen route's **path breakdown** (bike path,
    shared-use path, bike lane, shared lane, quiet street, road with traffic) and **elevation** (▲ climb ·
    ▼ descent with a small profile). On the map, the chosen route is colored by type of road in the same
    colors as the breakdown (greens = away from cars, blue/teal = bike lanes, amber = shared lane, gray =
@@ -33,25 +35,30 @@ location — no location prompt; Madison if none is near), and Settings → City
    as *Optional stops* you can check. Timing uses the chosen route's own pace, so it matches the route
    cards.
 5. **Open in Google Maps** — bicycling directions through your chosen docks, plus a walking link to the
-   destination. A Maps link can't carry the route line, so Google plans its own path between points. To
-   keep it on the chosen route: docks are sent as the point on the route line (a dock on a side street
-   makes Google loop around the block), and route points are added so no stretch between points is longer
-   than 700 m, on trail/path sections where possible. Google's mobile app takes 3 stops per link, so the
-   ride is split into parts that end at a dock when possible.
+   destination. A Maps link can't carry the route line, so Google plans its own path between points, and
+   every point is a stop you confirm in Google Maps. Docks are sent as the point on the route line (a dock
+   on a side street makes Google loop around the block). *Direct* sends nothing else; *Bike-friendly* adds
+   one point on each trail/path section so Google doesn't swap it for a parallel road. Google's mobile app
+   takes 3 stops per link, so a ride with more is split into parts that end at a dock when possible.
    **Or use Komoot / OsmAnd** — *Exact route for Komoot / OsmAnd* saves the ride as one GPX file. Those
    apps follow the exact line turn by turn: no 3-stop limit, no parts, no detours.
 6. **Ride** — after you open a part, the app tracks which parts you've opened ("Next: Part 2 → dock"),
    times the ride against your pass (it asks which pass you have on your first ride), and watches your end
-   dock (with nearby docks if it fills up). With alerts on, "ride time almost up" and "end dock full" reach
-   you even while Google Maps is in front (on iPhone, once the app is on your Home Screen; in the iOS and Android
+   dock (with nearby docks if it fills up). Docked somewhere else on the way and took a bike again? *Docked along
+   the way* restarts the timer (with undo) and keeps the rest of the plan. With alerts on, "ride time almost up" and "end dock full" reach
+   you even while Google Maps is in front (on iPhone, once the app is on your Home Screen — the how-to can be
+   hidden from the planner with ✕ and stays in Settings; in the iOS and Android
    apps, "ride time almost up" does and the end dock is checked while the app is open). The plan is
    saved on the device until you open the last link (the walk, or the last ride part) or arrive, so coming
    back from Google Maps finds it intact. When you start from a place, the timer waits until you tap
    *I've unlocked a bike*. *Share* sends a link to the same ride.
 
 Also: **Nearest open dock** (where can I return this bike?) finds the closest dock with room from your
-location; each station card has walking **Directions** and **Share**; **Prefer e-bikes** (in cities with
-both kinds) makes the map count e-bikes; and an offline banner says when the counts can't update.
+location; each station card has walking **Directions**, **Share** and **Street View** (what the dock looks like
+from the street); **Prefer e-bikes** (in cities with both kinds) makes the map count e-bikes; the home panel and
+the planner show the city's **weather** (temperature, wind and gusts, sunrise and sunset); a multi-stop trip
+keeps its finished legs on the map in gray and keeps your route option from leg to leg; and an offline banner
+says when the counts can't update. Follow the app on Instagram: [@badgerbikes.app](https://www.instagram.com/badgerbikes.app/).
 
 If the free routing server is busy, the app says so and asks you to try again in a few seconds.
 Saved places, recents and the current ride live in the browser on that device only. The app sends anonymous
@@ -159,8 +166,8 @@ npm run e2e          # Playwright smoke tests (phone + desktop, network-free)
 
 ## How it works
 
-- **Cloudflare Worker** (`worker/`): fetches and caches BCycle GBFS feeds, computes the three route
-  options (Valhalla, OSRM fallback), geocodes (Photon), and enforces the public servers' 1 request/second
+- **Cloudflare Worker** (`worker/`): fetches and caches BCycle GBFS feeds, computes the route
+  options (Valhalla, OSRM fallback), geocodes (Photon), fetches the city's weather (Open-Meteo), and enforces the public servers' 1 request/second
   policy globally with a Durable Object. Another Durable Object per device sends background ride alerts
   (Web Push, encrypted with WebCrypto; no push library).
 - **Browser** (`src/`): MapLibre map and UI; `src/ride/` finds docks along the route, builds the Google
@@ -179,3 +186,4 @@ Data shown in the app and in the test samples (`src/test/fixtures/`):
 - Map data © [OpenStreetMap contributors](https://www.openstreetmap.org/copyright) (ODbL), via
   OpenFreeMap tiles, Valhalla and OSRM routing (FOSSGIS e.V.) and Photon search (komoot).
 - Station data from BCycle's public GBFS feeds.
+- Weather data by [Open-Meteo.com](https://open-meteo.com/) (CC BY 4.0).

@@ -14,6 +14,8 @@ const dayKeyOf = (day: string) => `d:${day}`
 const WINDOW = 'window'
 const TOTAL = 'total'
 type Total = { allTime: number; since: string }
+/** All-time dashboard views (each day's are in its record). */
+const VIEWS = 'dashboardViews'
 
 export class Usage extends DurableObject<Env> {
   /** Counts one report from the app. */
@@ -39,7 +41,12 @@ export class Usage extends DurableObject<Env> {
     const day = await this.ctx.storage.get<UsageDayRecord>(dayKeyOf(today))
     const record = day ?? emptyDay()
     countServer(record, name)
-    await this.ctx.storage.put(dayKeyOf(today), record)
+    const writes: Record<string, unknown> = { [dayKeyOf(today)]: record }
+    if (name === 'dashboard_views') {
+      const views = await this.ctx.storage.get<Total>(VIEWS)
+      writes[VIEWS] = { allTime: (views?.allTime ?? 0) + 1, since: views?.since ?? today } satisfies Total
+    }
+    await this.ctx.storage.put(writes)
     if (!day) await this.prune(today)
   }
 
@@ -52,8 +59,9 @@ export class Usage extends DurableObject<Env> {
     const listed = await this.ctx.storage.list<UsageDayRecord>({ start: dayKeyOf(first), end: dayKeyOf(addDays(today, 1)) })
     const records = new Map<string, UsageDayRecord>()
     for (const [key, value] of listed) records.set(key.slice(2), value)
-    const stored = await this.ctx.storage.get<unknown>([WINDOW, TOTAL])
+    const stored = await this.ctx.storage.get<unknown>([WINDOW, TOTAL, VIEWS])
     const total = (stored.get(TOTAL) as Total | undefined) ?? null
+    const views = (stored.get(VIEWS) as Total | undefined) ?? null
     return summarize(records, {
       today,
       days,
@@ -62,6 +70,7 @@ export class Usage extends DurableObject<Env> {
       state: (stored.get(WINDOW) as WindowState | undefined) ?? null,
       allTime: total?.allTime ?? 0,
       since: total?.since ?? null,
+      dashboardViews: { allTime: views?.allTime ?? 0, since: views?.since ?? null },
     })
   }
 

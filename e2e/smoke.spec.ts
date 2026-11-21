@@ -67,7 +67,7 @@ async function mockApi(context: BrowserContext, o: { stations?: 'ok' | 'down' | 
       if (o.stations === 'slow') await new Promise((r) => setTimeout(r, 1500))
       return route.fulfill({ json: stations() as Json })
     }
-    if (path === '/api/routes') return route.fulfill(o.routes === 'ok' ? { json: { routes: [leg, leg, leg] } } : down)
+    if (path === '/api/routes') return route.fulfill(o.routes === 'ok' ? { json: { routes: [leg, leg] } } : down)
     if (path === '/api/locate') return route.fulfill({ json: { systemId: 'bcycle_madison' } })
     // A server with background alerts set up (a VAPID public key; never used to send in these tests).
     if (path === '/api/meta' && o.push) return route.fulfill({ json: { contactEmail: null, version: 'test', pushPublicKey: 'BCVxsr7N_eNgVRqvHtD0zTZsEc6-VV-JvLexhqUzORcxaOzi6-AYWXvTBHm4bjyPjs7Vd8pZGH6SRpkNtoIAiw4' } })
@@ -170,7 +170,7 @@ test('a ride plan is saved until the last Google Maps link is opened', async ({ 
   await page.goto(`/?start=st_a&to=${C[1]},${(C[0] + 0.004).toFixed(5)}&toName=Coffee%20Shop`)
   const open = page.getByRole('link', { name: /Open in Google Maps|Part 1/ })
   await expect(open).toBeVisible()
-  await expect(page.getByRole('radio', { name: /^Bike-friendly:/ })).toBeChecked()
+  await expect(page.getByRole('radio', { name: /^Direct:/ })).toBeChecked()
   let popup = context.waitForEvent('page')
   await open.click()
   await (await popup).close()
@@ -325,6 +325,10 @@ test('start from my location: walk to the best dock, trip total, walk-instead, p
   await page.evaluate(([lon, lat]) => (window as unknown as { __bcycle: { ride: { getState: () => { setDestination: (p: unknown) => void } } } }).__bcycle.ride.getState().setDestination({ kind: 'search', name: 'Coffee Shop', coord: [lon + 0.004, lat] }), C)
   await expect(page.getByText(/^Total ~/)).toBeVisible()
   await expect(page.getByText(/Walk straight there: ~/)).toBeVisible()
+  // Direct (the default) is only a preview: Google picks the streets, so no path details.
+  await expect(page.getByText(/The line is a preview/)).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Path details' })).toHaveCount(0)
+  await page.getByRole('radio', { name: /^Bike-friendly:/ }).click()
   await expect(page.getByRole('region', { name: 'Path details' })).toContainText('74% bike path')
   await expect(page.getByRole('region', { name: 'Path details' })).toContainText('▲ 59 ft')
   // Walking first: opening Part 1 shows "Walking to …" and the timer waits for the unlock.
@@ -458,7 +462,7 @@ test('Settings: prefer e-bikes in a city with both kinds, and clear recent place
 test('the first ride asks which pass the rider has, and path details can be retried', async ({ page, context }) => {
   const api = await mockApi(context, { routes: 'ok', system: systemDetails, routeDetailsDown: true })
   await skipInstallTip(page)
-  await page.goto(`/?start=st_a&to=${C[1]},${C[0]}&toName=Charlie%20Square&toStation=st_c`)
+  await page.goto(`/?start=st_a&to=${C[1]},${C[0]}&toName=Charlie%20Square&toStation=st_c&route=1`)
   await expect(page.getByText('Path details are unavailable right now.')).toBeVisible()
   api.routeDetailsDown = false
   await page.getByRole('button', { name: 'Try again' }).click()
@@ -505,6 +509,29 @@ async function startRide(page: Page, context: BrowserContext) {
   await expect(card).toBeVisible()
   return card
 }
+
+test('"Docked along the way" restarts only the ride timer (with undo); the plan and its opened links stay', async ({ page, context }) => {
+  await mockApi(context, { routes: 'ok' })
+  await skipInstallTip(page)
+  const card = await startRide(page, context)
+  // Twelve minutes into the ride.
+  await page.evaluate(() => (window as unknown as { __bcycle: { ride: { setState: (p: object) => void } } }).__bcycle.ride.setState({ rideStartedAtMs: Date.now() - 12 * 60_000 }))
+  await expect(card).toContainText(/Riding 12:\d\d/)
+  await card.getByRole('button', { name: 'Docked along the way? Restart the timer' }).click()
+  await expect(card).toContainText(/Riding 0:0\d/)
+  await expect(card.getByRole('status')).toContainText('Timer restarted for your new ride.')
+  await card.getByRole('button', { name: 'Undo' }).click()
+  await expect(card).toContainText(/Riding 12:\d\d/)
+
+  await card.getByRole('button', { name: 'Docked along the way? Restart the timer' }).click()
+  await expect(card).toContainText(/Riding 0:0\d/)
+  // Nothing else changed: the link opened before is still marked opened, and it all survives a reload.
+  await expect(page.getByRole('link', { name: /opened/ })).toBeVisible()
+  await page.reload()
+  await expect(card).toContainText(/Riding 0:\d\d/)
+  await expect(page.getByRole('link', { name: /opened/ })).toBeVisible()
+  await expect(page.getByRole('combobox', { name: 'Destination' })).toHaveValue('Coffee Shop')
+})
 
 test.describe('ride alerts on an Android phone (Chrome tab)', () => {
   test.use({ userAgent: 'Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Mobile Safari/537.36' })
@@ -553,6 +580,38 @@ test.describe('ride alerts on an iPhone (Safari tab)', () => {
     await expect(card.getByText(/Needs iOS 16\.4 or later\. Safari tabs can’t receive alerts/)).toBeVisible()
     await expect(card.getByRole('button', { name: /Turn on alerts/ })).toHaveCount(0)
   })
+
+  test('the Home Screen help can be hidden from the planner; it moves to Settings, and can come back', async ({ page, context }) => {
+    await mockApi(context, { routes: 'ok', push: true })
+    await skipInstallTip(page)
+    await page.addInitScript(() => {
+      Reflect.deleteProperty(window, 'Notification')
+      Reflect.deleteProperty(window, 'PushManager')
+    })
+    await page.goto(`/?start=st_a&to=${C[1]},${(C[0] + 0.004).toFixed(5)}&toName=Coffee%20Shop`)
+    const title = 'To get alerts while Google Maps is open, add the app to your Home Screen'
+    await expect(page.getByText(title)).toBeVisible()
+    await page.getByRole('button', { name: 'Hide this (it moves to Settings)' }).click()
+    await expect(page.getByText(title)).toHaveCount(0)
+    await expect(page.getByText('Moved to Settings → Alerts during a ride.')).toBeVisible()
+    // Hidden on the ride card too, and still after a reload.
+    const card = await startRide(page, context)
+    await expect(card.getByText(title)).toHaveCount(0)
+    await page.reload()
+    await expect(card).toBeVisible()
+    await expect(page.getByText(title)).toHaveCount(0)
+
+    // In Settings instead, with a way back.
+    await page.getByRole('button', { name: 'Settings' }).click()
+    const section = page.getByRole('region', { name: 'Alerts during a ride' })
+    await section.getByText(title).click()
+    await expect(section.getByText('Tap “Add to Home Screen”, then Add.')).toBeVisible()
+    await section.getByRole('button', { name: 'Show it in the ride planner again' }).click()
+    await expect(section).toHaveCount(0)
+    await page.getByRole('button', { name: 'Back' }).click()
+    await page.getByRole('button', { name: /Ride in progress|Your ride/ }).first().click()
+    await expect(page.getByRole('region', { name: 'Ride in progress' }).getByText(title)).toBeVisible()
+  })
 })
 
 /** 180 days of plausible dashboard numbers (GET /api/analytics), growing over time, ending today. */
@@ -581,7 +640,7 @@ function statsFixture() {
       langs: { en: users - 2, 'zh-Hans': 2 },
     }
   })
-  return { timeZone: 'America/Chicago', generatedAtMs: Date.now(), activeNow: 4, allTimeUsers: 2950, since: days[0]!.day, days }
+  return { timeZone: 'America/Chicago', generatedAtMs: Date.now(), activeNow: 4, allTimeUsers: 2950, since: days[0]!.day, dashboardViews: { allTime: 57, since: days[0]!.day }, days }
 }
 
 test('the usage dashboard at /analytics shows unique users, active now, charts and tables', async ({ page, context }) => {

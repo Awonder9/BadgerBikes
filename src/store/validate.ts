@@ -15,6 +15,7 @@ export const DEFAULT_SETTINGS: Settings = {
   preferEbikes: false,
   setupConfirmed: false,
   installTipSeen: false,
+  alertsHintHidden: false,
   passBySystem: {},
 }
 
@@ -65,6 +66,7 @@ export function validateSettings(v: unknown): Settings {
     preferEbikes: typeof v.preferEbikes === 'boolean' ? v.preferEbikes : DEFAULT_SETTINGS.preferEbikes,
     setupConfirmed: typeof v.setupConfirmed === 'boolean' ? v.setupConfirmed : DEFAULT_SETTINGS.setupConfirmed,
     installTipSeen: typeof v.installTipSeen === 'boolean' ? v.installTipSeen : DEFAULT_SETTINGS.installTipSeen,
+    alertsHintHidden: typeof v.alertsHintHidden === 'boolean' ? v.alertsHintHidden : DEFAULT_SETTINGS.alertsHintHidden,
     passBySystem,
   }
 }

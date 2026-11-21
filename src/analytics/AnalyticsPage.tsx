@@ -12,6 +12,8 @@ import { change, FETCH_DAYS, foldTail, formatCount, RANGES, summarizeRange, type
 import { BarList, ChartCard, ColumnChart, Legend, LineChart } from './charts'
 
 const RANGE_STORAGE = 'bcycle.analyticsRange'
+/** The page's first request counts as a view of this dashboard (its refreshes don't). */
+let viewCounted = false
 const REFRESH_MS = 60_000
 
 function load(key: string): string | null {
@@ -52,7 +54,11 @@ export function AnalyticsPage() {
   // Every minute while the page is visible ("active now" moves); the numbers stay on screen meanwhile.
   const q = useQuery({
     queryKey: ['analytics'],
-    queryFn: ({ signal }) => api.analytics(FETCH_DAYS, signal),
+    queryFn: ({ signal }) => {
+      const view = !viewCounted
+      viewCounted = true
+      return api.analytics(FETCH_DAYS, signal, view)
+    },
     refetchInterval: REFRESH_MS,
     refetchIntervalInBackground: false,
     retry: 1,
@@ -249,6 +255,23 @@ function Dashboard({ data, range }: { data: StatsResponse; range: RangeDays }) {
 
       <Breakdown title="Features used" note={`Times used, last ${period}`} items={named(r.features, (k) => FEATURE_NAMES[k] ?? k)} />
 
+      <section aria-label="Dashboard views" className="space-y-3">
+        <h2 className="px-1 font-semibold">This dashboard</h2>
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <Tile label="Views today" value={formatCount(r.dashboardViewsToday)} />
+          <Tile label={`Views, last ${period}`} value={formatCount(r.dashboardViews)} />
+          <Tile label="Views per day" value={(r.dashboardViews / Math.max(r.days.length, 1)).toFixed(1)} sub={`Average, last ${period}`} />
+          <Tile
+            label="All-time views"
+            value={formatCount(data.dashboardViews.allTime)}
+            sub={data.dashboardViews.since ? `Since ${dayLabel(data.dashboardViews.since, { month: 'short', day: 'numeric', year: 'numeric' })}` : 'No views counted yet'}
+          />
+        </div>
+        <ChartCard title="Dashboard views" note="Times this page was opened each day" table={{ columns: ['Day', 'Views'], rows: r.days.map((d) => [d.day, d.counts.dashboard_views ?? 0]).toReversed() }}>
+          <ColumnChart title={`Dashboard views per day, last ${period}`} labels={labels} tooltipTitle={full} series={[{ label: 'views', color: 'var(--viz-1)', values: r.days.map((d) => d.counts.dashboard_views ?? 0) }]} />
+        </ChartCard>
+      </section>
+
       <section className="space-y-2 rounded-2xl px-1 text-sm text-slate-500 dark:text-slate-400">
         <h2 className="font-semibold text-slate-700 dark:text-slate-200">How this is counted</h2>
         <p>
@@ -259,6 +282,10 @@ function Dashboard({ data, range }: { data: StatsResponse; range: RangeDays }) {
         <p>
           “Active now” is devices with the app open in the last 5 minutes (a rider in Google Maps isn’t counted until they come back to the app). Days and hours are in {tz}.
           Browsers with Do Not Track or Global Privacy Control on, automated browsers and bots aren’t counted.
+        </p>
+        <p>
+          “Dashboard views” are page loads of this dashboard (its automatic refreshes and range changes aren’t counted). Nothing identifies who opened it, so these are views,
+          not viewers; bots aren’t counted.
         </p>
       </section>
     </>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bikeMix, formatClockTime, formatDistance, formatDuration, formatTimeAgo, pluralize } from './format'
+import { bikeMix, formatClockTime, formatDistance, formatDuration, formatSpeed, formatTemperature, formatTimeAgo, pluralize } from './format'
 
 describe('formatDistance', () => {
   it('formats imperial', () => {
@@ -75,5 +75,15 @@ describe('Chinese formatting', () => {
 
   it('formats clock times with a Chinese locale', () => {
     expect(formatClockTime(Date.UTC(2026, 10, 17, 21, 45), 'America/Chicago', 'zh-Hans')).toBe('15:45')
+  })
+})
+
+describe('weather units', () => {
+  it('formats temperature and wind in the rider\'s units', () => {
+    expect(formatTemperature(14.4, 'imperial')).toBe('58°F')
+    expect(formatTemperature(14.4, 'metric')).toBe('14°C')
+    expect(formatTemperature(-0.3, 'metric')).toBe('0°C')
+    expect(formatSpeed(25.9, 'imperial')).toBe('16 mph')
+    expect(formatSpeed(25.9, 'metric')).toBe('26 km/h')
   })
 })

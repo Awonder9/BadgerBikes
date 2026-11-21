@@ -1,5 +1,6 @@
 // Pure GeoJSON builders for the map layers (no maplibre runtime imports — unit-testable in Node).
-import { destination } from '../lib/geo'
+import { destination, lineLength } from '../lib/geo'
+import { sliceRoute } from '../ride/gpx'
 import { classifyStation } from '../lib/stationState'
 import type { PathKind } from '../routing/details'
 import type { GeoFix, LngLat, RouteLeg, StationsSnapshot } from '../types'
@@ -59,15 +60,25 @@ export function buildStationFeatures(s: StationsSnapshot, opts: { partySize: num
 export interface RouteProps {
   mode: 'walk' | 'bike'
   role: RouteLeg['role']
-  /** 1 for legs already completed during navigation (drawn faded). */
+  /** 1 for legs drawn faded (route options not chosen). */
   done: number
+  /** 1 = a preview only (the chosen option lets Google Maps pick the streets): drawn thin and translucent. */
+  light: number
+  /** 1 = a multi-stop trip's finished leg: drawn in one muted color, under the leg on screen. */
+  past: number
 }
 
-export function buildRouteFeatures(legs: readonly RouteLeg[], completedBefore = 0): FeatureCollection<RouteProps> {
+/** `completedBefore`: the first legs are drawn faded; `light`: every leg is drawn as a preview. */
+export function buildRouteFeatures(legs: readonly RouteLeg[], completedBefore = 0, light = false): FeatureCollection<RouteProps> {
   return {
     type: 'FeatureCollection',
-    features: legs.map((l, i) => ({ type: 'Feature', geometry: { type: 'LineString', coordinates: l.geometry }, properties: { mode: l.mode, role: l.role, done: i < completedBefore ? 1 : 0 } })),
+    features: legs.map((l, i) => ({ type: 'Feature', geometry: { type: 'LineString', coordinates: l.geometry }, properties: { mode: l.mode, role: l.role, done: i < completedBefore ? 1 : 0, light: light ? 1 : 0, past: 0 } })),
   }
+}
+
+/** A multi-stop trip's finished legs (rideStore.pastLegs). */
+export function buildPastLegFeatures(lines: ReadonlyArray<readonly LngLat[]>): FeatureCollection<RouteProps>['features'] {
+  return lines.map((l) => ({ type: 'Feature', geometry: { type: 'LineString', coordinates: [...l] }, properties: { mode: 'bike', role: 'ride', done: 0, light: 0, past: 1 } }))
 }
 
 export interface EndpointProps {
@@ -86,14 +97,27 @@ export function buildEndpointFeatures(dest: LngLat | null, origin: LngLat | null
   return { type: 'FeatureCollection', features }
 }
 
+/** Path-kind segments (in route order) up to `toMeters` along them: the colored line stops at the end dock. */
+export function clipSegments<S extends { coords: LngLat[] }>(segments: readonly S[], toMeters: number): S[] {
+  const out: S[] = []
+  let at = 0
+  for (const s of segments) {
+    if (at >= toMeters) break
+    const len = lineLength(s.coords)
+    out.push(at + len <= toMeters ? s : { ...s, coords: sliceRoute(s.coords, toMeters - at) })
+    at += len
+  }
+  return out
+}
+
 /** The chosen route split by kind of way (colored on the map). */
 export function buildPathKindFeatures(segments: ReadonlyArray<{ kind: PathKind; coords: LngLat[] }>): FeatureCollection<{ kind: PathKind }> {
   return { type: 'FeatureCollection', features: segments.map((s) => ({ type: 'Feature', geometry: { type: 'LineString', coordinates: s.coords }, properties: { kind: s.kind } })) }
 }
 
-/** Walking legs as straight dashed lines (start → pickup dock, end dock → destination); estimates, not routes. */
-export function buildWalkFeatures(walks: ReadonlyArray<readonly [LngLat, LngLat]>): FeatureCollection<RouteProps>['features'] {
-  return walks.map(([a, b]) => ({ type: 'Feature', geometry: { type: 'LineString', coordinates: [a, b] }, properties: { mode: 'walk', role: 'toPickup', done: 0 } }))
+/** Walking legs as dashed lines (start → pickup dock, end dock → destination): routed, or straight until then. */
+export function buildWalkFeatures(walks: ReadonlyArray<readonly LngLat[]>): FeatureCollection<RouteProps>['features'] {
+  return walks.map((w) => ({ type: 'Feature', geometry: { type: 'LineString', coordinates: [...w] }, properties: { mode: 'walk', role: 'toPickup', done: 0, light: 0, past: 0 } }))
 }
 
 export interface UserProps {

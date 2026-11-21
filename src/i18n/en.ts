@@ -152,6 +152,17 @@ export const en = {
   creditMap: 'Map: © OpenStreetMap contributors, OpenFreeMap, OpenMapTiles',
   creditRouting: 'Routing: Valhalla & OSRM servers by FOSSGIS e.V.',
   creditSearch: 'Search: Photon by komoot',
+  creditWeather: 'Weather: Open-Meteo.com (CC BY 4.0)',
+  weatherNow: 'Weather now',
+  weatherKind: { clear: 'Clear', partlyCloudy: 'Partly cloudy', cloudy: 'Cloudy', fog: 'Fog', drizzle: 'Drizzle', rain: 'Rain', snow: 'Snow', showers: 'Showers', thunder: 'Thunderstorms' },
+  feelsLike: (temp: string) => `feels like ${temp}`,
+  windLine: (speed: string, from: string, gust: string | null) => `Wind ${speed} from the ${from}${gust ? `, gusts ${gust}` : ''}`,
+  /** 16-point compass, from north clockwise (compassIndex). */
+  compass: ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'],
+  sunriseSunset: (rise: string, set: string) => `Sunrise ${rise} · Sunset ${set}`,
+  weatherCredit: 'Weather by Open-Meteo',
+  followInstagram: 'Follow us on Instagram',
+  instagramAria: (handle: string) => `Badger Bikes on Instagram (${handle})`,
   reportMapProblem: 'Report a map problem',
   operatorContact: 'Operator contact:',
   support: (name: string, phone: string) => `${name} support: ${phone}`,
@@ -176,6 +187,8 @@ export const en = {
   watching: 'Watching — tap to stop',
   tellMeWhen: (kind: Kind) => `Tell me when a ${kind === 'bikes' ? 'bike' : 'dock'} frees up`,
   directions: 'Directions',
+  streetView: 'Street View',
+  streetViewAria: (name: string) => `See ${name} in Google Street View`,
   directionsAria: (name: string) => `Walking directions to ${name} in Google Maps`,
   bikeDirectionsAria: (name: string) => `Bike directions to ${name} in Google Maps`,
   shareStationTitle: (name: string) => `${name}: live bikes and docks`,
@@ -220,10 +233,24 @@ export const en = {
   findingRoute: 'Finding the best route and docks along it…',
   stepChooseRoute: '3. Choose a route',
   routeOptions: 'Route options',
-  routeOption: { bikeFriendly: 'Bike-friendly', balanced: 'Balanced', fastest: 'Fastest' } as Record<string, string>,
+  routeOption: { direct: 'Direct', bikeFriendly: 'Bike-friendly' } as Record<string, string>,
   optionN: (n: number) => `Option ${n}`,
-  routeAria: (label: string, dur: string, dist: string, sameAs: string | null, docks: number) =>
-    `${label}: about ${dur}, ${dist}${sameAs ? `, same route as ${sameAs}` : ''}, ${docks} docks on route`,
+  routeAria: (label: string, dur: string, dist: string, sameAs: string | null, docks: number, stops: string) =>
+    `${label}: about ${dur}, ${dist}${sameAs ? `, same route as ${sameAs}` : ''}, ${docks} docks on route, ${stops.toLowerCase()} in Google Maps`,
+  /**
+   * Waypoints (via points) a route option sends Google Maps, on its card: points it holds Google to, each a tap on
+   * Continue. Not called "stops": that is what the docks are.
+   */
+  waypoints: (n: number) => (n === 0 ? 'No waypoints' : n === 1 ? '1 waypoint' : `${n} waypoints`),
+  /** How the chosen option is handed to Google Maps (BIKE_ROUTING.options[].handoff) and its waypoints. */
+  handoffHelp: (handoff: 'docks' | 'trails' | 'exact', n: number) =>
+    handoff === 'docks'
+      ? 'The line is a preview: Google Maps picks the streets between your docks, with no waypoints to tap.'
+      : n === 0
+        ? 'No trail sections to hold Google Maps to, so it picks the streets between your docks.'
+        : handoff === 'trails'
+          ? `Google Maps is held to this route's trails by ${n === 1 ? '1 waypoint' : `${n} waypoints`}: tap Continue in Google Maps at each.`
+          : `Google Maps follows this exact line using ${n === 1 ? '1 waypoint' : `${n} waypoints`}: tap Continue in Google Maps at each.`,
   sameAs: (label: string) => `Same as ${label}`,
   stepStops: '4. Stops',
   noDocksOnRoute: 'No BCycle docks on this route. Try another route option or a destination closer to a station.',
@@ -247,6 +274,11 @@ export const en = {
   locationUnavailable: 'Your location isn’t available. Search for a place or dock, or tap a dock on the map.',
   findingYou: 'Finding you…',
   startFromMyLocation: 'Start from my location',
+  alreadyOnBike: 'I’m already on a bike',
+  unlockedWhen: 'When did you unlock it?',
+  unlockedAgo: (min: number) => (min === 0 ? 'Just now' : `${min} min ago`),
+  onBikeHere: 'On your bike, from where you are',
+  onBikeHereHelp: 'The route starts here and the ride timer is running.',
   start: 'Start',
   startPlaceholder: 'Or search a place or dock (or tap a dock)',
   walkToPickUp: (dur: string, dist: string) => `${dur} walk (${dist}) to pick up at`,
@@ -332,6 +364,9 @@ export const en = {
   overPass: (min: number) => ` · ${min} min over your pass`,
   walkingTo: (name: string) => `Walking to ${name}`,
   endRide: 'End ride',
+  redockedAlongWay: 'Docked along the way? Restart the timer',
+  timerRestarted: 'Timer restarted for your new ride.',
+  undo: 'Undo',
   timerStartsNote: "The ride timer starts once you've unlocked a bike.",
   unlockedBike: "I've unlocked a bike",
   dockSoon: 'Dock soon to stay within your pass. Re-docking starts a new ride.',
@@ -348,6 +383,10 @@ export const en = {
   alertsAsk: 'Tap it, then Allow, to get these alerts even while Google Maps is open.',
   alertsAskAndroid: 'Tap it, then Allow, to get these alerts even while Google Maps is open. If Android also asks about notifications for Chrome, allow those too.',
   alertsAskAppOpen: 'Tap it, then Allow. Alerts show while this app is open — check back between parts.',
+  hideAlertsHint: 'Hide this (it moves to Settings)',
+  alertsHintMoved: 'Moved to Settings → Alerts during a ride.',
+  alertsDuringRide: 'Alerts during a ride',
+  showAlertsHintAgain: 'Show it in the ride planner again',
   alertsIosTitle: 'To get alerts while Google Maps is open, add the app to your Home Screen',
   alertsIosSteps: (app: string) => [
     'Tap the Share button (the square with an arrow). If you don’t see it, tap ••• first.',

@@ -94,7 +94,8 @@ const usableDock = (s: Station, partySize: number) => !!s.status?.isInstalled &&
 /**
  * Docks to show for a route, in ride order: only docks on the route line, plus (a) an off-route re-dock
  * option wherever riding would exceed `maxRideMinutes` without a usable on-route dock, (b) the
- * dock closest to the destination when the last on-route dock leaves a walk over MAX_FINAL_WALK_METERS, and
+ * dock closest to the destination when the last on-route dock leaves a walk over MAX_FINAL_WALK_METERS (however
+ * far off the route, when it is closer to the destination than every dock already listed), and
  * (c) every dock in `keepIds` (stops the rider already chose), even when its live counts no longer qualify it:
  * a chosen dock that fills up stays in the plan (and is shown as full) instead of being silently swapped.
  */
@@ -160,20 +161,30 @@ export function routeDocks(
     const station = stations.find((s) => s.id === id)
     const snap = station ? nearestOnPolyline(index, station.coord) : null
     if (!station || !snap) continue
-    const reason: DockReason =
-      snap.distanceFromLine <= ON_ROUTE_METERS ? 'onRoute' : haversine(station.coord, opts.destination) <= MAX_FINAL_WALK_METERS ? 'nearDestination' : 'redock'
+    // Off the line: the end dock (the last chosen) or one within a short walk was picked for the destination.
+    const nearDest = id === opts.keepIds?.at(-1) || haversine(station.coord, opts.destination) <= MAX_FINAL_WALK_METERS
+    const reason: DockReason = snap.distanceFromLine <= ON_ROUTE_METERS ? 'onRoute' : nearDest ? 'nearDestination' : 'redock'
     docks.push({ station, along: snap.distanceAlong, offset: snap.distanceFromLine, reason })
   }
 
-  // (b) Don't strand the rider far from the destination.
-  const lastUsable = docks.filter((d) => usableDock(d.station, party)).sort((a, b) => b.along - a.along)[0]
-  if (!lastUsable || haversine(lastUsable.station.coord, opts.destination) > MAX_FINAL_WALK_METERS) {
+  // (b) Don't strand the rider far from the destination: the usable dock closest to it — wherever it is, when
+  // no dock is within a short walk (a destination past the network's edge), as long as it beats every dock
+  // already listed (a 1.5 km walk beats a 4.5 km one).
+  const toDest = (c: LngLat) => haversine(c, opts.destination)
+  const listed = docks.filter((d) => usableDock(d.station, party))
+  const lastUsable = [...listed].sort((a, b) => b.along - a.along)[0]
+  if (!lastUsable || toDest(lastUsable.station.coord) > MAX_FINAL_WALK_METERS) {
+    const bestListed = Math.min(Infinity, ...listed.map((d) => toDest(d.station.coord)))
     const near = stations
-      .filter((s) => !exclude.has(s.id) && !has(s.id) && usableDock(s, party) && haversine(s.coord, opts.destination) <= MAX_FINAL_WALK_METERS)
-      .sort((a, b) => haversine(a.coord, opts.destination) - haversine(b.coord, opts.destination))[0]
+      .filter((s) => !exclude.has(s.id) && !has(s.id) && usableDock(s, party) && toDest(s.coord) < bestListed)
+      .sort((a, b) => toDest(a.coord) - toDest(b.coord))[0]
     if (near) {
       const snap = nearestOnPolyline(index, near.coord)
       docks.push({ station: near, along: snap?.distanceAlong ?? total, offset: snap?.distanceFromLine ?? 0, reason: 'nearDestination' })
+    } else {
+      // The closest is an off-route re-dock option already listed: it is where the ride ends, so say that.
+      const best = listed.find((d) => toDest(d.station.coord) === bestListed)
+      if (best?.reason === 'redock') best.reason = 'nearDestination'
     }
   }
   return docks.sort((a, b) => a.along - b.along)

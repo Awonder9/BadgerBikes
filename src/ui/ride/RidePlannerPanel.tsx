@@ -5,12 +5,13 @@ import { useShallow } from 'zustand/react/shallow'
 import { BIKE_ROUTING, RIDE } from '../../config'
 import { useNow, useStationsSnapshot, useSystemDetails } from '../../data/hooks'
 import { bikeMix, formatDistance, formatDuration, unitWord } from '../../lib/format'
-import { bboxOf } from '../../lib/geo'
+import { bboxOf, kNearest } from '../../lib/geo'
 import { canRent, classifyCount, classifyStation } from '../../lib/stationState'
 import { useRouteDetails } from '../../data/routeDetails'
 import { PATH_COLORS } from '../../map/colors'
 import { buildRideShareUrl } from '../../lib/urlParams'
 import { gpxFileName, rideGpx } from '../../ride/gpx'
+import { viaPointCount } from '../../ride/googleMaps'
 import { shareTextFile } from '../../native/share'
 import { waitForFix } from '../../location/locationStore'
 import { useMapApiGetter } from '../../map/mapApiContext'
@@ -23,6 +24,7 @@ import { useI18n } from '../../i18n/useT'
 import type { Place, Station } from '../../types'
 import { PassSelect } from '../browse/PassSelect'
 import { SearchBox } from '../browse/SearchBox'
+import { WeatherStrip } from '../browse/WeatherStrip'
 import { AvailabilityPill } from '../primitives/Availability'
 import { IconButton } from '../primitives/Button'
 import { Icon } from '../primitives/Icon'
@@ -34,6 +36,7 @@ import { IosAlertsHint } from './AlertsHelp'
 import { RideStatusCard } from './RideProgress'
 import { LegCompleteCard, LegIndicator, TripStops } from './TripStops'
 import { isTrip, useTripStore } from '../../ride/tripStore'
+import { useRideLines } from './useRideLines'
 import { useRidePlan, type RidePlan } from './useRidePlan'
 
 export function RidePlannerPanel() {
@@ -81,6 +84,8 @@ export function RidePlannerPanel() {
     () => ride.routes.map((r, i) => ride.routes.findIndex((o, j) => j < i && sameRoute(o.geometry, r.geometry, BIKE_ROUTING.duplicateRouteMeters))),
     [ride.routes],
   )
+  // The waypoints each option sends Google Maps (its hand-off's via points), shown on its card.
+  const viaCounts = useMemo(() => ride.routes.map((r, i) => viaPointCount(r, BIKE_ROUTING.options[i]?.handoff ?? 'docks')), [ride.routes])
   const order = along.map((s) => s.station.id)
   const riding = ride.openedParts.length > 0
 
@@ -108,7 +113,7 @@ export function RidePlannerPanel() {
 
       <div className="space-y-1">
         <p className="text-sm font-medium text-slate-500">{t.stepStart}</p>
-        {ride.origin && !ride.origin.stationId ? <StartFromPlace plan={plan} partySize={partySize} units={units} /> : start ? <StartDock station={start} partySize={partySize} onBike={ride.continuingRide} canChange={!ride.continuingRide} /> : <StartPicker />}
+        {ride.bikeAt ? <OnBikeStart /> : ride.origin && !ride.origin.stationId ? <StartFromPlace plan={plan} partySize={partySize} units={units} /> : start ? <StartDock station={start} partySize={partySize} onBike={ride.continuingRide} canChange={!ride.continuingRide} /> : <StartPicker />}
       </div>
 
       <div className="space-y-1">
@@ -134,33 +139,38 @@ export function RidePlannerPanel() {
         <>
           <div className="space-y-2">
             <p className="text-sm font-medium text-slate-500">{t.stepChooseRoute}</p>
-            <div role="radiogroup" aria-label={t.routeOptions} className="grid grid-cols-3 gap-2">
+            <div role="radiogroup" aria-label={t.routeOptions} className={`grid gap-2 ${ride.routes.length >= 3 ? 'grid-cols-3' : 'grid-cols-2'}`}>
               {ride.routes.map((r, i) => {
                 const opt = BIKE_ROUTING.options[i]
                 const label = opt ? (t.routeOption[opt.key] ?? opt.label) : t.optionN(i + 1)
                 const dup = sameAsIndex[i] ?? -1
                 const dupOpt = dup >= 0 ? BIKE_ROUTING.options[dup] : undefined
                 const sameAs = dupOpt ? (t.routeOption[dupOpt.key] ?? dupOpt.label) : null
+                const stops = t.waypoints(viaCounts[i] ?? 0)
                 return (
                   <button
                     key={i}
                     type="button"
                     role="radio"
                     aria-checked={i === ride.routeIndex}
-                    aria-label={t.routeAria(label, formatDuration(r.duration, lang), formatDistance(r.distance, units, lang), sameAs, dockCounts[i] ?? 0)}
+                    aria-label={t.routeAria(label, formatDuration(r.duration, lang), formatDistance(r.distance, units, lang), sameAs, dockCounts[i] ?? 0, stops)}
                     onClick={() => snapshot && chooseRoute(i, snapshot, partySize)}
                     className={`flex min-h-20 flex-col items-center justify-center rounded-xl px-1 py-2 text-center ring-1 ${i === ride.routeIndex ? 'bg-brand-50 ring-2 ring-brand-700 dark:bg-brand-900' : 'ring-slate-300 dark:ring-slate-600'}`}
                   >
                     <span className="whitespace-nowrap text-[13px] font-semibold leading-tight">{label}</span>
                     <span className="mt-1 text-lg font-bold leading-tight">~{formatDuration(r.duration, lang)}</span>
                     <span className={`text-xs ${i === ride.routeIndex ? 'text-slate-600 dark:text-slate-300' : 'text-slate-500'}`}>{sameAs ? t.sameAs(sameAs) : formatDistance(r.distance, units, lang)}</span>
+                    <span className={`text-xs ${i === ride.routeIndex ? 'text-slate-600 dark:text-slate-300' : 'text-slate-500'}`}>{stops}</span>
                   </button>
                 )
               })}
             </div>
+            <p className="text-xs leading-snug text-slate-500">{t.handoffHelp(plan.handoff, plan.viaCount)}</p>
           </div>
           <TripSummary plan={plan} units={units} />
-          <RouteDetailsCard systemId={systemId} units={units} />
+          <WeatherStrip />
+          {/* A Direct route is only a preview (Google picks the streets), so its path details would mislead. */}
+          {plan.handoff !== 'docks' && <RouteDetailsCard systemId={systemId} units={units} />}
           {systemId && <PassPrompt systemId={systemId} />}
 
           {along.length === 0 ? (
@@ -338,9 +348,79 @@ function StartPicker() {
         {locating ? <Spinner /> : <Icon name="locate" size={20} />}
         {locating ? t.findingYou : t.startFromMyLocation}
       </button>
+      <AlreadyOnBike />
       {msg && <p className="text-sm text-amber-800 dark:text-amber-300">{msg}</p>}
       <SearchBox key="start" label={t.start} placeholder={t.startPlaceholder} onSelect={(p) => useRideStore.getState().setOrigin(p)} />
     </>
+  )
+}
+
+/**
+ * "I'm already on a bike": asks when the bike was unlocked (the ride timer starts then), finds the rider, and plans
+ * from there — the dock nearest them is kept as the plan's start dock (rideStore.startOnBike).
+ */
+function AlreadyOnBike() {
+  const systemId = useAppStore((s) => s.systemId)
+  const { snapshot } = useStationsSnapshot(systemId)
+  const [open, setOpen] = useState(false)
+  const [locating, setLocating] = useState(false)
+  const [msg, setMsg] = useState<string | null>(null)
+  const { t } = useI18n()
+  const start = async (minutesAgo: number) => {
+    setMsg(null)
+    setLocating(true)
+    const here = await waitForFix()
+    setLocating(false)
+    if (!here) return setMsg(t.locationUnavailable)
+    const nearest = snapshot ? kNearest(here, snapshot.stations.filter((s) => s.status?.isInstalled), (s) => s.coord, 1)[0]?.item : undefined
+    if (!nearest) return setMsg(t.locationUnavailable)
+    useRideStore.getState().startOnBike(here, { kind: 'station', name: nearest.name, coord: nearest.coord, stationId: nearest.id }, Date.now() - minutesAgo * 60_000)
+  }
+  if (!open)
+    return (
+      <button
+        type="button"
+        disabled={!snapshot}
+        onClick={() => setOpen(true)}
+        className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-white px-3 font-semibold text-brand-800 ring-1 ring-brand-700 disabled:opacity-60 dark:bg-slate-900 dark:text-brand-200"
+      >
+        <Icon name="bike" size={20} /> {t.alreadyOnBike}
+      </button>
+    )
+  return (
+    <div className="space-y-2 rounded-xl bg-slate-50 p-3 dark:bg-slate-900" role="group" aria-label={t.alreadyOnBike}>
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-sm font-medium">{locating ? t.findingYou : t.unlockedWhen}</p>
+        <button type="button" className="min-h-11 px-2 text-sm text-brand-700 dark:text-brand-300" onClick={() => setOpen(false)}>
+          {t.cancel}
+        </button>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {RIDE.onBikeUnlockedAgoMinutes.map((m) => (
+          <button key={m} type="button" disabled={locating} onClick={() => void start(m)} className="min-h-11 rounded-full bg-white px-3 text-sm font-medium ring-1 ring-slate-300 disabled:opacity-60 dark:bg-slate-800 dark:ring-slate-600">
+            {t.unlockedAgo(m)}
+          </button>
+        ))}
+      </div>
+      {msg && <p className="text-sm text-amber-800 dark:text-amber-300">{msg}</p>}
+    </div>
+  )
+}
+
+/** Planning from where the rider already is on a bike (the ride timer is running). */
+function OnBikeStart() {
+  const { t } = useI18n()
+  return (
+    <div className="flex items-center gap-2 rounded-xl bg-slate-50 p-3 dark:bg-slate-900">
+      <Icon name="bike" size={20} className="shrink-0 text-brand-700" />
+      <span className="min-w-0 flex-1">
+        <span className="block font-medium leading-snug">{t.onBikeHere}</span>
+        <span className="block text-sm text-slate-500">{t.onBikeHereHelp}</span>
+      </span>
+      <button type="button" className="min-h-11 px-2 text-sm text-brand-700 dark:text-brand-300" onClick={() => useRideStore.getState().setStart(null)}>
+        {t.change}
+      </button>
+    </div>
   )
 }
 
@@ -547,9 +627,12 @@ function ShareRideButton({ systemId, startId, destination, routeIndex }: { syste
  * phone's share sheet when the browser allows .gpx files there, else downloaded.
  */
 function ExactRouteFile({ plan }: { plan: RidePlan }) {
-  const { route, destination } = useRideStore(useShallow((s) => ({ route: s.route, destination: s.destination })))
+  const { route, destination, bikeAt } = useRideStore(useShallow((s) => ({ route: s.route, destination: s.destination, bikeAt: s.bikeAt })))
   const [msg, setMsg] = useState<string | null>(null)
   const { t } = useI18n()
+  const systemId = useAppStore((s) => s.systemId)
+  // The routed last stretch to an off-route end dock (the map's request, shared), so the track reaches it on streets.
+  const { tail } = useRideLines(systemId, plan, route)
   const { start, chosen, rideParts, walkLink } = plan
   if (!route || !start || chosen.length === 0) return null
   const save = async () => {
@@ -558,10 +641,11 @@ function ExactRouteFile({ plan }: { plan: RidePlan }) {
     const gpx = rideGpx({
       name,
       route: route.geometry,
-      start: { name: start.name, coord: start.coord },
+      start: bikeAt ? { name: t.myLocation, coord: bikeAt } : { name: start.name, coord: start.coord },
       stops: chosen.map((s) => ({ name: s.station.name, coord: s.station.coord, along: s.along })),
       destination: destination ? { name: destination.name, coord: destination.coord } : null,
       timeIso: new Date().toISOString(),
+      ...(tail ? { tail } : {}),
     })
     const fileName = gpxFileName(destination?.name ?? null)
     const file = new File([gpx], fileName, { type: 'application/gpx+xml' })

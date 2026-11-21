@@ -5,9 +5,9 @@ import { useShallow } from 'zustand/react/shallow'
 import { useStationsSnapshot, useSystemDetails } from '../../data/hooks'
 import { buildPolylineIndex, haversine, pointAlong } from '../../lib/geo'
 import { fleetComposition } from '../../lib/stationState'
-import { RIDE } from '../../config'
+import { BIKE_ROUTING, RIDE } from '../../config'
 import { estimateBetween } from '../../routing/estimates'
-import { directionsUrl, guidePoints, rideLinks, trailRangesOf, type RideLink } from '../../ride/googleMaps'
+import { directionsUrl, guidePoints, rideLinks, trailRangesOf, type Handoff, type RideLink } from '../../ride/googleMaps'
 import { pickupOptions, type PickupOption } from '../../ride/pickup'
 import { docksAlong, optimizedFor, routePace, useRideStore, rideActive } from '../../ride/rideStore'
 import { rideSeconds, rideSegments, type RouteDock } from '../../ride/stationsAlongRoute'
@@ -82,6 +82,10 @@ export interface RidePlan {
   /** First ride part not opened yet (index into rideParts), or null when all are opened. */
   nextPart: number | null
   hasViaPoints: boolean
+  /** Extra Google Maps stops (via points) in the links, beyond the docks. */
+  viaCount: number
+  /** How the chosen route option steers Google Maps (BIKE_ROUTING.options[].handoff). */
+  handoff: Handoff
   electric: boolean
   /** Seconds per meter of the chosen route (matches its card), when known. */
   pace: number | undefined
@@ -95,7 +99,7 @@ export function useRidePlan(): RidePlan {
   const { systemId, partySize, maxRideMinutes, preferEbikes } = useAppStore(
     useShallow((s) => ({ systemId: s.systemId, partySize: s.settings.partySize, maxRideMinutes: s.settings.maxRideMinutes, preferEbikes: s.settings.preferEbikes })),
   )
-  const ride = useRideStore(useShallow((s) => ({ origin: s.origin, startId: s.startId, destination: s.destination, route: s.route, stopIds: s.stopIds, openedParts: s.openedParts })))
+  const ride = useRideStore(useShallow((s) => ({ origin: s.origin, startId: s.startId, destination: s.destination, route: s.route, routeIndex: s.routeIndex, stopIds: s.stopIds, openedParts: s.openedParts, bikeAt: s.bikeAt })))
   // Faster polling only while it matters (planner open or a ride under way); this hook is also used by
   // always-mounted pieces (ride banner, alerts, map), which must not keep the app polling fast.
   const panelOpen = useAppStore((s) => s.panel === 'ride')
@@ -124,8 +128,8 @@ export function useRidePlan(): RidePlan {
   const pace = route ? routePace(route) : undefined
   const segments = useMemo(() => (startId ? rideSegments(startId, chosen, maxRideMinutes > 0 ? maxRideMinutes : null, electric, pace) : []), [startId, chosen, maxRideMinutes, electric, pace])
   const walkTo = dest && end && haversine(end.station.coord, dest.coord) > WALK_LINK_MIN_METERS ? dest.coord : null
-  // Keep Google Maps on the chosen route: docks are sent as points on the line, plus via points so no
-  // stretch is long enough for Google to pick its own streets.
+  // Google Maps gets the docks (as points on the line), plus the route option's via points (googleMaps.ts).
+  const handoff: Handoff = BIKE_ROUTING.options[ride.routeIndex]?.handoff ?? 'docks'
   const routeIndex = useMemo(() => (route ? buildPolylineIndex(route.geometry) : null), [route])
   const trailRanges = useMemo(() => (route && routeIndex ? trailRangesOf(route.maneuvers, routeIndex.cum) : []), [route, routeIndex])
   const guide = useMemo(
@@ -135,12 +139,15 @@ export function useRidePlan(): RidePlan {
             chosen.map((s) => ({ coord: s.station.coord, along: s.along, offset: s.offset, name: s.station.name })),
             (a) => pointAlong(routeIndex, a).point,
             trailRanges,
+            handoff,
           )
         : [],
-    [routeIndex, chosen, trailRanges],
+    [routeIndex, chosen, trailRanges, handoff],
   )
-  const startCoord = start?.coord
-  const links = useMemo(() => (startCoord && guide.length > 0 ? rideLinks(startCoord, guide, walkTo) : []), [startCoord, guide, walkTo])
+  // Already on a bike: the first link starts where the rider is (and isn't an unlock at a dock).
+  const startCoord = ride.bikeAt ?? start?.coord
+  const startIsDock = !ride.bikeAt
+  const links = useMemo(() => (startCoord && guide.length > 0 ? rideLinks(startCoord, guide, walkTo, undefined, startIsDock) : []), [startCoord, guide, walkTo, startIsDock])
   const rideParts = useMemo(() => links.filter((l) => l.kind === 'ride'), [links])
   const origin = ride.origin
   const fromPlace = origin && !origin.stationId ? origin : null
@@ -173,6 +180,8 @@ export function useRidePlan(): RidePlan {
     walkLink: links.find((l) => l.kind === 'walk'),
     nextPart: nextIdx >= 0 ? nextIdx : null,
     hasViaPoints: guide.some((p) => !p.isStop),
+    viaCount: guide.filter((p) => !p.isStop).length,
+    handoff,
     electric,
     pace,
     includedMinutes,

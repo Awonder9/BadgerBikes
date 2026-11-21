@@ -4,6 +4,7 @@ import type { Priority, USAGE } from '../config'
 import type { Lang } from '../i18n/lang'
 import type { RouteDetails } from '../routing/details'
 import type { RouteRequest } from '../routing/types'
+import type { Weather } from '../weather/openMeteo'
 import type { Place, RouteLeg, Station, SystemDetails } from '../types'
 
 export const API_PATHS = {
@@ -12,6 +13,8 @@ export const API_PATHS = {
   stations: '/api/stations',
   system: '/api/system',
   routes: '/api/routes',
+  route: '/api/route',
+  weather: '/api/weather',
   locate: '/api/locate',
   routeDetails: '/api/route-details',
   geocode: '/api/geocode',
@@ -21,6 +24,11 @@ export const API_PATHS = {
   usage: '/api/usage',
   analytics: '/api/analytics',
 } as const
+
+/** GET /api/weather?system=<id> → the city's current weather, wind, and today's sunrise/sunset (its center). */
+export interface WeatherResponse {
+  weather: Weather
+}
 
 /** GET /api/health */
 export interface HealthResponse {
@@ -77,7 +85,7 @@ export interface ReverseResponse {
   place: Place | null
 }
 
-/** POST /api/routes → 3 route options: bike-friendly, balanced, fastest (BIKE_ROUTING.options order). */
+/** POST /api/routes → one route per BIKE_ROUTING.options entry, in order (direct, bike-friendly). */
 export type RoutesApiRequest = RouteApiRequest
 
 /** POST /api/route-details → path breakdown + elevation for one route (geometry as polyline6). */
@@ -89,6 +97,15 @@ export type RouteDetailsResponse = RouteDetails
 
 export interface RoutesResponse {
   routes: RouteLeg[]
+}
+
+/**
+ * POST /api/route (body: RouteApiRequest) → one leg, for drawing: the walks to the pickup dock and from the end
+ * dock, and the ride's last stretch to an off-route end dock (the client asks for background priority). When
+ * both routers fail the leg is a straight line (provider 'straight').
+ */
+export interface RouteResponse {
+  route: RouteLeg
 }
 
 /** A browser push subscription, as PushSubscription.toJSON() gives it (keys base64url). */
@@ -192,6 +209,8 @@ export interface StatsResponse {
   allTimeUsers: number
   /** The first day with any counts (null: none yet). */
   since: string | null
+  /** Times the dashboard was opened since counting them began (per day: `counts.dashboard_views`). */
+  dashboardViews: { allTime: number; since: string | null }
   /** Oldest first, ending today. */
   days: StatsDay[]
 }

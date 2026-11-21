@@ -27,6 +27,7 @@ dropoff candidates are the 4 nearest the destination (Madison BCycle).
 | `photon/search_memorial_union.json` | `/api/?q=memorial union&lat=43.0747&lon=-89.3842&limit=5&lang=en` |
 | `photon/search_partial.json` | `/api/?q=state st&...&bbox=-89.55,42.98,-89.25,43.17` |
 | `photon/reverse.json` | `/reverse?lat=43.07467&lon=-89.38420&limit=1&lang=en` |
+| `openmeteo/forecast_madison.json` | `api.open-meteo.com/v1/forecast?latitude=43.07097&longitude=-89.39761&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m,wind_gusts_10m,wind_direction_10m,precipitation,is_day&daily=sunrise,sunset&forecast_days=1&timezone=America/Chicago&timeformat=unixtime` (Madison's center; captured 2026-11-20) |
 
 | `api/geocode_apex_grill.json` | our Worker's `GET /api/geocode?q=apex grill&system=bcycle_madison` (captured from `npm run dev`) |
 

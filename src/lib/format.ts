@@ -55,6 +55,18 @@ export function formatDuration(seconds: number, lang: Lang = 'en'): string {
   return min === 0 ? `${h} ${w.h}` : `${h} ${w.h} ${min} ${w.min}`
 }
 
+/** A temperature (°C internally): "54°F" (imperial) or "12°C" (metric), rounded. */
+export function formatTemperature(celsius: number, units: Units): string {
+  const v = units === 'imperial' ? (celsius * 9) / 5 + 32 : celsius
+  // Math.round(-0.4) is -0: show 0.
+  return `${Math.round(v) || 0}°${units === 'imperial' ? 'F' : 'C'}`
+}
+
+/** A wind speed (km/h internally): "16 mph" (imperial) or "26 km/h" (metric), rounded. */
+export function formatSpeed(kph: number, units: Units): string {
+  return units === 'imperial' ? `${Math.round(kph / 1.609344)} mph` : `${Math.round(kph)} km/h`
+}
+
 /** Local clock time ("3:45 PM") for an epoch-ms instant, optionally in a specific IANA zone. */
 export function formatClockTime(epochMs: number, timeZone?: string, lang: Lang = 'en'): string {
   try {

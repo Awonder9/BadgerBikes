@@ -16,12 +16,15 @@ import {
   type OkResponse,
   type PushRideRequest,
   type ReverseResponse,
+  type RouteApiRequest,
+  type RouteResponse,
   type RoutesApiRequest,
   type RouteDetailsResponse,
   type RoutesResponse,
   type StationsResponse,
   type StatsResponse,
   type UsageRequest,
+  type WeatherResponse,
 } from './contract'
 
 const PROVIDER = 'api'
@@ -76,6 +79,15 @@ export const api = {
     return (await postJson<RoutesResponse>(apiUrl(API_PATHS.routes), body, { signal, provider: PROVIDER })).routes
   },
 
+  async weather(systemId: string, signal?: AbortSignal): Promise<WeatherResponse['weather']> {
+    return (await fetchJson<WeatherResponse>(apiUrl(API_PATHS.weather, { system: systemId }), { signal, provider: PROVIDER })).weather
+  },
+
+  /** One leg (a walk, or the ride's last stretch to an off-route dock), for drawing it on the map. */
+  async route(body: RouteApiRequest, signal?: AbortSignal): Promise<RouteLeg> {
+    return (await postJson<RouteResponse>(apiUrl(API_PATHS.route), body, { signal, provider: PROVIDER })).route
+  },
+
   /**
    * Place search. Asks Photon directly from the browser first: Photon throttles by IP, and Cloudflare
    * Workers share their outgoing IPs, so through the Worker about a third of searches failed or stalled.
@@ -118,8 +130,9 @@ export const api = {
   },
 
   /** The usage dashboard's numbers (/analytics). */
-  analytics(days: number, signal?: AbortSignal): Promise<StatsResponse> {
-    return fetchJson<StatsResponse>(apiUrl(API_PATHS.analytics, { days }), { signal, provider: PROVIDER, cache: 'no-store' })
+  /** `view`: this is the dashboard page being opened (counted as a view; its refreshes aren't). */
+  analytics(days: number, signal?: AbortSignal, view = false): Promise<StatsResponse> {
+    return fetchJson<StatsResponse>(apiUrl(API_PATHS.analytics, view ? { days, view: 1 } : { days }), { signal, provider: PROVIDER, cache: 'no-store' })
   },
 
   async reverse(coord: LngLat, signal?: AbortSignal): Promise<Place | null> {

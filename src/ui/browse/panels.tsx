@@ -2,7 +2,7 @@
 // settings and about.
 import { useMemo, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
-import { POLL, RIDE } from '../../config'
+import { APP, POLL, RIDE } from '../../config'
 import { useMeta, useNow, useStationsSnapshot, useSystemDetails } from '../../data/hooks'
 import { getSystem, SYSTEMS } from '../../data/systems'
 import { useReverseGeocode } from '../../geocode/hooks'
@@ -23,9 +23,11 @@ import { AvailabilityPill } from '../primitives/Availability'
 import { Button, ButtonLink, IconButton } from '../primitives/Button'
 import { Icon } from '../primitives/Icon'
 import { changeCity, planRide, rideTo, startRideFrom } from '../ride/rideActions'
+import { AlertsSettings } from '../ride/AlertsHelp'
 import { PassSelect } from './PassSelect'
 import { SearchBox } from './SearchBox'
 import { useNearestStation } from './useNearestOpenDock'
+import { WeatherStrip } from './WeatherStrip'
 
 /** "Live · 20 s ago" / "Data may be stale" — ages on its own clock, so its parents don't re-render with it. */
 export function FreshnessBadge({ hasData, isError, lastUpdatedMs }: { hasData: boolean; isError: boolean; lastUpdatedMs: number | undefined }) {
@@ -136,6 +138,7 @@ export function BrowsePanel() {
           <Icon name="list" size={18} /> {t.stationList}
         </button>
       </div>
+      <WeatherStrip />
       {saved.filter((s) => s.systemId === systemId).length > 0 && (
         <ul className="space-y-1" aria-label={t.savedPlaces}>
           {saved
@@ -389,6 +392,7 @@ export function SettingsPanel() {
             <option value="dark">{t.styleDark}</option>
           </select>
         </label>
+        <AlertsSettings />
         {systemId && <SavedPlacesSettings systemId={systemId} />}
         <RecentPlacesSetting />
         <p className="px-4 py-3 text-sm text-slate-500">
@@ -398,6 +402,14 @@ export function SettingsPanel() {
           <span>{t.aboutLink}</span>
           <Icon name="chevronRight" size={20} />
         </button>
+        {APP.instagram && (
+          <a className={`${row} w-full`} href={APP.instagram.url} target="_blank" rel="noopener noreferrer" aria-label={t.instagramAria(APP.instagram.handle)}>
+            <span className="flex items-center gap-2">
+              <Icon name="instagram" size={20} className="shrink-0" /> {t.followInstagram}
+            </span>
+            <span className="text-sm text-slate-500">{APP.instagram.handle}</span>
+          </a>
+        )}
       </div>
     </section>
   )
@@ -512,11 +524,19 @@ export function AboutPanel() {
       <Header title={t.about} onBack={() => useAppStore.getState().setPanel('settings')} />
       <div className="space-y-3 p-4">
         <p>{t.aboutIntro}</p>
+        {APP.instagram && (
+          <p>
+            <a className="inline-flex min-h-11 items-center gap-2 font-medium text-brand-700 underline dark:text-brand-300" href={APP.instagram.url} target="_blank" rel="noopener noreferrer" aria-label={t.instagramAria(APP.instagram.handle)}>
+              <Icon name="instagram" size={20} className="shrink-0" /> {t.followInstagram} ({APP.instagram.handle})
+            </a>
+          </p>
+        )}
         <ul className="list-disc space-y-1 pl-5">
           <li>{t.creditStations(Math.round(POLL.statusAfterFeedMs / 60_000))}</li>
           <li>{t.creditMap}</li>
           <li>{t.creditRouting}</li>
           <li>{t.creditSearch}</li>
+          <li>{t.creditWeather}</li>
         </ul>
         <p>
           <a className="font-medium text-brand-700 underline dark:text-brand-300" href="https://www.openstreetmap.org/fixthemap" target="_blank" rel="noopener noreferrer">

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { destination } from '../lib/geo'
 import { MADISON, makeStation } from '../test/factories'
 import type { LngLat } from '../types'
-import { directionsUrl, guidePoints, rideLinks, shapingPoints, trailRangesOf } from './googleMaps'
+import { directionsUrl, streetViewUrl, guidePoints, rideLinks, shapingPoints, trailPoints, trailRangesOf, viaPointCount } from './googleMaps'
 import { rideSegments, stationsAlongRoute } from './stationsAlongRoute'
 
 const A = MADISON.capitol
@@ -104,6 +104,78 @@ describe('guide points', () => {
     const links = rideLinks(A, [P(500, false), P(1000, true), P(1500, false), P(2000, false), P(2500, false), P(3000, true)], null)
     expect(links).toHaveLength(2)
     expect(new URL(links[0]!.url).searchParams.get('destination')).toBe(new URL(directionsUrl(at(1000), at(1000), 'walking')).searchParams.get('origin'))
+  })
+})
+
+describe('Street View link', () => {
+  it('opens the panorama at the dock (lat,lon), no API key', () => {
+    const u = new URL(streetViewUrl([-89.40804, 43.07214]))
+    expect(u.host).toBe('www.google.com')
+    expect(Object.fromEntries(u.searchParams)).toEqual({ api: '1', map_action: 'pano', viewpoint: '43.072140,-89.408040' })
+  })
+})
+
+describe('hand-off styles', () => {
+  const at = (m: number): LngLat => destination(A, m, 270)
+  const stops = [
+    { coord: at(1000), along: 1000, offset: 10, name: 'Dock B' },
+    { coord: at(4000), along: 4000, offset: 10, name: 'Dock E' },
+  ]
+  const trail: Array<[number, number]> = [[1500, 2500]]
+
+  it("'docks' sends only the docks; 'trails' adds a point on the trail; 'exact' one every max gap", () => {
+    expect(guidePoints(stops, at, trail, 'docks').map((p) => p.isStop)).toEqual([true, true])
+    const trails = guidePoints(stops, at, trail, 'trails')
+    expect(trails.map((p) => [p.isStop, p.label ?? null])).toEqual([[true, 'Dock B'], [false, null], [true, 'Dock E']])
+    expect(trails[1]!.coord).toEqual(at(2000))
+    expect(guidePoints(stops, at, trail, 'exact').filter((p) => !p.isStop).length).toBeGreaterThan(1)
+  })
+
+  it('a ride started on a bike: the first link doesn\'t start at a dock', () => {
+    expect(rideLinks(A, [B], null, 3, false)[0]!.fromDock).toBe(false)
+    expect(rideLinks(A, [B], null)[0]!.fromDock).toBe(true)
+  })
+
+  it('one Google link for a Direct ride, even a long one', () => {
+    const long = [{ coord: at(9000), along: 9000, offset: 10 }]
+    expect(rideLinks(A, guidePoints(long, at, [], 'docks'), null)).toHaveLength(1)
+    expect(rideLinks(A, guidePoints(long, at, [], 'exact'), null).length).toBeGreaterThan(1)
+  })
+})
+
+describe('trail points', () => {
+  const at = (m: number): LngLat => destination(A, m, 270)
+  const alongs = (stopAlongs: number[], end: number, ranges: Array<[number, number]>, slots = 12) => trailPoints(stopAlongs, end, slots, at, ranges).map((p) => p.along)
+
+  it('puts one point mid-section, more on a long one, none on a short one', () => {
+    expect(alongs([], 6000, [[1000, 2000]])).toEqual([1500])
+    expect(alongs([], 6000, [[1000, 1300]])).toEqual([]) // shorter than trailMinMeters
+    // 4 km of trail: two points, evenly spread.
+    expect(alongs([], 9000, [[1000, 5000]])).toEqual([2000, 4000])
+  })
+
+  it('joins sections split by a street crossing, drops points next to a dock, and ends at the end dock', () => {
+    expect(alongs([], 6000, [[1000, 1300], [1350, 1600]])).toEqual([1300])
+    expect(alongs([1450], 6000, [[1000, 2000]])).toEqual([]) // the dock at 1450 anchors it
+    expect(alongs([], 1600, [[1000, 1500]])).toEqual([1250])
+    // Cut at the end dock.
+    expect(alongs([], 2000, [[1000, 4000]])).toEqual([1500])
+  })
+
+  it('stops at the slot limit', () => {
+    expect(alongs([], 20000, [[1000, 2000], [5000, 6000], [9000, 10000]], 2)).toEqual([1500, 5500])
+  })
+
+  it('counts a route\'s waypoints for its card', () => {
+    const geometry = [at(0), at(1000), at(2000), at(3000)]
+    const maneuvers = [
+      { kind: 'depart', streetNames: ['Regent Street'], beginIndex: 0, endIndex: 1 },
+      { kind: 'turn', streetNames: ['Southwest Path'], beginIndex: 1, endIndex: 2 },
+      { kind: 'turn', streetNames: ['Elm Street'], beginIndex: 2, endIndex: 3 },
+    ] as never
+    expect(viaPointCount({ geometry, maneuvers }, 'docks')).toBe(0)
+    expect(viaPointCount({ geometry, maneuvers }, 'trails')).toBe(1)
+    expect(viaPointCount({ geometry, maneuvers }, 'exact')).toBeGreaterThan(1)
   })
 })
 

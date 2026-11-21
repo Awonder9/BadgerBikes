@@ -5,7 +5,7 @@ import { getTrend, trendDelta } from '../../data/trend'
 import { formatDuration, formatTimeAgo } from '../../lib/format'
 import { classifyStation, fleetComposition } from '../../lib/stationState'
 import { appLaunchUrl, buildStationShareUrl, safeExternalUrl, LINK_HOSTS } from '../../lib/urlParams'
-import { directionsFromHereUrl } from '../../ride/googleMaps'
+import { directionsFromHereUrl, streetViewUrl } from '../../ride/googleMaps'
 import { estimateBetween } from '../../routing/estimates'
 import { useAppStore } from '../../store/appStore'
 import { useI18n } from '../../i18n/useT'
@@ -177,6 +177,16 @@ export function StationCard() {
           url={() => buildStationShareUrl(shareOrigin(), systemId, st.id)}
           className="flex min-h-11 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl px-2 font-medium ring-1 ring-slate-300 dark:ring-slate-600"
         />
+        {/* What the dock looks like from the street, to spot it on arrival. */}
+        <a
+          href={streetViewUrl(st.coord)}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={t.streetViewAria(st.name)}
+          className="col-span-2 flex min-h-11 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl px-2 font-medium ring-1 ring-slate-300 dark:ring-slate-600"
+        >
+          <Icon name="eye" size={20} className="shrink-0" /> {t.streetView}
+        </a>
       </div>
       <AppHandoff details={details} />
       </div>

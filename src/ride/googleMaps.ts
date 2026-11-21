@@ -1,10 +1,16 @@
 // Google Maps hand-off (Maps URLs, no API key). A Maps URL cannot carry a route line — only an origin, a
-// destination and ≤3 waypoints (mobile) — and Google computes its own path between them. To make Google
-// follow the chosen route we (1) send docks as the point on the route line, not the dock itself (a dock on a
-// side street makes Google loop around the block), and (2) add via points so that no stretch between
-// consecutive waypoints is longer than GOOGLE_HANDOFF.maxGuidedGapMeters, then split into several links.
-import { GOOGLE_HANDOFF } from '../config'
-import type { LngLat } from '../types'
+// destination and ≤3 waypoints (mobile) — and Google computes its own path between them; every waypoint is a
+// stop the rider must confirm in Google Maps. Docks are sent as the point on the route line, not the dock itself
+// (a dock on a side street makes Google loop around the block). How much more Google is steered depends on the
+// route option's hand-off (BIKE_ROUTING.options): 'docks' adds nothing, 'trails' a point on each trail/path
+// section (where Google would most likely take a parallel road), 'exact' a point every maxGuidedGapMeters.
+// Links are split so each has ≤3 waypoints.
+import { BIKE_ROUTING, GOOGLE_HANDOFF } from '../config'
+import { buildPolylineIndex, pointAlong } from '../lib/geo'
+import type { LngLat, RouteLeg } from '../types'
+
+/** How a route option steers Google Maps (BIKE_ROUTING.options[].handoff). */
+export type Handoff = (typeof BIKE_ROUTING.options)[number]['handoff']
 
 export const MAX_WAYPOINTS_MOBILE = GOOGLE_HANDOFF.maxWaypoints
 
@@ -16,6 +22,12 @@ export function directionsUrl(origin: LngLat, destination: LngLat, mode: TravelM
   const q = new URLSearchParams({ api: '1', origin: ll(origin), destination: ll(destination), travelmode: mode })
   if (waypoints.length) q.set('waypoints', waypoints.map(ll).join('|'))
   return `https://www.google.com/maps/dir/?${q.toString()}`
+}
+
+/** Google Street View at a point (Maps URLs, no API key): the closest panorama Google has, e.g. of a dock. */
+export function streetViewUrl(at: LngLat): string {
+  const q = new URLSearchParams({ api: '1', map_action: 'pano', viewpoint: ll(at) })
+  return `https://www.google.com/maps/@?${q.toString()}`
 }
 
 /** Directions from wherever the rider is now (Google uses the device location when origin is omitted). */
@@ -48,10 +60,11 @@ const isLngLat = (p: RidePoint | LngLat): p is LngLat => Array.isArray(p)
 /**
  * Bicycling links from the start dock through `points` (the last is the end dock), split so each link has
  * ≤ maxWaypoints waypoints. A link preferably ends at a dock stop (where the rider re-docks anyway) rather
- * than at a via point. Plus a walking link from the end dock to `walkTo`.
+ * than at a via point. Plus a walking link from the end dock to `walkTo`. `startIsDock` false: the ride starts
+ * where the rider already is on a bike (the first link doesn't start at a dock).
  */
-export function rideLinks(start: LngLat, points: ReadonlyArray<RidePoint | LngLat>, walkTo: LngLat | null, maxWaypoints = MAX_WAYPOINTS_MOBILE): RideLink[] {
-  const pts: RidePoint[] = [{ coord: start, isStop: true }, ...points.map((p): RidePoint => (isLngLat(p) ? { coord: p, isStop: true } : p))]
+export function rideLinks(start: LngLat, points: ReadonlyArray<RidePoint | LngLat>, walkTo: LngLat | null, maxWaypoints = MAX_WAYPOINTS_MOBILE, startIsDock = true): RideLink[] {
+  const pts: RidePoint[] = [{ coord: start, isStop: startIsDock }, ...points.map((p): RidePoint => (isLngLat(p) ? { coord: p, isStop: true } : p))]
   const last = pts.length - 1
   const chunks: RidePoint[][] = []
   for (let i = 0; i < last; ) {
@@ -141,6 +154,42 @@ export function shapingPoints(
   return placed.sort((a, b) => a - b).map((along) => ({ coord: pointAt(along), along, isStop: false }))
 }
 
+/**
+ * 'trails' hand-off: via points only on trail/path sections (`trailRanges`, meters along the route), where
+ * Google would most likely take a parallel road instead. Ranges less than trailJoinGapMeters apart are one
+ * section; a section shorter than trailMinMeters gets none, a longer one a point per trailPointEveryMeters
+ * (at least one), evenly spread. Points within trailNearStopMeters of a dock stop or either end are dropped (the
+ * dock already anchors that stretch). At most `slots` points.
+ */
+export function trailPoints(
+  stopAlongs: readonly number[],
+  endAlong: number,
+  slots: number,
+  pointAt: (along: number) => LngLat,
+  trailRanges: ReadonlyArray<readonly [number, number]>,
+): Waypoint[] {
+  const H = GOOGLE_HANDOFF
+  const sections: Array<[number, number]> = []
+  for (const [a, b] of trailRanges.filter(([from, to]) => to > from).sort((x, y) => x[0] - y[0])) {
+    const last = sections.at(-1)
+    if (last && a - last[1] <= H.trailJoinGapMeters) last[1] = Math.max(last[1], b)
+    else sections.push([a, b])
+  }
+  const anchors = [0, ...stopAlongs, endAlong]
+  const placed: number[] = []
+  for (const [a, b0] of sections) {
+    const b = Math.min(b0, endAlong)
+    const len = b - a
+    if (len < H.trailMinMeters) continue
+    const k = Math.max(1, Math.round(len / H.trailPointEveryMeters))
+    for (let i = 0; i < k; i++) {
+      const along = a + ((i + 0.5) * len) / k
+      if (anchors.every((s) => Math.abs(s - along) >= H.trailNearStopMeters)) placed.push(along)
+    }
+  }
+  return placed.slice(0, slots).map((along) => ({ coord: pointAt(along), along, isStop: false }))
+}
+
 /** Valhalla's wording for unnamed bike-only ways ("Turn left onto the cycleway."). */
 const UNNAMED_PATH = /\bthe (cycleway|path|footway|walkway)\b/i
 
@@ -154,21 +203,40 @@ export function trailRangesOf(maneuvers: ReadonlyArray<{ streetNames?: string[];
     .map((m) => [cum[m.beginIndex] ?? 0, cum[m.endIndex] ?? 0])
 }
 
+/** Via points for one hand-off style (none for 'docks'). */
+function viaPoints(handoff: Handoff, stopAlongs: readonly number[], endAlong: number, pointAt: (along: number) => LngLat, trailRanges: ReadonlyArray<readonly [number, number]>): Waypoint[] {
+  if (handoff === 'docks') return []
+  if (handoff === 'trails') return trailPoints(stopAlongs, endAlong, GOOGLE_HANDOFF.maxViaPoints, pointAt, trailRanges)
+  return shapingPoints(stopAlongs, endAlong, GOOGLE_HANDOFF.maxViaPoints, pointAt, trailRanges)
+}
+
+/**
+ * Waypoints (via points) a route gets with this hand-off, counted from the start to the route's end without dock
+ * stops — the route cards' "N waypoints" (the chosen docks can only remove some).
+ */
+export function viaPointCount(route: Pick<RouteLeg, 'geometry' | 'maneuvers'>, handoff: Handoff): number {
+  if (handoff === 'docks') return 0
+  const index = buildPolylineIndex(route.geometry)
+  return viaPoints(handoff, [], index.total, (a) => pointAlong(index, a).point, trailRangesOf(route.maneuvers, index.cum)).length
+}
+
 /**
  * Google waypoints for a ride: each chosen dock (sent as the point on the route line when it is that close,
- * so Google doesn't detour around the block to reach it; the end dock keeps its real location) plus via points.
+ * so Google doesn't detour around the block to reach it; the end dock keeps its real location) plus the
+ * hand-off's via points.
  */
 export function guidePoints(
   stops: ReadonlyArray<{ coord: LngLat; along: number; offset: number; name?: string }>,
   pointAt: (along: number) => LngLat,
   trailRanges: ReadonlyArray<readonly [number, number]> = [],
+  handoff: Handoff = 'exact',
 ): RidePoint[] {
   const end = stops.at(-1)
   if (!end) return []
-  const vias = shapingPoints(
+  const vias = viaPoints(
+    handoff,
     stops.slice(0, -1).map((s) => s.along),
     end.along,
-    GOOGLE_HANDOFF.maxViaPoints,
     pointAt,
     trailRanges,
   )

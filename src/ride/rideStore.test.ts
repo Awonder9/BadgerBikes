@@ -4,9 +4,10 @@ import valhallaBike from '../test/fixtures/valhalla/route_bicycle.json'
 import { MADISON, makeSnapshot, makeStation } from '../test/factories'
 import { normalizeValhallaRoute } from '../routing/valhalla'
 import { AppError } from '../lib/errors'
+import { BIKE_ROUTING } from '../config'
 import { initialAppState, useAppStore } from '../store/appStore'
 import type { StationsSnapshot } from '../types'
-import { loadRideRoute, reoptimizeStops, restoreRide, rideError, useRideStore } from './rideStore'
+import { chooseRoute, loadRideRoute, reoptimizeStops, restoreRide, rideError, useRideStore } from './rideStore'
 
 const leg = normalizeValhallaRoute(valhallaBike, { role: 'ride', mode: 'bike', from: [-89.3842, 43.07467], to: [-89.4003, 43.07652], units: 'imperial', language: 'en-US' })
 const dest = { kind: 'search' as const, name: 'Memorial Union', coord: [-89.4003, 43.07652] as [number, number] }
@@ -29,12 +30,27 @@ describe('route errors', () => {
 })
 
 describe('ride plan persistence', () => {
-  const saved = { startId: 'bcycle_madison_1', destination: dest, routes: [leg, leg, leg], routeIndex: 2, stopIds: ['a', 'b'], openedParts: [0], rideStartedAtMs: now - 60_000 }
+  const saved = { startId: 'bcycle_madison_1', destination: dest, routes: [leg, leg], routeIndex: 1, stopIds: ['a', 'b'], openedParts: [0], rideStartedAtMs: now - 60_000 }
 
   it('restores a recent plan, ready to use without re-routing', () => {
     const r = restoreRide(saved, now)
-    expect(r).toMatchObject({ startId: 'bcycle_madison_1', routeIndex: 2, status: 'ready', stopIds: ['a', 'b'], openedParts: [0], rideStartedAtMs: now - 60_000 })
+    expect(r).toMatchObject({ startId: 'bcycle_madison_1', routeIndex: 1, status: 'ready', stopIds: ['a', 'b'], openedParts: [0], rideStartedAtMs: now - 60_000 })
     expect(r.route?.distance).toBe(leg.distance)
+  })
+
+  it('restores a trip\'s finished legs, dropping malformed ones', () => {
+    const line = [[-89.4, 43.07], [-89.39, 43.07]]
+    const r = restoreRide({ ...saved, pastLegs: [line, [[999, 0], [0, 0]], 'x', [[-89.4, 43.07]]] }, now)
+    expect(r.pastLegs).toEqual([line])
+    expect(restoreRide({ ...saved, pastLegs: 'nope' }, now).pastLegs).toEqual([])
+  })
+
+  it('routes again a plan saved for other route options (an older version of the app)', () => {
+    // Three options before Direct / Bike-friendly.
+    expect(restoreRide({ ...saved, routes: [leg, leg, leg] }, now)).toMatchObject({ status: 'idle', routes: [], stopIds: [] })
+    // The same count, but at other use_roads levels.
+    expect(restoreRide({ ...saved, routes: [{ ...leg, useRoads: 0 }, { ...leg, useRoads: 0.35 }] }, now)).toMatchObject({ status: 'idle', routes: [] })
+    expect(restoreRide({ ...saved, routes: BIKE_ROUTING.options.map((o) => ({ ...leg, useRoads: o.useRoads })) }, now)).toMatchObject({ status: 'ready' })
   })
 
   it('keeps the timer of a ride carried over from a trip’s previous leg, even before this leg is routed', () => {
@@ -185,6 +201,41 @@ describe('routing the plan', () => {
     expect(useRideStore.getState().routes).toHaveLength(3)
   })
 
+  it('already on a bike: routes from where the rider is, with the timer from when they unlocked; a new destination keeps it', async () => {
+    const bodies: Array<{ from: unknown; fromIsUserPoint?: boolean }> = []
+    restore = setFetchImpl(async (_url, init) => {
+      bodies.push(JSON.parse(String(init?.body)) as { from: unknown })
+      return new Response(JSON.stringify({ routes: [leg, leg] }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+    })
+    const here: [number, number] = [-89.385, 43.074]
+    const unlocked = Date.now() - 10 * 60_000
+    useRideStore.getState().startOnBike(here, { kind: 'station', name: 'a', coord: MADISON.capitol, stationId: 'a' }, unlocked)
+    useRideStore.getState().setDestination(dest)
+    await loadRideRoute('bcycle_madison', snapshot, 'imperial', 1)
+    expect(bodies[0]).toMatchObject({ from: here, fromIsUserPoint: true })
+    expect(useRideStore.getState()).toMatchObject({ startId: 'a', bikeAt: here, continuingRide: true, rideStartedAtMs: unlocked })
+    // Its first link isn't an unlock: the timer keeps the unlock time.
+    useRideStore.getState().markPartOpened(0, false)
+    expect(useRideStore.getState().rideStartedAtMs).toBe(unlocked)
+    // Changing the start ends it.
+    useRideStore.getState().setStart(null)
+    expect(useRideStore.getState()).toMatchObject({ bikeAt: null, continuingRide: false, rideStartedAtMs: null })
+  })
+
+  it('a new destination (or trip leg) keeps the route option the rider had chosen', async () => {
+    restore = setFetchImpl(async () => new Response(JSON.stringify({ routes: [leg, leg] }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+    useRideStore.getState().setStart('a')
+    useRideStore.getState().setDestination(dest)
+    await loadRideRoute('bcycle_madison', snapshot, 'imperial', 1)
+    chooseRoute(1, snapshot, 1)
+    useRideStore.getState().setDestination({ ...dest, name: 'Elsewhere', coord: MADISON.libraryMall })
+    await loadRideRoute('bcycle_madison', snapshot, 'imperial', 1)
+    expect(useRideStore.getState().routeIndex).toBe(1)
+    // Clear starts over from the first option.
+    useRideStore.getState().reset()
+    expect(useRideStore.getState().routeIndex).toBe(0)
+  })
+
   it('times the routes for the bike the rider will be on (the stop times and re-docks follow their pace)', async () => {
     const bikeKinds: unknown[] = []
     restore = setFetchImpl(async (_url, init) => {
@@ -224,3 +275,48 @@ describe('routing the plan', () => {
   })
 })
 
+
+describe('docked along the way', () => {
+  const T0 = Date.now() - 20 * 60_000 // twenty minutes into the ride
+  beforeEach(() => {
+    useRideStore.getState().reset()
+    useRideStore.setState({ startId: 'bcycle_madison_1', destination: dest, routes: [leg], route: leg, status: 'ready', stopIds: ['a', 'b'], openedParts: [0], rideStartedAtMs: T0 })
+  })
+
+  it('restarts only the timer: the plan, its opened links and a kept bike stay', () => {
+    useRideStore.setState({ continuingRide: true })
+    const t1 = Date.now()
+    expect(useRideStore.getState().redockAlongWay(t1)).toBe(T0)
+    expect(useRideStore.getState()).toMatchObject({ rideStartedAtMs: t1, redockedAtMs: t1, openedParts: [0], stopIds: ['a', 'b'], status: 'ready', continuingRide: true, destination: dest })
+  })
+
+  it('needs a running timer, and can be undone', () => {
+    useRideStore.setState({ rideStartedAtMs: null })
+    expect(useRideStore.getState().redockAlongWay()).toBeNull()
+    expect(useRideStore.getState().rideStartedAtMs).toBeNull()
+    useRideStore.setState({ rideStartedAtMs: T0 })
+    const prev = useRideStore.getState().redockAlongWay()!
+    useRideStore.getState().undoRedock(prev)
+    expect(useRideStore.getState()).toMatchObject({ rideStartedAtMs: T0, redockedAtMs: null })
+  })
+
+  it('a link from a dock opened right after is the same unlock; later it is a new ride', () => {
+    const t1 = Date.now() - 60_000
+    useRideStore.getState().redockAlongWay(t1)
+    useRideStore.getState().markPartOpened(1, true)
+    expect(useRideStore.getState()).toMatchObject({ rideStartedAtMs: t1, redockedAtMs: null })
+    const late = Date.now() - 10 * 60_000
+    useRideStore.getState().redockAlongWay(late)
+    useRideStore.getState().markPartOpened(2, true)
+    expect(useRideStore.getState().rideStartedAtMs).toBeGreaterThan(late + 9 * 60_000)
+  })
+
+  it('is saved with the plan, and ending the ride clears it', () => {
+    const t1 = Date.now() - 1000
+    expect(restoreRide({ startId: 'x', destination: dest, routes: [leg], openedParts: [0], rideStartedAtMs: t1, redockedAtMs: t1 }, Date.now())).toMatchObject({ rideStartedAtMs: t1, redockedAtMs: t1 })
+    expect(restoreRide({ startId: 'x', destination: dest, routes: [leg], openedParts: [0], rideStartedAtMs: t1, redockedAtMs: t1 - 5 }, Date.now())).toMatchObject({ redockedAtMs: null })
+    useRideStore.getState().redockAlongWay()
+    useRideStore.getState().endRide()
+    expect(useRideStore.getState()).toMatchObject({ rideStartedAtMs: null, redockedAtMs: null })
+  })
+})

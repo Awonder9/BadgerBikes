@@ -5,6 +5,9 @@
 // The page cannot run while Google Maps is in front: with alerts on, the server pushes them then
 // (backgroundAlerts.ts; AlertsHelp says what this phone needs for that), otherwise they fire while this app is
 // open — e.g. when the rider comes back for the next part. Counts refresh as soon as the app is visible again.
+import { useState } from 'react'
+import { RIDE } from '../../config'
+import { useNow } from '../../data/hooks'
 import { formatDistance } from '../../lib/format'
 import { directionsFromHereUrl } from '../../ride/googleMaps'
 import { clock } from '../../ride/rideProgress'
@@ -55,6 +58,7 @@ export function RideStatusCard({ plan }: { plan: RidePlan }) {
       )}
       {timer?.state === 'warn' && <p className="text-sm">{t.dockSoon}</p>}
       {timer?.state === 'over' && <p className="text-sm">{t.extraFees}</p>}
+      {timer && <RedockAlongWay />}
       {endStation && dock !== 'ok' && (
         <div role="alert" className="space-y-1 rounded-lg bg-white/70 p-2 text-sm text-slate-900 dark:bg-slate-950/60 dark:text-slate-100">
           <p className="font-semibold">
@@ -85,6 +89,48 @@ export function RideStatusCard({ plan }: { plan: RidePlan }) {
       {nearest.message && <p className="text-sm">{nearest.message}</p>}
       <AlertsHelp />
     </section>
+  )
+}
+
+/**
+ * "Docked along the way? Restart the timer": the rider docked at a dock the plan didn't stop at and took a bike
+ * again (a new BCycle ride). Only the timer restarts — and its alerts with it, which follow the timer's start;
+ * the plan, its opened links and the trip stay. Undo for a moment, since a stray tap would lose the ride time.
+ */
+function RedockAlongWay() {
+  const [undo, setUndo] = useState<{ previous: number; until: number } | null>(null)
+  const now = useNow(1000, undo !== null)
+  const { t } = useI18n()
+  if (undo && now < undo.until) {
+    return (
+      <p role="status" className="flex min-h-11 items-center gap-2 text-sm">
+        <Icon name="check" size={16} className="shrink-0" />
+        <span className="min-w-0 flex-1">{t.timerRestarted}</span>
+        <button
+          type="button"
+          className="min-h-11 shrink-0 px-2 font-semibold underline"
+          onClick={() => {
+            useRideStore.getState().undoRedock(undo.previous)
+            setUndo(null)
+          }}
+        >
+          {t.undo}
+        </button>
+      </p>
+    )
+  }
+  return (
+    <button
+      type="button"
+      className="flex min-h-11 items-center gap-1.5 text-left text-sm font-medium underline"
+      onClick={() => {
+        const previous = useRideStore.getState().redockAlongWay()
+        if (previous !== null) setUndo({ previous, until: Date.now() + RIDE.redockUndoSeconds * 1000 })
+      }}
+    >
+      <Icon name="refresh" size={16} className="shrink-0" />
+      {t.redockedAlongWay}
+    </button>
   )
 }
 

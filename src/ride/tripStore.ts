@@ -15,7 +15,7 @@ import { createJSONStorage, persist } from 'zustand/middleware'
 import { RIDE } from '../config'
 import { safeStorage } from '../lib/storage'
 import { validatePlace } from '../store/validate'
-import type { Place } from '../types'
+import type { LngLat, Place } from '../types'
 import { useRideStore } from './rideStore'
 
 /** Leg 1's start as the ride store had it: a place (with or without a chosen pickup dock) or a dock. */
@@ -48,9 +48,9 @@ export interface TripState {
    * The leg on screen is done: its stop and every earlier one leave the trip, and the next leg is planned from that
    * stop. `docked`: the BCycle ride ended there (timer stops; the next leg picks up a bike at or near the stop).
    * Otherwise the rider kept the bike: the next leg starts at `bikeDock` (the stop's dock, or the dock nearest it,
-   * as the route's start) and the ride timer keeps running.
+   * as the route's start) and the ride timer keeps running. `line`: the finished leg as drawn (rideStore.pastLegs).
    */
-  completeLeg(docked: boolean, bikeDock?: Place | null): void
+  completeLeg(docked: boolean, bikeDock?: Place | null, line?: LngLat[] | null): void
   clear(): void
 }
 
@@ -139,8 +139,10 @@ export const useTripStore = create<TripState>()(
           // A leg planned again isn't finished any more.
           if (finishedLeg >= leg) set({ finishedLeg: leg - 1 })
           show(stops, leg)
+          // Jumping between legs: the finished legs drawn so far no longer lead up to the one shown.
+          useRideStore.setState({ pastLegs: [] })
         },
-        completeLeg: (docked, bikeDock = null) => {
+        completeLeg: (docked, bikeDock = null, line = null) => {
           const { stops, leg } = get()
           const done = stops[leg]
           const rest = stops.slice(leg + 1)
@@ -153,6 +155,7 @@ export const useTripStore = create<TripState>()(
           set(rest.length >= 2 ? { stops: rest, leg: 0, firstStart: null, finishedLeg: -1 } : emptyTrip)
           useRideStore.getState().planLeg({ ...start, destination: next })
           if (timer !== null) useRideStore.setState({ rideStartedAtMs: timer, continuingRide: true })
+          if (line && line.length >= 2) useRideStore.setState((s) => ({ pastLegs: [...s.pastLegs, line].slice(-RIDE.maxTripStops) }))
         },
         clear: () => set(emptyTrip),
       }

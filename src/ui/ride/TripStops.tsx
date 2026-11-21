@@ -14,6 +14,8 @@ import type { Place } from '../../types'
 import { SearchBox } from '../browse/SearchBox'
 import { Button, IconButton } from '../primitives/Button'
 import { Icon } from '../primitives/Icon'
+import { useRideLines } from './useRideLines'
+import { useRidePlan } from './useRidePlan'
 
 function useTripView() {
   const trip = useTripStore(useShallow((s) => ({ stops: s.stops, leg: s.leg, finishedLeg: s.finishedLeg })))
@@ -53,11 +55,15 @@ export function LegCompleteCard() {
   const timerRunning = useRideStore((s) => s.rideStartedAtMs !== null)
   const [docked, setDocked] = useState(false)
   const { t } = useI18n()
+  // The leg as the map draws it (up to its end dock), kept on the map in a muted color once the leg is done.
+  const systemId = useAppStore((s) => s.systemId)
+  const route = useRideStore((s) => s.route)
+  const { track } = useRideLines(systemId, useRidePlan(), route)
   const stop = stops[leg]
   if (!active || finishedLeg < leg || !stop || !stops[leg + 1]) return null
   const finish = () => {
     const keepBike = timerRunning && !docked
-    useTripStore.getState().completeLeg(!keepBike, keepBike ? bikeDockAt(stop) : null)
+    useTripStore.getState().completeLeg(!keepBike, keepBike ? bikeDockAt(stop) : null, track)
     setDocked(false)
   }
   return (

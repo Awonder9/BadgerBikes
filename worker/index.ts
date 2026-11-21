@@ -3,6 +3,7 @@
 import { NATIVE_APP } from '../src/config'
 import { fetchStationsSnapshot, fetchSystemDetails } from '../src/data/gbfs'
 import { reversePlace, searchPlaces } from '../src/geocode/photon'
+import { fetchWeather } from '../src/weather/openMeteo'
 import { createRouter } from '../src/routing'
 import { createApp } from './app'
 import { endpointKey, type PushSecrets } from './rideAlerts'
@@ -38,6 +39,7 @@ export default {
       fetchStationsSnapshot,
       fetchSystemDetails,
       searchPlaces,
+      fetchWeather,
       reversePlace,
       now: () => Date.now(),
       contactEmail: env.CONTACT_EMAIL || null,

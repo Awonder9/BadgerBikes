@@ -22,6 +22,8 @@ export interface GpxInput {
   destination: { name: string; coord: LngLat } | null
   /** ISO timestamp for <metadata><time>. */
   timeIso: string
+  /** A routed leg from the route to an off-route end dock (rideTrack); without it the track goes straight there. */
+  tail?: readonly LngLat[]
 }
 
 /** A dock farther than this from the line gets its own track point, so the track reaches it. */
@@ -53,12 +55,24 @@ export function sliceRoute(route: readonly LngLat[], toAlong: number): LngLat[] 
   return haversine(head.at(-1)!, point) < 0.5 ? head : [...head, point]
 }
 
+/**
+ * The ride's line: the route up to the end dock (it ends there, not at the destination). An end dock off the
+ * line is reached by `tail` — a routed leg from the route's point nearest the dock to the dock — when there is
+ * one, else by a straight segment.
+ */
+export function rideTrack(route: readonly LngLat[], end: { coord: LngLat; along: number } | undefined, tail?: readonly LngLat[]): LngLat[] {
+  const track = end ? sliceRoute(route, end.along) : [...route]
+  if (end && haversine(track.at(-1)!, end.coord) > OFF_LINE_METERS) {
+    if (tail && tail.length >= 2) track.push(...tail.slice(haversine(track.at(-1)!, tail[0]!) < 0.5 ? 1 : 0))
+    if (haversine(track.at(-1)!, end.coord) > 0.5) track.push(end.coord)
+  }
+  return track
+}
+
 /** The ride as one GPX track (start dock → end dock) plus waypoints for the start, each dock and the destination. */
 export function rideGpx(input: GpxInput): string {
   const end = input.stops.at(-1)
-  const track = end ? sliceRoute(input.route, end.along) : [...input.route]
-  // An off-route end dock (e.g. the one closest to the destination): finish the track at the dock itself.
-  if (end && haversine(track.at(-1)!, end.coord) > OFF_LINE_METERS) track.push(end.coord)
+  const track = rideTrack(input.route, end, input.tail)
   const wpts = [
     { name: `Start: ${input.start.name}`, coord: input.start.coord, sym: 'Bike Trail' },
     ...input.stops.map((s, i) => ({ name: i === input.stops.length - 1 ? `Dock here: ${s.name}` : `Dock: ${s.name}`, coord: s.coord, sym: 'Flag, Blue' })),

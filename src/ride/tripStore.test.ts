@@ -180,6 +180,27 @@ describe('finishing a leg', () => {
     expect(ride()).toMatchObject({ rideStartedAtMs: null, continuingRide: false })
   })
 
+  it('keeps each finished leg\'s line for the map, even once the trip is down to an ordinary ride', () => {
+    const leg1: [number, number][] = [[-89.38, 43.07], [-89.4, 43.07]]
+    const leg2: [number, number][] = [[-89.4, 43.07], [-89.42, 43.07]]
+    ride().finishPlan()
+    trip().completeLeg(true, null, leg1)
+    expect(ride().pastLegs).toEqual([leg1])
+    ride().finishPlan()
+    trip().completeLeg(true, null, leg2)
+    expect(trip().stops).toEqual([]) // one stop left: an ordinary ride
+    expect(ride().pastLegs).toEqual([leg1, leg2])
+    ride().reset()
+    expect(ride().pastLegs).toEqual([])
+  })
+
+  it('jumping to another leg drops the finished legs drawn so far', () => {
+    ride().finishPlan()
+    trip().completeLeg(true, null, [[-89.38, 43.07], [-89.4, 43.07]])
+    trip().goToLeg(1)
+    expect(ride().pastLegs).toEqual([])
+  })
+
   it('the last leg finishes like a one-stop ride (not saved), and a leg planned again isn’t finished', () => {
     trip().goToLeg(2)
     ride().finishPlan()

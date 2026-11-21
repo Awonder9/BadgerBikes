@@ -149,7 +149,7 @@ export function uniqueUsers(records: ReadonlyMap<string, UsageDayRecord>, end: s
 /** The dashboard: `days` days ending `today`, from the stored records (which must reach back far enough). */
 export function summarize(
   records: ReadonlyMap<string, UsageDayRecord>,
-  o: { today: string; days: number; nowMs: number; window: number; state: WindowState | null; allTime: number; since: string | null },
+  o: { today: string; days: number; nowMs: number; window: number; state: WindowState | null; allTime: number; since: string | null; dashboardViews?: { allTime: number; since: string | null } },
 ): StatsResponse {
   // Every day the windows reach, oldest first, each with its window counts worked out once (the dashboard asks
   // for 180 days: 23 000 window-days, which used to rebuild dates and sum histograms each time).
@@ -183,5 +183,5 @@ export function summarize(
       langs: r.langs,
     })
   }
-  return { timeZone: USAGE.timeZone, generatedAtMs: o.nowMs, activeNow: activeNow(o.state, o.window), allTimeUsers: o.allTime, since: o.since, days }
+  return { timeZone: USAGE.timeZone, generatedAtMs: o.nowMs, activeNow: activeNow(o.state, o.window), allTimeUsers: o.allTime, since: o.since, dashboardViews: o.dashboardViews ?? { allTime: 0, since: null }, days }
 }

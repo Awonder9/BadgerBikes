@@ -38,6 +38,32 @@ describe('routeDocks (strict)', () => {
     ])
   })
 
+  it('with no dock near the destination, still adds the closest one when it beats every listed dock', () => {
+    // Destination 2 km past the route's last dock; the closest dock to it is 1.2 km away and 600 m off the line.
+    const D = along(5000)
+    const r = routeDocks([A, D], [st('onEarly', 1500, 10), st('closest', 4000, 600), st('fartherOff', 3000, 700)], { destination: D })
+    expect(r.map((d) => [d.station.id, d.reason])).toEqual([
+      ['onEarly', 'onRoute'],
+      ['closest', 'nearDestination'],
+    ])
+    expect(optimizedStops(r, { destination: D }).at(-1)).toBe('closest')
+    // The last dock is a 600 m walk, but nothing is closer to the destination: nothing is added.
+    expect(routeDocks([A, D], [st('onLate', 4400, 10), st('off', 3000, 900)], { destination: D }).map((d) => d.station.id)).toEqual(['onLate'])
+  })
+
+  it('an off-route re-dock option that is also the closest dock to a far destination is labeled as the end', () => {
+    // 9 km route, no on-line docks: the 25-min re-dock option (300 m off the line) is also the closest to the end.
+    const C = along(9000)
+    const r = routeDocks([A, C], [st('offLate', 5500, 250)], { destination: C })
+    expect(r.map((d) => [d.station.id, d.reason])).toEqual([['offLate', 'nearDestination']])
+  })
+
+  it('a kept end dock far off the route is still labeled as the one near the destination', () => {
+    const D = along(5000)
+    const r = routeDocks([A, D], [st('onEarly', 1500, 10), st('closest', 4000, 600)], { destination: D, keepIds: ['onEarly', 'closest'] })
+    expect(r.find((d) => d.station.id === 'closest')?.reason).toBe('nearDestination')
+  })
+
   it('always includes a destination dock the rider chose', () => {
     const r = routeDocks(route, [st('dest', 3000, 45), st('full', 1200, 5, { docks: 0 })], { destination: B, destStationId: 'dest' })
     expect(r.map((d) => d.station.id)).toEqual(['full', 'dest'])
