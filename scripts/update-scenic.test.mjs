@@ -8,8 +8,7 @@ const geom = (coords) => coords.map(([lon, lat]) => ({ lon, lat }))
 describe('update-scenic', () => {
   it('keeps its copies of app constants in step', () => {
     expect(USER_AGENT).toBe(APP.userAgent)
-    const { requestTimeoutMs: _r, ...shared } = APP_SCENIC
-    expect(SCENIC).toEqual(shared)
+    expect(SCENIC).toEqual(APP_SCENIC)
   })
 
   it('asks Overpass for one padded city box (south, west, north, east)', () => {

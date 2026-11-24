@@ -1,5 +1,5 @@
 // Client access to the committed BCycle systems registry (src/data/systems.json).
-import { SYSTEM_DETECT } from '../config'
+import { ROUTING, SYSTEM_DETECT } from '../config'
 import { bboxContains, haversine, isValidLngLat } from '../lib/geo'
 import type { BBox, BcycleSystem, LngLat } from '../types'
 import raw from './systems.json'
@@ -39,6 +39,12 @@ const byId = new Map(SYSTEMS.map((s) => [s.id, s]))
 export function getSystem(id: string | null | undefined): BcycleSystem | null {
   return id ? (byId.get(id) ?? null) : null
 }
+
+/** `coord` is within reach of the city's stations (ROUTING.maxOutsideSystemMeters): where its rides can go. */
+export const withinReach = (sys: BcycleSystem, coord: LngLat): boolean => bboxContains(sys.bbox, coord, ROUTING.maxOutsideSystemMeters)
+
+/** Within reach of any BCycle city's stations (a dropped pin worth naming). */
+export const nearAnySystem = (coord: LngLat, systems: readonly BcycleSystem[] = SYSTEMS): boolean => systems.some((s) => withinReach(s, coord))
 
 
 /**

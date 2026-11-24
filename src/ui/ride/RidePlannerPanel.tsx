@@ -599,14 +599,15 @@ function RouteError({ error, loop = false }: { error: { kind: RideErrorKind; mes
   }, [counting, until])
   const now = useNow(500, counting)
   const { t } = useI18n()
-  const message = { busy: t.errorBusy, unroutable: t.errorUnroutable, noRoute: t.errorNoRoute, offline: t.errorRouteOffline, tooClose: t.errorTooClose, other: t.errorRouteFailed }[error.kind]
+  const message = { busy: t.errorBusy, unroutable: t.errorUnroutable, noRoute: t.errorNoRoute, offline: t.errorRouteOffline, tooClose: t.errorTooClose, tooFar: t.errorTooFar, other: t.errorRouteFailed }[error.kind]
   const wait = counting ? Math.max(1, Math.ceil((until - now) / 1000)) : 0
   return (
     <div role="alert" className={`space-y-2 rounded-xl p-3 ${error.kind === 'busy' ? 'bg-amber-50 text-amber-950 dark:bg-amber-950 dark:text-amber-100' : 'bg-red-50 text-red-900 dark:bg-red-950 dark:text-red-200'}`}>
       {error.kind === 'busy' && <p className="font-semibold">{t.routeServerBusy}</p>}
       <p className="text-sm">{message}</p>
-      {/* A destination right at the start stays too close however often it is tried: the rider picks another. */}
-      {error.kind !== 'tooClose' && (
+      {/* A destination right at the start (or out of the city's reach) stays so however often it is tried: the rider
+          picks another. */}
+      {error.kind !== 'tooClose' && error.kind !== 'tooFar' && (
         <button
           type="button"
           disabled={wait > 0}

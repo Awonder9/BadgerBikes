@@ -3,6 +3,7 @@ import { act, cleanup, renderHook, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { api } from '../../api/client'
+import { RIDE } from '../../config'
 import type { PushRideRequest } from '../../api/contract'
 import { createQueryClient } from '../../data/hooks'
 import { useRideStore } from '../../ride/rideStore'
@@ -75,6 +76,24 @@ describe('background ride alerts (browser side)', () => {
       rideStartedAtMs: 1_800_000_000_000,
       includedMinutes: 30,
     })
+  })
+
+  it('a loop back to its start dock: the end dock is watched only once the feed has shown the bikes taken from it', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true, now: 1_800_000_000_000 + 60_000 })
+    try {
+      vi.spyOn(api, 'pushRide').mockImplementation(async (body) => void sent.push(body))
+      useRideStore.setState({ startId: 'st_a', destination: { kind: 'station', name: 'A', coord: [-89.4, 43.07], stationId: 'st_a' }, loop: { minutes: 30, roundTrip: true, seed: 1, highlights: [], fellBack: false } })
+      render(plan({ end: 'st_a' }))
+      await waitFor(() => expect(sent).toHaveLength(1))
+      expect(sent[0]).toMatchObject({ endStationId: null, rideStartedAtMs: 1_800_000_000_000, includedMinutes: 30 })
+      await act(async () => {
+        vi.advanceTimersByTime(RIDE.loopEndWatchDelayMs)
+      })
+      await waitFor(() => expect(sent).toHaveLength(2))
+      expect(sent[1]).toMatchObject({ endStationId: 'st_a' })
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('a ride that ends while its registration is on the way is cancelled after it, never before', async () => {

@@ -87,6 +87,28 @@ describe('planLoop', () => {
     expect(straightLength(start, [plan.via[0]!.coord], end)).toBeCloseTo(target / LOOP.detourFactor, -2)
   })
 
+  it('stays within the server’s radius however far it is rescaled (POST /api/loop refuses anything beyond)', () => {
+    const ride90 = loopTargetMeters(90, 18) // the longest choice, on an e-bike: 27 km
+    // Docks out to 40 km away in every direction: a big city.
+    const docks = Array.from({ length: 40 }, (_, i) => ({ id: `d${i}`, coord: destination(start, 1_000 * (i + 1), i * 37) }))
+    for (const roundTrip of [true, false]) {
+      for (const points of [scenic, []]) {
+        for (const scale of [1, 1.8, 3, 10]) {
+          const plan = planLoop({ start, targetMeters: ride90, roundTrip, seed: 4, points, endDocks: docks, scale })
+          const far = Math.max(...[...plan.via.map((v) => v.coord), ...(plan.end ? [plan.end.coord] : [])].map((c) => haversine(start, c)))
+          expect(far).toBeLessThanOrEqual(LOOP.maxRadiusMeters)
+          expect(plan.via.length).toBeGreaterThan(0)
+        }
+      }
+    }
+  })
+
+  it('one way without scenery: "Try another" can end at another dock', () => {
+    const docks = [0, 60, 120, 180, 240, 300].map((deg, i) => ({ id: `e${i}`, coord: destination(start, 3_000, deg) }))
+    const ends = new Set([1, 2, 3, 4, 5, 6, 7, 8].map((seed) => planLoop({ start, targetMeters: target, roundTrip: false, seed, points: [], endDocks: docks }).end?.id))
+    expect(ends.size).toBeGreaterThan(1)
+  })
+
   it('a rescaled plan (after a route came out too long) is smaller', () => {
     const big = planLoop({ start, targetMeters: target, roundTrip: true, seed: 11, points: [], endDocks: [] })
     const small = planLoop({ start, targetMeters: target, roundTrip: true, seed: 11, points: [], endDocks: [], scale: 0.6 })

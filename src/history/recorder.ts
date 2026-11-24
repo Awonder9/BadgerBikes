@@ -14,18 +14,54 @@ export interface RecorderInput {
   plan: { key: string; fields: RideFields } | null
   /** The ride was seen under way in this page: when it stops now, the rider ended it here. */
   seenUnderWay: boolean
+  /**
+   * The rider set off on this plan: a Google Maps link (or the GPX file) of it opened, or a bike unlocked for it (its
+   * timer started here, not carried over from before the plan — a bike kept from a trip's last leg, or "I'm already on
+   * a bike").
+   */
+  setOff: boolean
+}
+
+/** The record being written, and the plan it follows (`ridden`: the rider set off on that plan). */
+export interface ActiveRecord {
+  record: RideRecord
+  planKey: string
+  ridden: boolean
 }
 
 export type RecorderStep =
   | { kind: 'none' }
-  | { kind: 'update'; id: string; fields: RideFields }
+  /** The record follows `planKey` (the same plan, updated — or a new one replacing a plan never set off on). */
+  | { kind: 'update'; id: string; fields: RideFields; planKey: string; ridden: boolean }
   /** Ends `close` (the previous plan's record) when set, then starts `ride`. */
-  | { kind: 'start'; ride: RideRecord; planKey: string; close: ReturnType<typeof rideEnd> | 'none' }
+  | { kind: 'start'; ride: RideRecord; planKey: string; ridden: boolean; close: ReturnType<typeof rideEnd> | 'none' }
   | { kind: 'close'; end: ReturnType<typeof rideEnd> }
 
-export function recorderStep(active: { record: RideRecord; planKey: string } | null, input: RecorderInput, nowMs: number, newId: (startedAtMs: number) => string): RecorderStep {
+/** Equal values, arrays and flat objects (highlights, meters per kind of way) compared one level deep. */
+function same(a: unknown, b: unknown): boolean {
+  if (a === b) return true
+  if (Array.isArray(a) && Array.isArray(b)) return a.length === b.length && a.every((x, i) => x === b[i])
+  if (typeof a !== 'object' || typeof b !== 'object' || a === null || b === null || Array.isArray(a) || Array.isArray(b)) return false
+  const ka = Object.keys(a)
+  return ka.length === Object.keys(b).length && ka.every((k) => (a as Record<string, unknown>)[k] === (b as Record<string, unknown>)[k])
+}
+
+/** The record already says all of this (station polls re-run the recorder mid-ride with the same plan). */
+const hasFields = (record: RideRecord, fields: RideFields): boolean => (Object.keys(fields) as Array<keyof RideFields>).every((k) => same(record[k], fields[k]))
+
+export function recorderStep(active: ActiveRecord | null, input: RecorderInput, nowMs: number, newId: (startedAtMs: number) => string): RecorderStep {
   if (input.underWay && input.startedAtMs !== null && input.plan) {
-    if (active?.planKey === input.plan.key) return { kind: 'update', id: active.record.id, fields: input.plan.fields }
+    const { key, fields } = input.plan
+    const ridden = !!active?.ridden || input.setOff
+    if (active?.planKey === key) {
+      // Nothing new: no write (each one saves the whole history to storage).
+      if (hasFields(active.record, fields) && ridden === active.ridden) return { kind: 'none' }
+      return { kind: 'update', id: active.record.id, fields, planKey: key, ridden }
+    }
+    // Another plan on the same running timer before the rider set off on the first ("I'm already on a bike", then
+    // "Try another ride" or a new destination): it was only being planned — the record follows the new plan instead
+    // of ending as a ride nobody rode.
+    if (active && !active.ridden && input.startedAtMs === active.record.startedAtMs) return { kind: 'update', id: active.record.id, fields, planKey: key, ridden: input.setOff }
     // Another plan while riding (the next leg of a trip, ridden on): the last record ends now and this one starts —
     // now, unless the timer restarted since (a new BCycle ride).
     const startedAtMs = active && input.startedAtMs <= active.record.startedAtMs ? nowMs : input.startedAtMs
@@ -33,6 +69,7 @@ export function recorderStep(active: { record: RideRecord; planKey: string } | n
       kind: 'start',
       ride: { id: newId(startedAtMs), startedAtMs, endedAtMs: null, endEstimated: false, stravaActivityId: null, ...input.plan.fields },
       planKey: input.plan.key,
+      ridden: input.setOff,
       close: active ? rideEnd(active.record.startedAtMs, active.record.plannedS, nowMs, true) : 'none',
     }
   }

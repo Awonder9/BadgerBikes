@@ -132,6 +132,11 @@ stretch to an off-route end dock; background priority; a straight leg when both 
 - Validate everything: `system` must match a registry id; coordinates finite and in range; strings trimmed
   and length-limited; body ≤ `HTTP.maxBodyBytes` (read as a stream and refused once past it, also without a
   Content-Length). Unknown fields ignored.
+- Routes stay within reach of the city (`withinReach`: its station area padded by `ROUTING.maxOutsideSystemMeters`,
+  25 km): `/api/routes`, `/api/route` and `/api/loop` refuse ends beyond it with 422 `no_route`, `/api/route-details`
+  a line that strays farther than a loop from such a start could (`LOOP.maxRadiusMeters` more); `/api/reverse` names no pin far from every city (`{ place: null }`, no Photon request). A ride
+  out of town still plans; a route across the country is never this server's to ask FOSSGIS for. The planner checks
+  first (`tooFar`, no request, no Try again) and the app asks no reverse lookup out there.
 - Per-client-IP limits via Rate Limiting bindings (`ROUTE_LIMITER` — also `/api/loop` —, `GEOCODE_LIMITER`,
   `PUSH_LIMITER`, `STRAVA_LIMITER`);
   exceeded → 429 `rate_limited`.
@@ -327,7 +332,11 @@ stops, opened parts and ride start time, saved to `localStorage` (`bcycle.ride`)
 (`restoreRide`). `finishPlan()` stops saving it — called when the rider opens the trip's last link (the
 walk, or the last ride part) or arrives within `RIDE.arrivedMeters` of the destination (checked only when
 location permission was already granted — the app never prompts for this — and only on a position accurate to
-`RIDE.arrivedMaxAccuracyMeters`: arriving ends the ride and its alerts, which a coarse fix must not do mid-ride). Changing the start, destination
+`RIDE.arrivedMaxAccuracyMeters`: arriving ends the ride and its alerts, which a coarse fix must not do mid-ride). A ride
+that starts within arrival range of its own destination (a loop back to its dock, a destination right by the start
+dock) counts as arrived only once the rider has been `RIDE.awayBeforeArrivalMeters` away — or, after a reload that never
+saw them leave, has ridden `RIDE.awayAfterPlannedShare` of the route's planned time (not a timer carried over from an
+earlier leg): opening the first link at the dock used to end such a ride on the spot. Changing the start, destination
 or route option clears progress and saves again; changing the stops keeps it (mid-ride, a rider switching to
 another dock — say the end dock filled up — keeps the ride timer and background alerts). Opening a part that
 starts at a dock (the rider unlocks a bike there) restarts the ride timer. While a ride is under way the route
@@ -412,8 +421,9 @@ it (`setDestination` clears `loop`); a new start keeps it and plans its end agai
   rough/unpaved surfaces or tracks: BCycle bikes are city bikes —, named parks / nature reserves / gardens / beaches,
   viewpoints, and named water and rivers. Trails are sampled every `SCENIC.sampleEveryMeters`; each point scores 1,
   +1 named, +2 within 150 m of water, +2 in a park's box, +3 within 300 m of a viewpoint, and names its best feature.
-  Best `SCENIC.maxPoints` kept; ~5–80 KB per city. Each file is its own lazily loaded `scenic-*` chunk
-  (`import.meta.glob`; the service worker leaves them out), loaded the first time a ride is planned in that city.
+  Best `SCENIC.maxPoints` kept; ~5–80 KB per city. Each file is its own lazily loaded `scenery-*` chunk
+  (`import.meta.glob`; the service worker leaves them out), loaded the first time a loop is planned in that city — as
+  is the loop planner's own code (`loadLoopRoute` imports it on demand; it isn't part of the app's startup code).
 - **Waypoints** (`planLoop`, pure, seeded): the target length is `minutes × bike speed`; straight-line size =
   target ÷ `LOOP.detourFactor`. Round trip: a triangle start → A → B → start whose perimeter is that size, A and B
   the best-scored (seed-jittered) scenic points in a ring around the start, leaving at clearly different angles; too
@@ -428,9 +438,12 @@ it (`setDestination` clears `loop`); a new start keeps it and plans its end agai
   the seed; a `noRoute` error offers the same.
 - **Docks and Google**: a round trip's destination is the start dock, so `docksAlong` ends the list with the start
   dock at the end of the line (instead of skipping it as the start and adding its neighbor as "nearest the
-  destination"). Hand-off `'loop'`: via points at least every `GOOGLE_HANDOFF.loopGuidedGapMeters` (a loop has no
-  destination for Google to aim at). Arriving counts only once the rider has been `LOOP.awayBeforeArrivalMeters` from
-  a round trip's dock. No share link (a link can't express a loop); trips and loops don't mix.
+  destination"), and the ride ends there even when that dock is full now (`optimizedFor` counts the docks the party's
+  own bikes free: a full dock is where riders find bikes). Its end dock isn't watched for `RIDE.loopEndWatchDelayMs`
+  after the timer starts — not in the app, and not by the server (the background alerts are registered without an end
+  dock until then): the feed takes minutes to show the bikes just taken, and would read "end dock full" at once. Hand-off `'loop'`: via points at least every `GOOGLE_HANDOFF.loopGuidedGapMeters` (a loop has no
+  destination for Google to aim at). A round trip starts at its own destination, so arriving counts only once the rider
+  has left (§7, `RIDE.awayBeforeArrivalMeters`). No share link (a link can't express a loop); trips and loops don't mix.
 
 ---
 
@@ -559,16 +572,25 @@ how, without tracking anyone. **No identifier leaves the device**, and nothing s
   `HISTORY.lateEndFactor` + slack) → the planned time; the plan simply gone at the next launch (its last link was
   opened, so it wasn't saved) → the planned time; both marked `endEstimated` ("~", correctable in the ride's details).
   Ended within `HISTORY.minRideSeconds` → dropped (a mis-tap). A new plan mid-ride (the next leg on the same bike)
-  closes the record and starts one.
+  closes the record and starts one — once the rider set off on the last plan (opened its link, or unlocked a bike for
+  it: `active.ridden`); a plan
+  replaced before that on the same running timer (already on a bike, then *Try another ride* or another destination)
+  was only being planned, and the record follows the new one instead of ending as a ride nobody rode.
 - **Storage** (`historyStore`, localStorage `bcycle.history`, validated record by record): newest first, at most
   `HISTORY.maxRides`; only the newest `HISTORY.maxRidesWithLine` keep their route line (polyline6, thinned to
-  `HISTORY.lineThinMeters`; needed only for Strava); an open record nobody is recording is dropped on restore.
+  `HISTORY.lineThinMeters`; needed only for Strava); an open record nobody is recording is dropped on restore. The
+  recorder writes only when the record changes (station polls re-run it mid-ride; each write saves the whole history).
+- **The rider's control** (Your rides): *Record my rides* (`recording`, saved; off: nothing new is kept and the record
+  being written is dropped), *Delete all rides* and *Delete this ride* (each asks first), and the list a page
+  (`HISTORY.listPageSize`) at a time, so every kept ride can be reached. The storage notes in Settings name the history.
 - **Reviews** (`review.ts`, pure; the device's time zone, calendar days via `src/lib/usage.ts`): weeks Monday–Sunday,
   months, years. Totals, rides per day/month, longest ride, go-to dock and route, docks visited, share on paths and
   protected lanes (rides whose path details were known), climb, time of day, busiest weekday, streak, Just ride
   places, CO₂ avoided (`HISTORY.co2KgPerKm`) and calories (MET × 70 kg), change vs the period before, and a persona
   from the strongest habit. `ReviewStory` plays them as full-screen cards (tap sides / arrows, auto-advance
-  `HISTORY.storyCardMs`, Escape closes; cards without data are skipped; text share at the end). The home panel offers
+  `HISTORY.storyCardMs`, a press longer than `HISTORY.storyTapMaxMs` only pauses, Escape or Android's Back closes —
+  `openOverlay` in `backButton.ts` —; cards without data are skipped; text share at the end), rendered on the page itself
+  (a portal): inside the panel, the ride and offline banners and notices over the map drew on top of it. The home panel offers
   the newest unseen review with rides: the year's in December and January, last month's in a month's first
   `HISTORY.monthlyOfferDays`, last week's in a week's first `HISTORY.weeklyOfferDays`.
 
@@ -576,6 +598,10 @@ how, without tracking anyone. **No identifier leaves the device**, and nothing s
 
 - **Off unless set up**: Worker secrets `STRAVA_CLIENT_ID` (numeric) and `STRAVA_CLIENT_SECRET`; `/api/meta`'s
   `stravaClientId` shows the Strava parts of the app.
+- **Tokens**: Strava invalidates a refresh token the moment it issues the next one, so the device refreshes one at a time
+  (`freshToken`), first takes newer tokens another tab stored (never older ones: storage that failed to save must not
+  roll back), and a refused refresh disconnects only when no other tab refreshed meanwhile; a refresh that lands after
+  *Disconnect* is revoked, not kept.
 - **Connecting**: *Connect with Strava* → `strava.com/oauth/authorize` (scope `read,activity:write`, a random `state`
   saved on the device) → back to `<site>/?strava=callback&code&state&scope` (the iOS/Android apps claim that link;
   without Universal/App Links set up the code lands in the browser instead, whose storage lacks the app's state, so
@@ -624,7 +650,8 @@ how, without tracking anyone. **No identifier leaves the device**, and nothing s
   built server-side (XML-escaped), so no client file is forwarded. OAuth `state` is random, single-use and expires.
   Ride history and Strava tokens stay on the device; a ride goes to Strava only when the rider sends it.
 - `POST /api/loop`: at most `LOOP.maxVia` via points, everything within `LOOP.maxRadiusMeters` of the start (no long
-  routes through the public router).
+  routes through the public router); the client keeps its plans inside that radius however far a second attempt
+  rescales them (`maxLoopSize`). Every route request stays within reach of its city (§4).
 - Where the rider's location goes: Photon gets the search bias rounded to ~1 km (`GEOCODE.biasDecimals`); route
   requests carry a start or end the rider chose (their position only when they plan from it); the Worker logs
   request URLs without query strings (`observability.redact_query_string` in `wrangler.jsonc`: `/api/reverse` and

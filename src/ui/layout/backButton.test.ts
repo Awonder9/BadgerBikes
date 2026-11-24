@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { useAppStore } from '../../store/appStore'
-import { goBack } from './backButton'
+import { goBack, openOverlay } from './backButton'
 
 const back = () => goBack(useAppStore.getState())
 const state = () => {
@@ -35,5 +35,14 @@ describe('the Android back button', () => {
 
   it('has nothing left to close on the map itself (the app goes to the background)', () => {
     expect(back()).toBe(false)
+  })
+
+  it('closes a full-screen overlay (a ride review’s story) before the panel under it', () => {
+    useAppStore.getState().setPanel('rides')
+    let closed = 0
+    const done = openOverlay(() => closed++)
+    expect([back(), closed, state().panel]).toEqual([true, 1, 'rides'])
+    done()
+    expect([back(), state().panel]).toEqual([true, 'browse'])
   })
 })

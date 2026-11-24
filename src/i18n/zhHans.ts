@@ -140,9 +140,9 @@ export const zhHans: Messages = {
   recentCount: (n) => `${n} 个地点`,
   clearRecentAria: '清除最近的地点',
   storageNote:
-    '已保存的地点、最近的目的地、收藏的站点和当前骑行只存储在本设备上。清除本网站的数据（Cookie 和网站数据）会将其删除。骑行中开启提醒时，本应用的服务器也会保存该次骑行的计时和终点站（不含你的位置），直到骑行结束。本应用还会发送匿名使用统计（不含识别信息或位置）；开启“请勿追踪”或“全球隐私控制”即可关闭。',
+    '已保存的地点、最近的目的地、收藏的站点、骑行记录和当前骑行只存储在本设备上。清除本网站的数据（Cookie 和网站数据）会将其删除。骑行中开启提醒时，本应用的服务器也会保存该次骑行的计时和终点站（不含你的位置），直到骑行结束。本应用还会发送匿名使用统计（不含识别信息或位置）；开启“请勿追踪”或“全球隐私控制”即可关闭。',
   storageNoteNative:
-    '已保存的地点、最近的目的地、收藏的站点和当前骑行只存储在这部手机上；删除本应用会将其一并删除。骑行提醒由手机自己安排，本应用的服务器不会保存你的骑行信息。本应用还会发送匿名使用统计（不含识别信息或位置）。',
+    '已保存的地点、最近的目的地、收藏的站点、骑行记录和当前骑行只存储在这部手机上；删除本应用会将其一并删除。骑行提醒由手机自己安排，本应用的服务器不会保存你的骑行信息。本应用还会发送匿名使用统计（不含识别信息或位置）。',
   aboutLink: '关于和致谢',
 
   // About
@@ -259,6 +259,12 @@ export const zhHans: Messages = {
     minutesWord: '分钟',
     saveTime: '保存',
     deleteRide: '删除这次骑行',
+    deleteRideConfirm: '要从这台设备上删除这次骑行吗？此操作无法撤销。',
+    confirmDelete: '删除',
+    recordRides: '记录我的骑行',
+    deleteAll: '删除所有骑行',
+    deleteAllConfirm: (n: number) => `要从这台设备上删除全部 ${n} 次骑行吗？此操作无法撤销。`,
+    showMore: (n: number) => `再显示 ${n} 次骑行`,
   },
   review: {
     title: (period) => `回顾：${period}`,
@@ -312,6 +318,7 @@ export const zhHans: Messages = {
     },
     connectFirst: '先在上方连接 Strava，再发送这次骑行。',
     noLine: '这次骑行太久远，无法发送：只有最近的骑行会保留路线。',
+    notOverYet: '这次骑行结束后才能发送（它的时间还没结束）。也可以在上方更正时间。',
     rideName: (from, to) => `共享单车骑行：${from} → ${to}`,
     loopName: (from) => `从 ${from} 出发的共享单车骑行`,
     activityName: '活动名称',
@@ -414,6 +421,7 @@ export const zhHans: Messages = {
   errorRouteOffline: '无法连接到路线服务器。请检查网络连接后重试。',
   errorRouteFailed: '暂时无法获取路线。请稍后重试。',
   errorTooClose: '目的地就在骑行起点。请选择更远的目的地。',
+  errorTooFar: '这个目的地离本市的单车太远了。请选择近一点的目的地。',
   errorBusy: '路线服务器目前繁忙。我们使用的免费公共路线服务每秒大约只能为所有人处理一个请求，所以你的请求没能完成。请过几秒再试。',
   tryAgainIn: (s) => `${s} 秒后重试`,
   shareTripTitle: (names) => `共享单车行程：${names.join(' → ')}`,

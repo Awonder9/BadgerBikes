@@ -18,8 +18,9 @@ import { useRidePlan } from './useRidePlan'
 
 export function RideRecorder() {
   const underWay = useRideStore(rideUnderWay)
-  const recording = useHistoryStore((s) => s.active !== null)
-  return underWay || recording ? <Recorder /> : null
+  const { on, open } = useHistoryStore(useShallow((s) => ({ on: s.recording, open: s.active !== null })))
+  // Turned off in "Your rides": nothing is recorded (turning it off dropped the record that was open).
+  return on && (underWay || open) ? <Recorder /> : null
 }
 
 function Recorder() {
@@ -35,6 +36,7 @@ function Recorder() {
       routeIndex: s.routeIndex,
       loop: s.loop,
       bikeAt: s.bikeAt,
+      setOff: s.openedParts.length > 0 || (s.rideStartedAtMs !== null && !s.continuingRide),
     })),
   )
   // The path details the planner already loaded (React Query's cache), for "how much was on trails".
@@ -46,7 +48,7 @@ function Recorder() {
   useEffect(() => {
     const h = useHistoryStore.getState()
     const record = h.active ? h.rides.find((x) => x.id === h.active!.id) : undefined
-    const active = record && h.active ? { record, planKey: h.active.planKey } : null
+    const active = record && h.active ? { record, planKey: h.active.planKey, ridden: h.active.ridden } : null
     if (r.underWay) seenUnderWay.current = true
     const ridden: RecorderInput['plan'] =
       r.route && start && end && systemId
@@ -70,12 +72,17 @@ function Recorder() {
             },
           }
         : null
-    const step = recorderStep(active, { underWay: r.underWay, startedAtMs: r.startedAt, plan: ridden, seenUnderWay: seenUnderWay.current }, Date.now(), (at) => `${at.toString(36)}-${Math.floor(Math.random() * 1e6).toString(36)}`)
-    if (step.kind === 'update') h.update(step.id, step.fields)
+    const step = recorderStep(
+      active,
+      { underWay: r.underWay, startedAtMs: r.startedAt, plan: ridden, seenUnderWay: seenUnderWay.current, setOff: r.setOff },
+      Date.now(),
+      (at) => `${at.toString(36)}-${Math.floor(Math.random() * 1e6).toString(36)}`,
+    )
+    if (step.kind === 'update') h.follow(step.id, step.fields, step.planKey, step.ridden)
     else if (step.kind === 'close') h.closeActive(step.end)
     else if (step.kind === 'start') {
       if (step.close !== 'none') h.closeActive(step.close)
-      h.add(step.ride, step.planKey)
+      h.add(step.ride, step.planKey, step.ridden)
     }
   }, [r, start, end, rideSeconds, electric, details, systemId])
 

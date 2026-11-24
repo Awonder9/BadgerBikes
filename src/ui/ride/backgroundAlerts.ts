@@ -3,7 +3,7 @@
 // almost up", "past your included time" and "end dock full" itself (worker/rideAlerts.ts). Best effort:
 // without push support (on iPhone: until the app is on the Home Screen), a service worker or a server key,
 // the in-app alerts still work while the app is open.
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { create } from 'zustand'
 import { useShallow } from 'zustand/react/shallow'
 import { api } from '../../api/client'
@@ -11,7 +11,8 @@ import type { PushRideRequest, PushSubscriptionJson } from '../../api/contract'
 import { useMeta, useSystemDetails } from '../../data/hooks'
 import { useLang } from '../../i18n/useT'
 import { base64urlToBytes } from '../../lib/base64url'
-import { useRideStore, rideActive } from '../../ride/rideStore'
+import { RIDE } from '../../config'
+import { loopsBack, useRideStore, rideActive } from '../../ride/rideStore'
 import { useAppStore } from '../../store/appStore'
 import { useNotificationAccess } from '../notifications'
 import { countUse } from '../usage'
@@ -77,7 +78,7 @@ export function useBackgroundRideAlerts(plan: RidePlan): void {
   const { systemId, partySize, pass } = useAppStore(
     useShallow((s) => ({ systemId: s.systemId, partySize: s.settings.partySize, pass: s.systemId ? s.settings.passBySystem[s.systemId] : undefined })),
   )
-  const { active, startedAt } = useRideStore(useShallow((s) => ({ active: rideActive(s), startedAt: s.rideStartedAtMs })))
+  const { active, startedAt, roundTrip } = useRideStore(useShallow((s) => ({ active: rideActive(s), startedAt: s.rideStartedAtMs, roundTrip: loopsBack(s) })))
   const lang = useLang()
   const allowed = useNotificationAccess() === 'granted' && pushSupported()
   const publicKey = useMeta(active && allowed)?.pushPublicKey ?? null
@@ -86,7 +87,19 @@ export function useBackgroundRideAlerts(plan: RidePlan): void {
   // plan right after a reload would make the server forget which alerts it already sent.
   const details = useSystemDetails(systemId, active && !pass)
   const planKnown = !!plan.start && (!!pass || details.details !== undefined || details.error !== null)
-  const endStationId = plan.end?.station.id ?? null
+  // A loop just started from its own end dock: the server watches that dock only once the live feed has had time to
+  // show the bikes the party took from it (RIDE.loopEndWatchDelayMs), or its first check would read "full".
+  // (A page reloaded later in such a ride starts out watching it: its first registration then names the dock already.)
+  const [watchFrom, setWatchFrom] = useState<number | null>(() => {
+    const s = useRideStore.getState()
+    return s.rideStartedAtMs !== null && Date.now() - s.rideStartedAtMs >= RIDE.loopEndWatchDelayMs ? s.rideStartedAtMs : null
+  })
+  useEffect(() => {
+    if (!roundTrip || startedAt === null) return
+    const id = setTimeout(() => setWatchFrom(startedAt), Math.max(0, startedAt + RIDE.loopEndWatchDelayMs - Date.now()))
+    return () => clearTimeout(id)
+  }, [roundTrip, startedAt])
+  const endStationId = roundTrip && watchFrom !== startedAt ? null : (plan.end?.station.id ?? null)
   const { includedMinutes } = plan
   // Everything the alerts depend on; registering again with the same ride repeats no alert (the server keeps
   // what it already sent), so a re-render or a reload never double-notifies.

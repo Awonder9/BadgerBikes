@@ -121,8 +121,11 @@ export function useRidePlan(): RidePlan {
         : [],
     [route, snapshot, startId, dest, partySize, maxRideMinutes, preferEbikes, ride.stopIds],
   )
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- maxRideMinutes and preferEbikes are read inside optimizedFor
-  const optimizedIds = useMemo(() => new Set(snapshot && dest && route ? optimizedFor(along, route, snapshot, dest, partySize) : []), [along, route, snapshot, dest, partySize, maxRideMinutes, preferEbikes])
+  const optimizedIds = useMemo(
+    () => new Set(snapshot && dest && route && startId ? optimizedFor(along, route, snapshot, dest, partySize, startId) : []),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- maxRideMinutes and preferEbikes are read inside optimizedFor
+    [along, route, snapshot, dest, partySize, startId, maxRideMinutes, preferEbikes],
+  )
   const chosen = useMemo(() => along.filter((s) => ride.stopIds.includes(s.station.id)), [along, ride.stopIds])
   const end = chosen.at(-1)
   const fleet = useMemo(() => (snapshot ? fleetComposition(snapshot.stations) : 'unknown'), [snapshot])

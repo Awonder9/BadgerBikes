@@ -4,12 +4,16 @@
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 import { api } from '../api/client'
+import type { StravaTokenResponse } from '../api/contract'
 import { ENDPOINTS, STRAVA } from '../config'
 import type { Lang } from '../i18n/lang'
 import { AppError, toAppError } from '../lib/errors'
 import { safeStorage } from '../lib/storage'
 import { useHistoryStore } from './historyStore'
 import { rideSecondsOf, type RideRecord } from './rides'
+import { redirectUri, type StravaCallback } from './stravaCallback'
+
+export { CALLBACK_PARAM, parseStravaCallback, redirectUri, stripStravaCallback, type StravaCallback } from './stravaCallback'
 
 export interface StravaAuth {
   accessToken: string
@@ -26,6 +30,8 @@ interface StravaState {
 }
 
 const TOKEN_RE = /^[A-Za-z0-9]{10,200}$/
+/** Where the tokens are kept (localStorage, by zustand's persist). */
+const STORE_KEY = 'bcycle.strava'
 
 /** Stored tokens (storage is untrusted), or null. */
 export function validateAuth(v: unknown): StravaAuth | null {
@@ -38,7 +44,7 @@ export function validateAuth(v: unknown): StravaAuth | null {
 
 export const useStravaStore = create<StravaState>()(
   persist((set) => ({ auth: null, notice: null, setAuth: (auth) => set({ auth }) }), {
-    name: 'bcycle.strava',
+    name: STORE_KEY,
     version: 1,
     storage: createJSONStorage(() => safeStorage('local')),
     partialize: (s) => ({ auth: s.auth }),
@@ -49,11 +55,6 @@ export const useStravaStore = create<StravaState>()(
 // ─── Connecting ──────────────────────────────────────────────────────────────────────────────────
 
 const OAUTH_KEY = 'bcycle.strava.oauth'
-/** Query parameter of the redirect back from Strava (Strava adds code, state and scope, or error). */
-export const CALLBACK_PARAM = 'strava'
-
-/** Where Strava sends the rider back: this site's front page (the iOS/Android apps claim it too). */
-export const redirectUri = (origin: string) => `${origin}/?${CALLBACK_PARAM}=callback`
 
 /** Strava's authorization page for this device; remembers a random `state` to check on the way back. */
 export function stravaConnectUrl(clientId: string, origin: string, nowMs = Date.now()): string {
@@ -63,27 +64,6 @@ export function stravaConnectUrl(clientId: string, origin: string, nowMs = Date.
   safeStorage('local').setItem(OAUTH_KEY, JSON.stringify({ state, atMs: nowMs }))
   const q = new URLSearchParams({ client_id: clientId, redirect_uri: redirectUri(origin), response_type: 'code', approval_prompt: 'auto', scope: STRAVA.scope, state })
   return `${ENDPOINTS.strava}/oauth/authorize?${q.toString()}`
-}
-
-export interface StravaCallback {
-  code: string | null
-  state: string | null
-  scope: string
-  error: string | null
-}
-
-/** The redirect back from Strava in a query string, or null when this isn't one. */
-export function parseStravaCallback(search: string): StravaCallback | null {
-  const q = new URLSearchParams(search)
-  if (q.get(CALLBACK_PARAM) !== 'callback') return null
-  return { code: q.get('code'), state: q.get('state'), scope: q.get('scope') ?? '', error: q.get('error') }
-}
-
-/** The address without the callback's parameters (they are removed from the address bar once read). */
-export function stripStravaCallback(href: string): string {
-  const url = new URL(href)
-  for (const k of [CALLBACK_PARAM, 'code', 'state', 'scope', 'error']) url.searchParams.delete(k)
-  return url.pathname + url.search + url.hash
 }
 
 export type ConnectResult = 'connected' | 'denied' | 'noUploadPermission' | 'failed'
@@ -114,19 +94,65 @@ export async function finishStravaConnect(cb: StravaCallback, nowMs = Date.now()
   }
 }
 
-/** An access token good for a while longer: refreshed when it expires soon. A revoked link disconnects. */
-async function freshToken(nowMs = Date.now()): Promise<string> {
-  const auth = useStravaStore.getState().auth
-  if (!auth) throw new AppError('unauthorized', 'Not connected to Strava')
-  if (auth.expiresAtMs - nowMs > STRAVA.refreshBeforeMs) return auth.accessToken
+/**
+ * The refresh in flight. Strava invalidates a refresh token the moment it hands out the next one, so two refreshes
+ * with the same token (two rides sent at once) would see the second refused — and that used to disconnect the rider.
+ */
+let refreshing: Promise<StravaAuth> | null = null
+
+/**
+ * This tab's tokens — or newer ones another tab of the app stored after refreshing them, which spent the refresh token
+ * this tab still holds. (Only newer ones: storage that failed to save this tab's own refresh must not roll it back.)
+ */
+function latestAuth(): StravaAuth | null {
+  const mine = useStravaStore.getState().auth
+  let stored: StravaAuth | null = null
   try {
-    const t = await api.stravaToken({ refreshToken: auth.refreshToken })
-    useStravaStore.getState().setAuth({ ...auth, accessToken: t.accessToken, refreshToken: t.refreshToken, expiresAtMs: t.expiresAtMs })
-    return t.accessToken
+    stored = validateAuth((JSON.parse(safeStorage('local').getItem(STORE_KEY) ?? 'null') as { state?: { auth?: unknown } } | null)?.state?.auth)
+  } catch {
+    stored = null
+  }
+  if (!mine || !stored || stored.expiresAtMs <= mine.expiresAtMs) return mine
+  useStravaStore.setState({ auth: stored })
+  return stored
+}
+
+async function refresh(auth: StravaAuth): Promise<StravaAuth> {
+  let t: StravaTokenResponse
+  try {
+    t = await api.stravaToken({ refreshToken: auth.refreshToken })
   } catch (e) {
-    if (toAppError(e).code === 'unauthorized' || toAppError(e).code === 'bad_request') useStravaStore.getState().setAuth(null)
+    const code = toAppError(e).code
+    if (code === 'unauthorized' || code === 'bad_request') {
+      // Refused: the link was revoked — unless another tab refreshed meanwhile and stored the tokens that replace these.
+      const latest = latestAuth()
+      if (latest && latest.refreshToken !== auth.refreshToken) return latest
+      useStravaStore.getState().setAuth(null)
+    }
     throw e
   }
+  if (!useStravaStore.getState().auth) {
+    // Disconnected while this refresh was on its way: the new tokens must not reconnect the rider, nor stay valid.
+    void api.stravaRevoke(t.refreshToken).catch(() => {})
+    throw new AppError('unauthorized', 'Disconnected from Strava')
+  }
+  const next: StravaAuth = { ...auth, accessToken: t.accessToken, refreshToken: t.refreshToken, expiresAtMs: t.expiresAtMs }
+  useStravaStore.getState().setAuth(next)
+  return next
+}
+
+/**
+ * An access token good for a while longer: refreshed when it expires soon (one refresh at a time, and none when
+ * another tab already did). A revoked link disconnects.
+ */
+export async function freshToken(nowMs = Date.now()): Promise<string> {
+  const auth = latestAuth()
+  if (!auth) throw new AppError('unauthorized', 'Not connected to Strava')
+  if (auth.expiresAtMs - nowMs > STRAVA.refreshBeforeMs) return auth.accessToken
+  refreshing ??= refresh(auth).finally(() => {
+    refreshing = null
+  })
+  return (await refreshing).accessToken
 }
 
 export async function disconnectStrava(): Promise<void> {

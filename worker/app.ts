@@ -9,6 +9,7 @@ import {
   type MetaResponse,
   type OkResponse,
   type PushRideRequest,
+  type ReverseResponse,
   type RouteResponse,
   type WeatherResponse,
   type StationsResponse,
@@ -16,7 +17,7 @@ import {
   type UsageCounter,
   type UsageRequest,
 } from '../src/api/contract'
-import { nearestSystem } from '../src/data/systems'
+import { nearAnySystem, nearestSystem } from '../src/data/systems'
 import { isValidLngLat } from '../src/lib/geo'
 import type { fetchStationsSnapshot as FetchStations, fetchSystemDetails as FetchSystem } from '../src/data/gbfs'
 import { searchBias, type reversePlace as Reverse, type searchPlaces as Search } from '../src/geocode/photon'
@@ -238,7 +239,10 @@ export function createApp(deps: AppDeps) {
 
     if (p === API_PATHS.reverse && method === 'GET') {
       await limit(deps.limiters?.geocode, request)
-      return json({ place: await deps.reversePlace(latLonParams(url.searchParams), deps.upstream, { signal }) })
+      const at = latLonParams(url.searchParams)
+      // A pin far from every BCycle city is no place this app names: "Dropped pin", without asking the geocoder.
+      if (!nearAnySystem(at)) return json({ place: null } satisfies ReverseResponse)
+      return json({ place: await deps.reversePlace(at, deps.upstream, { signal }) })
     }
 
     if (p === API_PATHS.routeDetails && method === 'POST') {

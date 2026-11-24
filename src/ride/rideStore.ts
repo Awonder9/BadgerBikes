@@ -8,11 +8,10 @@ import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 import { api } from '../api/client'
 import { APP, BIKE_ROUTING, LOOP, RIDE, SPEEDS } from '../config'
-import { loadScenic } from '../data/scenic'
+import { getSystem, withinReach } from '../data/systems'
 import { toAppError } from '../lib/errors'
 import { buildPolylineIndex, haversine, isValidLngLat } from '../lib/geo'
-import { loopTargetMeters, planLoop } from '../routing/loop'
-import { routeHighlights, type Highlight } from '../routing/scenic'
+import type { Highlight } from '../routing/scenic'
 import { safeStorage } from '../lib/storage'
 import { ridesElectric } from '../lib/stationState'
 import { validatePlace } from '../store/validate'
@@ -22,9 +21,10 @@ import { optimizedStops, routeDocks, type RouteDock } from './stationsAlongRoute
 
 /**
  * What went wrong with a route request; the planner shows each in the rider's language (RouteError). 'tooClose':
- * the destination is where the ride starts (no request is made).
+ * the destination is where the ride starts; 'tooFar': it (or the rider on a bike) is beyond the city's reach
+ * (ROUTING.maxOutsideSystemMeters) — no request is made for either.
  */
-export type RideErrorKind = 'busy' | 'unroutable' | 'noRoute' | 'offline' | 'tooClose' | 'other'
+export type RideErrorKind = 'busy' | 'unroutable' | 'noRoute' | 'offline' | 'tooClose' | 'tooFar' | 'other'
 
 /** "Just ride": a ride with no destination, of about `minutes`, back to the start dock or ending at another one. */
 export interface LoopSettings {
@@ -144,6 +144,9 @@ export const rideUnderWay = (s: Pick<RideState, 'openedParts' | 'rideStartedAtMs
  */
 export const rideActive = (s: Pick<RideState, 'openedParts' | 'walkToDockOpened' | 'continuingRide' | 'rideStartedAtMs'>): boolean =>
   s.openedParts.length > 0 || s.walkToDockOpened || (s.continuingRide && s.rideStartedAtMs !== null)
+
+/** A "Just ride" loop back to its own start dock: that dock is where it ends. */
+export const loopsBack = (s: Pick<RideState, 'loop' | 'destination' | 'startId'>): boolean => !!s.loop && !!s.destination && s.destination.stationId === s.startId
 
 /**
  * Another route option can't be chosen now: it would throw away the ride under way — its opened links and, unless
@@ -426,9 +429,17 @@ export function docksAlong(route: RouteLeg, snapshot: StationsSnapshot, startId:
 /** The route's own riding pace (seconds per meter), so stop timing matches the route cards. */
 export const routePace = (route: RouteLeg): number | undefined => (route.distance > 0 && route.duration > 0 ? route.duration / route.distance : undefined)
 
-/** The optimized stops for `docks`: fewest re-docks within the rider's max ride time, ending near the destination. */
-export function optimizedFor(docks: readonly RouteDock[], route: RouteLeg, snapshot: StationsSnapshot, destination: Place, partySize = 1): string[] {
-  return optimizedStops(docks, dockOpts(route, snapshot, destination, partySize))
+/**
+ * The optimized stops for `docks`: fewest re-docks within the rider's max ride time, ending near the destination. A
+ * loop back to its start dock (`startId` is the destination) ends there even when that dock is full now: the party's
+ * own bikes, taken from it, free that many docks (a full dock is where riders find bikes, so loops often start at one).
+ */
+export function optimizedFor(docks: readonly RouteDock[], route: RouteLeg, snapshot: StationsSnapshot, destination: Place, partySize = 1, startId?: string): string[] {
+  const back = startId !== undefined && destination.stationId === startId
+  const forPick = back
+    ? docks.map((d) => (d.station.id === startId && d.station.status ? { ...d, station: { ...d.station, status: { ...d.station.status, docks: d.station.status.docks + partySize } } } : d))
+    : docks
+  return optimizedStops(forPick, dockOpts(route, snapshot, destination, partySize))
 }
 
 /** Shows route option `index` with its optimized stops preselected (the rider can add optional ones). */
@@ -439,7 +450,7 @@ export function chooseRoute(index: number, snapshot: StationsSnapshot, partySize
   useRideStore.setState({
     routeIndex: index,
     route,
-    stopIds: optimizedFor(docksAlong(route, snapshot, startId, destination, partySize), route, snapshot, destination, partySize),
+    stopIds: optimizedFor(docksAlong(route, snapshot, startId, destination, partySize), route, snapshot, destination, partySize, startId),
     openedParts: [],
     ...(useRideStore.getState().continuingRide ? {} : { rideStartedAtMs: null }),
     finished: false,
@@ -488,6 +499,12 @@ export async function loadRideRoute(systemId: string, snapshot: StationsSnapshot
   // be where they're riding to): only the distance counts then.
   if ((!bikeAt && destination.stationId === start.id) || haversine(bikeAt ?? start.coord, destination.coord) < RIDE.minRideMeters) {
     useRideStore.setState((s) => ({ status: 'error', error: { kind: 'tooClose', message: 'Destination is where the ride starts' }, routes: [], route: null, stopIds: [], openedParts: [], rideStartedAtMs: null, ...carried(s) }))
+    return
+  }
+  // Out of the city's reach (a pin dropped far away, an old share link): the server would refuse it.
+  const sys = getSystem(systemId)
+  if (sys && !(withinReach(sys, bikeAt ?? start.coord) && withinReach(sys, destination.coord))) {
+    useRideStore.setState((s) => ({ status: 'error', error: { kind: 'tooFar', message: 'Destination is too far from this city' }, routes: [], route: null, stopIds: [], openedParts: [], rideStartedAtMs: null, ...carried(s) }))
     return
   }
   const electric = ridesElectric(snapshot.stations, useAppStore.getState().settings.preferEbikes)
@@ -541,12 +558,20 @@ export async function loadLoopRoute(systemId: string, snapshot: StationsSnapshot
   const { startId, bikeAt, loop } = useRideStore.getState()
   const start = startId ? snapshot.byId.get(startId) : undefined
   if (!start || !loop) return
+  // A rider on a bike far outside the city's reach: the server would refuse the ride.
+  const sys = getSystem(systemId)
+  if (sys && bikeAt && !withinReach(sys, bikeAt)) {
+    useRideStore.setState((s) => ({ status: 'error', error: { kind: 'tooFar', message: 'Too far from this city' }, routes: [], route: null, stopIds: [], openedParts: [], rideStartedAtMs: null, ...carried(s) }))
+    return
+  }
   const electric = ridesElectric(snapshot.stations, useAppStore.getState().settings.preferEbikes)
   inflight?.abort()
   const ctrl = new AbortController()
   inflight = ctrl
   useRideStore.setState((s) => ({ status: 'routing', error: null, routes: [], route: null, stopIds: [], openedParts: [], rideStartedAtMs: null, ...carried(s) }))
   try {
+    // The loop planner and the city's scenery load with the first "Just ride" (not part of the app's startup code).
+    const [{ loadScenic }, { loopTargetMeters, planLoop }, { routeHighlights }] = await Promise.all([import('../data/scenic'), import('../routing/loop'), import('../routing/scenic')])
     const points = await loadScenic(systemId)
     if (ctrl.signal.aborted) return
     const from = bikeAt ?? start.coord
@@ -557,23 +582,31 @@ export async function loadLoopRoute(systemId: string, snapshot: StationsSnapshot
     for (let attempt = 0; attempt < LOOP.maxAttempts; attempt++) {
       const plan = planLoop({ start: from, targetMeters: target, roundTrip: loop.roundTrip, seed: loop.seed, points, endDocks, scale })
       const end = (plan.end && snapshot.byId.get(plan.end.id)) || start
-      const route = await api.loop(
-        {
-          systemId,
-          role: 'ride',
-          mode: 'bike',
-          from,
-          ...(bikeAt ? { fromIsUserPoint: true } : {}),
-          to: end.coord,
-          stationId: end.id,
-          units,
-          language: APP.language,
-          priority: 'interactive',
-          via: plan.via,
-          ...(electric ? { bikeKind: 'electric' as const } : {}),
-        },
-        ctrl.signal,
-      )
+      let route: RouteLeg
+      try {
+        route = await api.loop(
+          {
+            systemId,
+            role: 'ride',
+            mode: 'bike',
+            from,
+            ...(bikeAt ? { fromIsUserPoint: true } : {}),
+            to: end.coord,
+            stationId: end.id,
+            units,
+            language: APP.language,
+            priority: 'interactive',
+            via: plan.via,
+            ...(electric ? { bikeKind: 'electric' as const } : {}),
+          },
+          ctrl.signal,
+        )
+      } catch (err) {
+        // A later attempt only refines the length: when it fails (the routing server busy, no route through the new
+        // points), the ride already found stands rather than an error.
+        if (best && !ctrl.signal.aborted) break
+        throw err
+      }
       if (ctrl.signal.aborted) return
       const off = (r: RouteLeg) => Math.abs(r.distance / target - 1)
       if (!best || off(route) < off(best.route)) best = { route, end, fellBack: plan.fellBackToRoundTrip }

@@ -1,11 +1,11 @@
 // Request validation for the Worker API. Everything from the client is untrusted.
 import type { StravaTokenRequest, StravaUploadRequest, StravaUploadStatusRequest, LoopApiRequest, PushRideRequest, PushSubscriptionJson, RouteApiRequest, UsageFirst, UsagePlatform, UsageRequest } from '../src/api/contract'
-import { APP, GEOCODE, HTTP, LOOP, PUSH, RIDE, ROUTE_DETAILS, STRAVA, USAGE } from '../src/config'
-import { SYSTEMS } from '../src/data/systems'
+import { APP, GEOCODE, HTTP, LOOP, PUSH, RIDE, ROUTE_DETAILS, ROUTING, STRAVA, USAGE } from '../src/config'
+import { SYSTEMS, withinReach } from '../src/data/systems'
 import { LANGS, type Lang } from '../src/i18n/lang'
 import { base64urlToBytes } from '../src/lib/base64url'
 import { AppError } from '../src/lib/errors'
-import { haversine, isValidLngLat } from '../src/lib/geo'
+import { bboxContains, haversine, isValidLngLat } from '../src/lib/geo'
 import { decodePolyline } from '../src/lib/polyline'
 import type { BcycleSystem, LngLat } from '../src/types'
 
@@ -36,15 +36,27 @@ export function latLonParams(params: URLSearchParams): LngLat {
 
 const optId = (v: unknown) => (typeof v === 'string' && ID_RE.test(v) ? v : undefined)
 
+/**
+ * A route's ends must be within reach of the city's stations (ROUTING.maxOutsideSystemMeters): a ride out of town is
+ * fine, a route across the country is not this app's to ask the public routing servers for.
+ */
+function reachable(sys: BcycleSystem, ...points: LngLat[]): void {
+  if (!points.every((c) => withinReach(sys, c))) throw new AppError('no_route', 'Too far from this city’s bikes.', { retryable: false })
+}
+
 export function routeRequest(body: unknown): RouteApiRequest {
   if (!isObj(body)) throw bad('Invalid body')
   const role = body.role === 'toPickup' || body.role === 'ride' || body.role === 'toDestination' ? body.role : 'walkOnly'
+  const sys = requireSystem(body.systemId)
+  const from = lngLat(body.from, 'from')
+  const to = lngLat(body.to, 'to')
+  reachable(sys, from, to)
   const r: RouteApiRequest = {
-    systemId: requireSystem(body.systemId).id,
+    systemId: sys.id,
     role,
     mode: body.mode === 'bike' ? 'bike' : 'walk',
-    from: lngLat(body.from, 'from'),
-    to: lngLat(body.to, 'to'),
+    from,
+    to,
     units: body.units === 'metric' ? 'metric' : 'imperial',
     language: APP.language,
     priority: body.priority === 'background' ? 'background' : 'interactive',
@@ -104,11 +116,14 @@ export function stravaUploadRequest(body: unknown, nowMs: number): StravaUploadR
   if (!isObj(body)) throw bad('Invalid body')
   const lang: Lang | undefined = LANGS.find((l) => l === body.lang)
   if (!lang) throw bad('Invalid language')
-  const { polyline } = routeDetailsRequest({ systemId: APP.defaultSystemId, polyline: body.polyline })
+  // The rider's own ride, from any city, to their own account: no routing server is asked about it.
+  const { polyline } = polyline6(body.polyline)
   const startedAtMs = body.startedAtMs
   const elapsedS = body.elapsedS
   if (typeof startedAtMs !== 'number' || !Number.isInteger(startedAtMs) || startedAtMs < nowMs - 3 * 365 * 86_400_000 || startedAtMs > nowMs + 60_000) throw bad('Invalid start')
   if (typeof elapsedS !== 'number' || !Number.isInteger(elapsedS) || elapsedS < 60 || elapsedS > 12 * 3600) throw bad('Invalid elapsed time')
+  // The track's times run to the ride's end: one still ahead would put the activity in the future.
+  if (startedAtMs + elapsedS * 1000 > nowMs + 60_000) throw bad('The ride has not ended yet')
   const name = riderText(body.name, STRAVA.maxNameLength)
   if (!name) throw bad('Invalid name')
   const externalId = typeof body.externalId === 'string' && /^badgerbikes-[A-Za-z0-9_.:-]{1,100}$/.test(body.externalId) ? body.externalId : null
@@ -137,10 +152,9 @@ export function stravaRevokeRequest(body: unknown): { token: string } {
   return { token: token(body.token, 'token') }
 }
 
-/** Route geometry as an encoded polyline6: printable polyline characters only, bounded size. */
-export function routeDetailsRequest(body: unknown): { systemId: string; polyline: string } {
-  if (!isObj(body)) throw bad('Invalid body')
-  const polyline = typeof body.polyline === 'string' ? body.polyline : ''
+/** Route geometry as an encoded polyline6: printable polyline characters only, bounded size, real coordinates. */
+function polyline6(v: unknown): { polyline: string; coords: LngLat[] } {
+  const polyline = typeof v === 'string' ? v : ''
   if (polyline.length < 4 || polyline.length > ROUTE_DETAILS.maxPolylineChars || !/^[\x3f-\x7e]+$/.test(polyline)) throw bad('Invalid polyline')
   let coords: LngLat[]
   try {
@@ -149,7 +163,19 @@ export function routeDetailsRequest(body: unknown): { systemId: string; polyline
     throw bad('Invalid polyline')
   }
   if (coords.length < 2 || coords.length > ROUTE_DETAILS.maxPoints || !coords.every(isValidLngLat)) throw bad('Invalid polyline')
-  return { systemId: requireSystem(body.systemId).id, polyline }
+  return { polyline, coords }
+}
+
+/**
+ * POST /api/route-details body: a route of this city's — around its stations, as far as any route it plans can go (a
+ * "Just ride" loop may reach LOOP.maxRadiusMeters past a start at the edge of its reach).
+ */
+export function routeDetailsRequest(body: unknown): { systemId: string; polyline: string } {
+  if (!isObj(body)) throw bad('Invalid body')
+  const { polyline, coords } = polyline6(body.polyline)
+  const sys = requireSystem(body.systemId)
+  if (!coords.every((c) => bboxContains(sys.bbox, c, ROUTING.maxOutsideSystemMeters + LOOP.maxRadiusMeters))) throw bad('Route outside this city')
+  return { systemId: sys.id, polyline }
 }
 
 export function geocodeQuery(raw: string | null): string {

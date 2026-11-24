@@ -2,6 +2,7 @@
 // for the one before; cards advance on their own (HISTORY.storyCardMs) unless held. Cards without data are skipped.
 // Everything shown comes from the rides on this device (src/history/review.ts).
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { HISTORY } from '../../config'
 import { useHistoryStore } from '../../history/historyStore'
 import { buildReview, type Period, type Review } from '../../history/review'
@@ -10,6 +11,7 @@ import { formatDistance, formatDuration } from '../../lib/format'
 import { useAppStore } from '../../store/appStore'
 import { Icon } from '../primitives/Icon'
 import { shareText } from '../../native/share'
+import { openOverlay } from '../layout/backButton'
 import { isNativeApp } from '../platform'
 import { deviceTimeZone, monthInitial, periodLabel, weekdayName } from './labels'
 
@@ -28,9 +30,20 @@ export function ReviewStory({ period, onClose }: { period: Period; onClose: () =
   const [i, setI] = useState(0)
   const [held, setHeld] = useState(false)
   const closeRef = useRef<HTMLButtonElement>(null)
+  /** When the current press began: a long press only pauses the story. */
+  const downAt = useRef(0)
   const last = cards.length - 1
 
-  useEffect(() => closeRef.current?.focus(), [])
+  // Focus moves into the story, and back to where it was (the Play button) when it closes.
+  useEffect(() => {
+    const before = document.activeElement
+    closeRef.current?.focus()
+    return () => {
+      if (before instanceof HTMLElement) before.focus()
+    }
+  }, [])
+  // Android's back button closes the story first, not the panel under it.
+  useEffect(() => openOverlay(onClose), [onClose])
   useEffect(() => {
     if (held || i >= last) return
     const id = setTimeout(() => setI((n) => Math.min(last, n + 1)), HISTORY.storyCardMs)
@@ -46,8 +59,11 @@ export function ReviewStory({ period, onClose }: { period: Period; onClose: () =
     return () => window.removeEventListener('keydown', onKey)
   }, [last, onClose])
 
-  const card = cards[i]!
-  return (
+  // The cards can change under an open story (a ride recorded meanwhile): never past the last.
+  const card = cards[Math.min(i, last)]!
+  // On the page itself, not inside the panel: the panel's stacking context would leave the ride and offline banners
+  // and notices (drawn above the panel) on top of this full-screen story.
+  return createPortal(
     <div role="dialog" aria-modal="true" aria-label={t.review.title(periodLabel(period, lang, t))} className={`fixed inset-0 z-50 flex flex-col text-white transition-colors duration-500 ${card.bg}`}>
       <div className="flex gap-1 px-3 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-hidden>
         {cards.map((c, n) => (
@@ -64,9 +80,14 @@ export function ReviewStory({ period, onClose }: { period: Period; onClose: () =
       </div>
       <div
         className="relative flex flex-1 select-none flex-col items-center justify-center px-8 pb-[calc(2rem+env(safe-area-inset-bottom))] text-center"
-        onPointerDown={() => setHeld(true)}
+        onPointerDown={() => {
+          downAt.current = Date.now()
+          setHeld(true)
+        }}
         onPointerUp={(e) => {
           setHeld(false)
+          // Holding paused the story; letting go resumes it on the same card. A tap steps back or forward.
+          if (Date.now() - downAt.current > HISTORY.storyTapMaxMs) return
           const r = e.currentTarget.getBoundingClientRect()
           setI((n) => (e.clientX - r.left < r.width / 3 ? Math.max(0, n - 1) : Math.min(last, n + 1)))
         }}
@@ -84,7 +105,8 @@ export function ReviewStory({ period, onClose }: { period: Period; onClose: () =
           </button>
         </div>
       )}
-    </div>
+    </div>,
+    document.body,
   )
 }
 

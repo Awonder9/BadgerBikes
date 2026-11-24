@@ -19,16 +19,11 @@ export interface UpstreamRequest {
   cacheKey?: string
   /** Fixed TTL, or computed from the parsed body (e.g. station_status: until its CDN expiry). */
   cacheTtlMs?: number | ((body: unknown) => number)
-  /** Overrides HTTP.timeoutMs (a slow query, e.g. Overpass). */
+  /** Overrides HTTP.timeoutMs (a slow upstream). */
   timeoutMs?: number
   /**
-   * Turns the parsed body into what is returned and cached (e.g. a city's Overpass answer, megabytes, into the few
-   * hundred kilobytes a loop needs). Runs once per fetch, before caching.
-   */
-  transform?: (body: unknown) => unknown
-  /**
-   * A form body (application/x-www-form-urlencoded) for POST instead of JSON (Overpass queries, Strava's OAuth), or
-   * multipart form data (Strava uploads).
+   * A form body (application/x-www-form-urlencoded) for POST instead of JSON (Strava's OAuth), or multipart form data
+   * (Strava uploads).
    */
   form?: Record<string, string>
   multipart?: Array<{ name: string; value: string; fileName?: string; type?: string }>

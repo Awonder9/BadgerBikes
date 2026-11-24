@@ -2,7 +2,7 @@
 // a ride to Strava. Its own lazily loaded chunk, like the planner.
 import { useMemo, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
-import { STRAVA } from '../../config'
+import { HISTORY, STRAVA } from '../../config'
 import { useMeta } from '../../data/hooks'
 import { useHistoryStore } from '../../history/historyStore'
 import { buildReview, nextPeriod, periodContaining, previousPeriod, type Period, type PeriodKind } from '../../history/review'
@@ -39,8 +39,8 @@ export function RidesPanel() {
       <div className="space-y-2">
         <p className="text-sm font-medium text-slate-500">{t.rides.history}</p>
         {finished.length === 0 ? <p className="text-sm text-slate-600 dark:text-slate-300">{t.rides.empty}</p> : <RideList rides={finished} units={units} />}
-        <p className="text-xs text-slate-500">{t.rides.deviceOnly}</p>
       </div>
+      <HistorySettings count={finished.length} />
       {story && <ReviewStory period={story} onClose={() => setStory(null)} />}
     </section>
   )
@@ -156,18 +156,70 @@ function StravaConnection() {
   )
 }
 
-function RideList({ rides, units }: { rides: RideRecord[]; units: 'imperial' | 'metric' }) {
-  const { lang } = useI18n()
-  const [open, setOpen] = useState<string | null>(null)
-  const day = new Intl.DateTimeFormat(LANG_TAGS[lang], { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+/** Whether rides are recorded on this device, and deleting all of them (they hold where and when the rider rode). */
+function HistorySettings({ count }: { count: number }) {
+  const recording = useHistoryStore((s) => s.recording)
+  const { t } = useI18n()
+  const [confirming, setConfirming] = useState(false)
   return (
-    <ul className="divide-y divide-slate-200 rounded-xl ring-1 ring-slate-200 dark:divide-slate-800 dark:ring-slate-800">
-      {rides.slice(0, 100).map((r) => (
-        <li key={r.id}>
-          <RideRow ride={r} when={day.format(r.startedAtMs)} units={units} open={open === r.id} onToggle={() => setOpen(open === r.id ? null : r.id)} />
-        </li>
-      ))}
-    </ul>
+    <section aria-label={t.rides.recordRides} className="space-y-2 rounded-xl p-3 ring-1 ring-slate-200 dark:ring-slate-800">
+      <label className="flex min-h-11 items-center gap-3">
+        <span className="min-w-0 flex-1 text-sm font-medium">
+          {t.rides.recordRides}
+          <span className="block text-xs font-normal text-slate-500">{t.rides.deviceOnly}</span>
+        </span>
+        <input type="checkbox" className="h-6 w-6 shrink-0" checked={recording} onChange={(e) => useHistoryStore.getState().setRecording(e.target.checked)} />
+      </label>
+      {confirming ? (
+        <div role="group" aria-label={t.rides.deleteAll} className="space-y-2">
+          <p className="text-sm">{t.rides.deleteAllConfirm(count)}</p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="min-h-11 rounded-lg bg-red-700 px-3 text-sm font-semibold text-white"
+              onClick={() => {
+                useHistoryStore.getState().clear()
+                setConfirming(false)
+              }}
+            >
+              {t.rides.deleteAll}
+            </button>
+            <button type="button" className="min-h-11 rounded-lg px-3 text-sm font-medium ring-1 ring-slate-300 dark:ring-slate-600" onClick={() => setConfirming(false)}>
+              {t.cancel}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button type="button" disabled={count === 0} className="min-h-11 text-sm font-medium text-red-700 underline disabled:text-slate-400 disabled:no-underline dark:text-red-400 dark:disabled:text-slate-600" onClick={() => setConfirming(true)}>
+          {t.rides.deleteAll}
+        </button>
+      )}
+    </section>
+  )
+}
+
+function RideList({ rides, units }: { rides: RideRecord[]; units: 'imperial' | 'metric' }) {
+  const { t, lang } = useI18n()
+  const [open, setOpen] = useState<string | null>(null)
+  // A page at a time: a long history (HISTORY.maxRides) is kept, and every ride in it can be opened and deleted.
+  const [shown, setShown] = useState<number>(HISTORY.listPageSize)
+  const day = new Intl.DateTimeFormat(LANG_TAGS[lang], { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+  const more = Math.min(HISTORY.listPageSize, rides.length - shown)
+  return (
+    <>
+      <ul className="divide-y divide-slate-200 rounded-xl ring-1 ring-slate-200 dark:divide-slate-800 dark:ring-slate-800">
+        {rides.slice(0, shown).map((r) => (
+          <li key={r.id}>
+            <RideRow ride={r} when={day.format(r.startedAtMs)} units={units} open={open === r.id} onToggle={() => setOpen(open === r.id ? null : r.id)} />
+          </li>
+        ))}
+      </ul>
+      {more > 0 && (
+        <button type="button" className="min-h-11 w-full rounded-xl text-sm font-medium text-brand-700 ring-1 ring-slate-200 dark:text-brand-300 dark:ring-slate-800" onClick={() => setShown(shown + HISTORY.listPageSize)}>
+          {t.rides.showMore(more)}
+        </button>
+      )}
+    </>
   )
 }
 
@@ -200,6 +252,8 @@ function RideRow({ ride, when, units, open, onToggle }: { ride: RideRecord; when
 function RideDetails({ ride, units }: { ride: RideRecord; units: 'imperial' | 'metric' }) {
   const { t, lang } = useI18n()
   const [minutes, setMinutes] = useState(() => Math.round(defaultElapsedS(ride) / 60))
+  // A stray tap must not lose a ride: deleting asks first.
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const fix = () => {
     const m = Math.min(12 * 60, Math.max(1, Math.round(minutes)))
     useHistoryStore.getState().update(ride.id, { endedAtMs: ride.startedAtMs + m * 60_000, endEstimated: false })
@@ -220,9 +274,21 @@ function RideDetails({ ride, units }: { ride: RideRecord; units: 'imperial' | 'm
         )}
       </label>
       <SendToStrava ride={ride} />
-      <button type="button" className="min-h-11 font-medium text-red-700 underline dark:text-red-400" onClick={() => useHistoryStore.getState().remove(ride.id)}>
-        {t.rides.deleteRide}
-      </button>
+      {confirmDelete ? (
+        <div role="group" aria-label={t.rides.deleteRide} className="flex flex-wrap items-center gap-2">
+          <span className="w-full">{t.rides.deleteRideConfirm}</span>
+          <button type="button" className="min-h-11 rounded-lg bg-red-700 px-3 font-semibold text-white" onClick={() => useHistoryStore.getState().remove(ride.id)}>
+            {t.rides.confirmDelete}
+          </button>
+          <button type="button" className="min-h-11 rounded-lg px-3 font-medium ring-1 ring-slate-300 dark:ring-slate-600" onClick={() => setConfirmDelete(false)}>
+            {t.cancel}
+          </button>
+        </div>
+      ) : (
+        <button type="button" className="min-h-11 font-medium text-red-700 underline dark:text-red-400" onClick={() => setConfirmDelete(true)}>
+          {t.rides.deleteRide}
+        </button>
+      )}
     </div>
   )
 }
@@ -234,6 +300,8 @@ function SendToStrava({ ride }: { ride: RideRecord }) {
   const [name, setName] = useState(() => (ride.kind === 'loop' ? t.strava.loopName(ride.startName) : t.strava.rideName(ride.startName, ride.endName)))
   const [commute, setCommute] = useState(false)
   const [state, setState] = useState<{ kind: 'idle' } | { kind: 'sending' } | { kind: 'error'; message: string }>({ kind: 'idle' })
+  // When the ride's details were opened (whether its time has ended yet; reopening them looks again).
+  const [openedAtMs] = useState(() => Date.now())
   if (!clientId) return null
   if (ride.stravaActivityId) {
     return (
@@ -245,6 +313,8 @@ function SendToStrava({ ride }: { ride: RideRecord }) {
   }
   if (!auth) return <p className="text-slate-600 dark:text-slate-300">{t.strava.connectFirst}</p>
   if (!ride.line) return <p className="text-slate-600 dark:text-slate-300">{t.strava.noLine}</p>
+  // An estimated end still ahead (the app reopened mid-ride, after the plan was gone): its track would end in the future.
+  if (ride.endedAtMs !== null && ride.endedAtMs > openedAtMs) return <p className="text-slate-600 dark:text-slate-300">{t.strava.notOverYet}</p>
   const send = async () => {
     setState({ kind: 'sending' })
     try {

@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useHistoryStore } from '../../history/historyStore'
-import { reviewToOffer } from '../../history/review'
+import { reviewToOffer } from '../../history/periods'
 import { useI18n } from '../../i18n/useT'
 import { useAppStore } from '../../store/appStore'
 import { Icon } from '../primitives/Icon'

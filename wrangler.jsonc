@@ -42,6 +42,7 @@
     // Secrets, not set here (`npx wrangler secret put NAME` for production, `.dev.vars` for local dev):
     // CONTACT_EMAIL — operator contact for the FOSSGIS/Photon usage policies, shown in About;
     // VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY — background ride alerts (`npm run vapid-keys`); optional.
+    // STRAVA_CLIENT_ID, STRAVA_CLIENT_SECRET — "Send to Strava" (a Strava API app); optional.
     "APP_VERSION": "1.0.0"
   },
   "observability": {

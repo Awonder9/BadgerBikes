@@ -13,11 +13,6 @@ export const ENDPOINTS = {
   photon: trimSlash(env.VITE_PHOTON_URL || 'https://photon.komoot.io'),
   /** Weather (no key; free for non-commercial use, attribution "Weather data by Open-Meteo.com", CC BY 4.0). */
   openMeteo: 'https://api.open-meteo.com',
-  /**
-   * OpenStreetMap trails and scenic places for "Just ride" loops (Overpass API; ODbL, "© OpenStreetMap contributors").
-   * Public instance policy: under 10,000 queries/day, no parallel queries, a User-Agent; cached per city (SCENIC).
-   */
-  overpass: trimSlash(env.VITE_OVERPASS_URL || 'https://overpass-api.de/api/interpreter'),
   /** Strava API (rides sent to Strava; the Worker holds the app's client secret). */
   strava: 'https://www.strava.com',
 } as const
@@ -96,13 +91,6 @@ export const UPSTREAM = {
       maxInFlight: 2,
       circuitOpenMs: 60_000,
     },
-    /** One query per city per CACHE_TTL_MS.scenic at most (cached); the public instance asks for no parallel queries. */
-    overpass: {
-      hosts: ['overpass-api.de'],
-      minSpacingMs: 2_000,
-      maxInFlight: 1,
-      circuitOpenMs: 120_000,
-    },
     /** Strava's limit is per app (STRAVA.rateLimitNote); riders' token exchanges and uploads only. */
     strava: {
       hosts: ['www.strava.com'],
@@ -145,10 +133,6 @@ export const CACHE_TTL_MS = {
   geocode: 24 * 60 * 60_000,
   /** Open-Meteo's current values update every 15 minutes. */
   weather: 15 * 60_000,
-  /** A city's trails and scenic places (Overpass) change slowly; one query per city per week. */
-  scenic: 7 * 24 * 60 * 60_000,
-  /** A failed scenic query isn't retried for this long (loops are planned without scenery meanwhile). */
-  scenicFailure: 30 * 60_000,
 } as const
 
 export const MAP = {
@@ -218,6 +202,12 @@ export const ROUTING = {
    * straight connector (RouteLeg invariant in src/types.ts).
    */
   connectorMinMeters: 3,
+  /**
+   * Routes (POST /api/routes, /api/route, /api/loop, /api/route-details) and reverse lookups (GET /api/reverse) stay
+   * within this distance of a city's station area: a destination out of town, a rider already on a bike nearby — never
+   * a route across the country, which would make this server a free router in front of the public servers it must spare.
+   */
+  maxOutsideSystemMeters: 25_000,
 } as const
 
 /** Bike routing preferences (Valhalla bicycle costing). */
@@ -360,6 +350,13 @@ export const RIDE = {
   /** Within this distance of the destination (with a known location) the ride counts as arrived. */
   arrivedMeters: 100,
   /**
+   * A ride that starts within arrival range of its own destination (a "Just ride" loop back to its dock, a destination
+   * right by the start dock) counts as arrived only once the rider has been this far from it — or has ridden for
+   * `awayAfterPlannedShare` of the route's planned time, for a page reloaded mid-ride that never saw them leave.
+   */
+  awayBeforeArrivalMeters: 400,
+  awayAfterPlannedShare: 0.5,
+  /**
    * Only a position this accurate (meters) can count as arrived: arriving ends the ride, its timer and its background
    * alerts, so a coarse network fix that happens to land near the destination mid-ride must not do it.
    */
@@ -386,6 +383,12 @@ export const RIDE = {
   maxIncludedMinutes: 600,
   /** The end dock counts as "filling up" at or below this many open docks (plus riders − 1). */
   endDockLowDocks: 1,
+  /**
+   * A "Just ride" loop back to its start dock: its end dock isn't watched (in the app, or by the server's alerts) for
+   * this long after the timer starts. The live feed takes a few minutes to show the docks the party's own bikes just
+   * freed there, and a full start dock is a common place to begin — it would read as "end dock full" at once.
+   */
+  loopEndWatchDelayMs: 4 * 60_000,
   /** Suggested replacement docks: within this distance of the destination. */
   replacementRadiusMeters: 800,
   /** "Try again" stays disabled this long after the route server reported it was busy. */
@@ -493,26 +496,23 @@ export const LOOP = {
   maxHighlights: 5,
   /** One-way rides end at a dock with space this far (fraction of the straight-line length) from the start, or more. */
   oneWayMinEndFraction: 0.35,
-  /**
-   * A loop back to the start dock starts at its own destination: arriving there counts only once the rider has been
-   * at least this far from it.
-   */
-  awayBeforeArrivalMeters: 400,
   /** POST /api/loop accepts at most this many via points, each within maxRadiusMeters of the start. */
   maxVia: 3,
   maxRadiusMeters: 30_000,
 } as const
 
-/** OpenStreetMap trail + scenery data for loops (src/routing/scenic.ts). */
+/**
+ * OpenStreetMap trail + scenery data for loops (src/routing/scenic.ts), generated at build time by
+ * scripts/update-scenic.mjs (Node can't import this file: the script mirrors these values, and its test keeps them equal).
+ */
 export const SCENIC = {
   /** The city's station box is padded by this much for the query (loops leave the station area). */
   bboxPadMeters: 4_000,
-  /** Overpass's own time limit for the query (seconds) and ours for the request. */
+  /** Overpass's own time limit for the query (seconds); OVERPASS_TIMEOUT_S overrides it for a big city. */
   queryTimeoutSeconds: 25,
-  requestTimeoutMs: 30_000,
   /** Trail lines are sampled into candidate waypoints this far apart. */
   sampleEveryMeters: 350,
-  /** Most candidate points kept per city (best scored), so the cached summary stays small. */
+  /** Most candidate points kept per city (best scored), so the generated file stays small. */
   maxPoints: 4_000,
   /** A trail point this close to water, inside a park, or near a viewpoint counts as scenic. */
   waterMeters: 150,
@@ -549,8 +549,12 @@ export const HISTORY = {
   /** Riding effort (MET) for the calories estimate, and the body weight it assumes. */
   met: { classic: 6.8, electric: 4.0 },
   assumedWeightKg: 70,
+  /** "Your rides" lists this many rides at a time ("Show more" adds as many again). */
+  listPageSize: 100,
   /** Story card auto-advance in the review. */
   storyCardMs: 6_000,
+  /** A press on a story card shorter than this is a tap (next / previous card); a longer one only pauses it. */
+  storyTapMaxMs: 350,
 } as const
 
 /**

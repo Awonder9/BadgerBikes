@@ -245,6 +245,11 @@ describe('routing the plan', () => {
     await loadRideRoute('bcycle_madison', snapshot, 'imperial', 1)
     expect(useRideStore.getState().error?.kind).toBe('tooClose')
     expect(requests).toBe(0)
+    // Out of the city's reach (a pin dropped in Chicago, an old share link): said so, never sent to the routers.
+    useRideStore.getState().setDestination({ kind: 'mapPick', name: 'Chicago', coord: [-87.63, 41.88] })
+    await loadRideRoute('bcycle_madison', snapshot, 'imperial', 1)
+    expect(useRideStore.getState()).toMatchObject({ status: 'error', error: { kind: 'tooFar' } })
+    expect(requests).toBe(0)
     useRideStore.getState().setDestination(dest)
     await loadRideRoute('bcycle_madison', snapshot, 'imperial', 1)
     expect(useRideStore.getState().status).toBe('ready')
@@ -423,6 +428,42 @@ describe('"Just ride" loops', () => {
     expect(useRideStore.getState()).toMatchObject({ loop: { minutes: 45 }, destination: null, status: 'idle' })
     useRideStore.getState().setDestination(dest)
     expect(useRideStore.getState().loop).toBeNull()
+  })
+
+  it('keeps the ride already found when the second, length-correcting attempt fails', async () => {
+    let calls = 0
+    restore = setFetchImpl(async () => {
+      calls++
+      // The first route (11.6 km) is far off 90 minutes' length, so a second one is asked for; the server is busy.
+      if (calls === 1) return new Response(JSON.stringify({ route: loopLeg }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+      return new Response(JSON.stringify({ error: { code: 'upstream_unavailable', message: 'busy', retryable: true } }), { status: 503, headers: { 'Content-Type': 'application/json' } })
+    })
+    useRideStore.getState().setStart('cap')
+    useRideStore.getState().startLoop({ minutes: 90, roundTrip: true })
+    await loadLoopRoute('bcycle_madison', snapshot, 'imperial', 1)
+    expect(calls).toBe(2)
+    expect(useRideStore.getState()).toMatchObject({ status: 'ready', error: null, destination: { stationId: 'cap' } })
+    expect(useRideStore.getState().routes).toHaveLength(1)
+  })
+
+  it('a rider on a bike far outside the city is told so, without a request', async () => {
+    let requests = 0
+    restore = setFetchImpl(async () => (requests++, new Response('{}', { status: 500 })))
+    useRideStore.getState().startOnBike([-87.63, 41.88], { kind: 'station', name: 'Capitol', coord: MADISON.capitol, stationId: 'cap' }, Date.now() - 60_000)
+    useRideStore.getState().startLoop({ minutes: 30, roundTrip: true })
+    await loadLoopRoute('bcycle_madison', snapshot, 'imperial', 1)
+    expect(useRideStore.getState()).toMatchObject({ status: 'error', error: { kind: 'tooFar' }, continuingRide: true })
+    expect(requests).toBe(0)
+  })
+
+  it('ends back at a start dock that is full now (the party’s own bikes free docks there)', async () => {
+    const fullStart = makeStation({ id: 'cap', name: 'Capitol', coord: MADISON.capitol, docks: 0, bikes: 12 })
+    const snap = makeSnapshot([fullStart, neighbor, lakeshore])
+    restore = setFetchImpl(async () => new Response(JSON.stringify({ route: loopLeg }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+    useRideStore.getState().setStart('cap')
+    useRideStore.getState().startLoop({ minutes: 45, roundTrip: true })
+    await loadLoopRoute('bcycle_madison', snap, 'imperial', 1)
+    expect(useRideStore.getState().stopIds.at(-1)).toBe('cap')
   })
 
   it('"Try another" picks a new seed and plans again', () => {

@@ -140,9 +140,9 @@ export const zhHant: Messages = {
   recentCount: (n) => `${n} 個地點`,
   clearRecentAria: '清除最近的地點',
   storageNote:
-    '已儲存的地點、最近的目的地、收藏的站點和目前的騎乘只會儲存在這台裝置上。清除本網站的資料（Cookie 和網站資料）會將其刪除。騎乘中開啟提醒時，本 App 的伺服器也會保存該次騎乘的計時和終點站（不含你的位置），直到騎乘結束。本 App 也會傳送匿名使用統計（不含識別資訊或位置）；開啟「不要追蹤」或「全球隱私控制」即可關閉。',
+    '已儲存的地點、最近的目的地、收藏的站點、騎乘紀錄和目前的騎乘只會儲存在這台裝置上。清除本網站的資料（Cookie 和網站資料）會將其刪除。騎乘中開啟提醒時，本 App 的伺服器也會保存該次騎乘的計時和終點站（不含你的位置），直到騎乘結束。本 App 也會傳送匿名使用統計（不含識別資訊或位置）；開啟「不要追蹤」或「全球隱私控制」即可關閉。',
   storageNoteNative:
-    '已儲存的地點、最近的目的地、收藏的站點和目前的騎乘只會儲存在這支手機上；刪除本 App 會將其一併刪除。騎乘提醒由手機自行安排，本 App 的伺服器不會保存你的騎乘資訊。本 App 也會傳送匿名使用統計（不含識別資訊或位置）。',
+    '已儲存的地點、最近的目的地、收藏的站點、騎乘紀錄和目前的騎乘只會儲存在這支手機上；刪除本 App 會將其一併刪除。騎乘提醒由手機自行安排，本 App 的伺服器不會保存你的騎乘資訊。本 App 也會傳送匿名使用統計（不含識別資訊或位置）。',
   aboutLink: '關於與致謝',
 
   // About
@@ -259,6 +259,12 @@ export const zhHant: Messages = {
     minutesWord: '分鐘',
     saveTime: '儲存',
     deleteRide: '刪除這次騎乘',
+    deleteRideConfirm: '要從這台裝置刪除這次騎乘嗎？此動作無法復原。',
+    confirmDelete: '刪除',
+    recordRides: '記錄我的騎乘',
+    deleteAll: '刪除所有騎乘',
+    deleteAllConfirm: (n: number) => `要從這台裝置刪除全部 ${n} 次騎乘嗎？此動作無法復原。`,
+    showMore: (n: number) => `再顯示 ${n} 次騎乘`,
   },
   review: {
     title: (period) => `回顧：${period}`,
@@ -312,6 +318,7 @@ export const zhHant: Messages = {
     },
     connectFirst: '先在上方連結 Strava，再傳送這次騎乘。',
     noLine: '這次騎乘太久遠，無法傳送：只有最近的騎乘會保留路線。',
+    notOverYet: '這次騎乘結束後才能傳送（它的時間還沒結束）。也可以在上方更正時間。',
     rideName: (from, to) => `共享單車騎乘：${from} → ${to}`,
     loopName: (from) => `從 ${from} 出發的共享單車騎乘`,
     activityName: '活動名稱',
@@ -414,6 +421,7 @@ export const zhHant: Messages = {
   errorRouteOffline: '無法連線到路線伺服器。請檢查網路連線後重試。',
   errorRouteFailed: '暫時無法取得路線。請稍後再試。',
   errorTooClose: '目的地就在騎乘起點。請選擇更遠的目的地。',
+  errorTooFar: '這個目的地離本市的單車太遠了。請選擇近一點的目的地。',
   errorBusy: '路線伺服器目前忙碌中。我們使用的免費公共路線服務每秒大約只能為所有人處理一個請求，所以你的請求未能完成。請過幾秒再試。',
   tryAgainIn: (s) => `${s} 秒後重試`,
   shareTripTitle: (names) => `共享單車行程：${names.join(' → ')}`,

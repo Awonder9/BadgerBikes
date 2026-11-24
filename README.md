@@ -65,7 +65,7 @@ route, how much was on trails, your longest ride, riding habits and streaks, CO�
 The home panel offers last week's review early in a week, last month's early in a month, and the year's in December
 and January. The app can't record GPS while Google Maps is in front, so a ride is the route as planned, timed from
 the ride timer to when you end it in the app (or the route's riding time, marked "~", when it never saw you dock —
-you can correct it).
+you can correct it). You can turn recording off (*Record my rides*), delete a ride, or delete them all.
 
 **Send to Strava** — once connected (*Connect with Strava* in Your rides), a ride can be sent to Strava as an
 activity, named and marked as a commute if you like. Its map is the route as planned, with times spread over the

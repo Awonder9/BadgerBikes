@@ -22,6 +22,11 @@ export function dayKey(ms: number, timeZone: string): string {
   return parts(ms, timeZone).day
 }
 
+/** The calendar day and the hour of day of `ms` in `timeZone`, at once (each costs an Intl call). */
+export function dayAndHour(ms: number, timeZone: string): { day: string; hour: number } {
+  return parts(ms, timeZone)
+}
+
 /** The hour of day (0–23) of `ms` in `timeZone`. */
 export function hourOf(ms: number, timeZone: string): number {
   return parts(ms, timeZone).hour

@@ -1,7 +1,7 @@
 // Names of review periods in the rider's language, and the device's time zone (reviews follow the rider's calendar).
 import type { Messages } from '../../i18n'
 import { LANG_TAGS, type Lang } from '../../i18n/lang'
-import type { Period } from '../../history/review'
+import type { Period } from '../../history/periods'
 
 export function deviceTimeZone(): string {
   try {

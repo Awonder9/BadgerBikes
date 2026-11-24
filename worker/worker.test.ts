@@ -83,6 +83,32 @@ describe('worker app', () => {
     expect(bad.status).toBe(400)
   })
 
+  it('routes only within reach of the city: never a free router for anywhere in the world', async () => {
+    const asked: unknown[] = []
+    const router = deps().createRouter({ upstream: deps().upstream })
+    const app = createApp(deps({ createRouter: () => ({ ...router, routeLadder: async (r, l, o) => (asked.push(r), router.routeLadder(r, l, o)), route: async (r) => (asked.push(r), router.route(r)) }) }))
+    const ride = (o: Record<string, unknown>) => JSON.stringify({ systemId: 'bcycle_madison', role: 'ride', mode: 'bike', from: [-89.38, 43.07], to: [-89.41, 43.07], units: 'imperial', ...o })
+    // A destination out of town is fine (~15 km past Madison's docks); Chicago or Paris is not.
+    expect((await call(app, '/api/routes', { method: 'POST', body: ride({ to: [-89.6, 42.92] }) })).status).toBe(200)
+    for (const far of [{ to: [-87.63, 41.88] }, { from: [2.35, 48.86] }]) {
+      const res = await call(app, '/api/routes', { method: 'POST', body: ride(far) })
+      expect([res.status, ((await res.json()) as { error: { code: string } }).error.code]).toEqual([422, 'no_route'])
+      expect((await call(app, '/api/route', { method: 'POST', body: ride(far) })).status).toBe(422)
+    }
+    expect(asked).toHaveLength(1)
+    const { encodePolyline } = await import('../src/lib/polyline')
+    const across = encodePolyline([[-89.38, 43.07], [-87.63, 41.88]], 6)
+    expect((await call(app, '/api/route-details', { method: 'POST', body: JSON.stringify({ systemId: 'bcycle_madison', polyline: across }) })).status).toBe(400)
+  })
+
+  it('names a dropped pin only near a BCycle city (no lookups for the rest of the world)', async () => {
+    const asked: unknown[] = []
+    const app = createApp(deps({ reversePlace: async (at) => (asked.push(at), { kind: 'mapPick', name: 'Memorial Union', coord: at }) }))
+    expect(await (await call(app, '/api/reverse?lat=43.0766&lon=-89.4000')).json()).toMatchObject({ place: { name: 'Memorial Union' } })
+    expect(await (await call(app, '/api/reverse?lat=-33.86&lon=151.21')).json()).toEqual({ place: null })
+    expect(asked).toHaveLength(1)
+  })
+
   it('rejects bad input', async () => {
     const app = createApp(deps())
     const bad = await call(app, '/api/routes', { method: 'POST', body: '{"systemId":"bcycle_madison","role":"ride"}' })
@@ -484,7 +510,7 @@ describe('upstream layer', () => {
       expect(await status({ via: Array.from({ length: LOOP.maxVia + 1 }, () => ({ coord: [-89.4, 43.08] })) })).toBe(400)
       expect(await status({ via: [{ coord: [200, 43] }] })).toBe(400)
       expect(await status({ via: [{ coord: [-88.0, 43.07] }] })).toBe(400) // ~110 km away
-      expect(await status({ to: [-87.9, 43.07] })).toBe(400)
+      expect(await status({ to: [-87.9, 43.07] })).toBe(422) // beyond the city's reach, like any route
     })
 
     it('passes no_route and a busy server on like /api/routes', async () => {

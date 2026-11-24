@@ -96,7 +96,7 @@ export function createUpstream(deps: UpstreamDeps): UpstreamFetch {
     else if (req.method === 'POST') body = await postJson<unknown>(req.url, req.body, opts)
     // An authorized GET is never shared with another caller's identical request.
     else body = await fetchJson<unknown>(req.url, { ...opts, dedupe: !req.headers?.Authorization })
-    return (req.transform ? req.transform(body) : body) as T
+    return body as T
   }
 
   /**

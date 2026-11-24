@@ -107,7 +107,7 @@ function oneWay(input: LoopInput, length: number, rnd: () => number): { via: Loo
   })
   if (ends.length === 0) return null
   const cands = ring(points, start, length * 0.15, length * 0.85, LOOP.candidatesPerPick * 2, rnd)
-  let best: { v: number; a: Weighted | null; e: (typeof ends)[number] } | null = null
+  let best: { v: number; a: Weighted; e: (typeof ends)[number] } | null = null
   for (const e of ends) {
     const jitter = rnd()
     for (const a of cands) {
@@ -118,21 +118,30 @@ function oneWay(input: LoopInput, length: number, rnd: () => number): { via: Loo
       const v = a.w - 12 * off + jitter
       if (!best || v > best.v) best = { v, a, e }
     }
-    if (!best) best = { v: -Infinity, a: null, e }
   }
-  if (!best) return null
-  if (best.a && Math.abs(best.a.d + haversine(best.a.p.coord, best.e.coord) - length) / length < 0.35) return { via: [real(best.a.p)], end: best.e }
-  // No trail point fits: bow the route out to one side so start → via → end is about the wanted length.
-  const chord = haversine(start, best.e.coord)
-  const mid: LngLat = [(start[0] + best.e.coord[0]) / 2, (start[1] + best.e.coord[1]) / 2]
+  if (best && Math.abs(best.a.d + haversine(best.a.p.coord, best.e.coord) - length) / length < 0.35) return { via: [real(best.a.p)], end: best.e }
+  // No trail point fits: bow the route out to one side so start → via → end is about the wanted length — toward the
+  // best candidate's end dock, else one picked with the seed (so "Try another" can end somewhere else too).
+  const end = best?.e ?? ends[Math.floor(rnd() * ends.length)]!
+  const chord = haversine(start, end.coord)
+  const mid: LngLat = [(start[0] + end.coord[0]) / 2, (start[1] + end.coord[1]) / 2]
   const bow = Math.sqrt(Math.max(0, (length / 2) ** 2 - (chord / 2) ** 2))
-  return { via: bow > 50 ? [made(destination(mid, bow, bearing(start, best.e.coord) + (rnd() < 0.5 ? 90 : -90)))] : [], end: best.e }
+  // Always one via point: POST /api/loop routes through at least one.
+  return { via: [made(bow > 50 ? destination(mid, bow, bearing(start, end.coord) + (rnd() < 0.5 ? 90 : -90)) : mid)], end }
 }
+
+/**
+ * The largest straight-line size planLoop works with: every point it sends (waypoints, the end dock) must stay within
+ * LOOP.maxRadiusMeters of the start, or POST /api/loop refuses the ride. A triangle's corners lie within half its
+ * perimeter of the start (and so do its candidate points: at most 1.5 × a side); a one-way ride's end and waypoint
+ * within its length. A little margin keeps rounding on the right side.
+ */
+export const maxLoopSize = (backToStart: boolean): number => (backToStart ? 2 : 1) * LOOP.maxRadiusMeters * 0.98
 
 /** The waypoints (and end dock) of a ride of about `targetMeters`; see LoopInput. */
 export function planLoop(input: LoopInput): LoopPlan {
   const rnd = seededRandom(input.seed)
-  const straight = (input.targetMeters / LOOP.detourFactor) * (input.scale ?? 1)
+  const straight = Math.min(maxLoopSize(input.roundTrip), (input.targetMeters / LOOP.detourFactor) * (input.scale ?? 1))
   if (!input.roundTrip) {
     const one = oneWay(input, straight, rnd)
     if (one) return { ...one, fellBackToRoundTrip: false }

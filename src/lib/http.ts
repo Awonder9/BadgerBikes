@@ -205,7 +205,7 @@ export function postJson<T>(url: string, body: unknown, opts: RequestOptions = {
 
 /**
  * POST a form (URLSearchParams: urlencoded; FormData: multipart) and parse the JSON response. Never de-duplicated.
- * Used for upstreams that don't take JSON (Overpass queries, Strava's OAuth and uploads).
+ * Used for upstreams that don't take JSON (Strava's OAuth and uploads).
  */
 export function postForm<T>(url: string, form: URLSearchParams | FormData, opts: RequestOptions = {}): Promise<T> {
   const { signal, timeoutMs = HTTP.timeoutMs } = opts

@@ -142,9 +142,9 @@ export const en = {
   recentCount: (n: number) => (n === 1 ? '1 place' : `${n} places`),
   clearRecentAria: 'Clear recent places',
   storageNote:
-    'Saved places, recent destinations, starred stations and your current ride are stored on this device only. Clearing this site’s data (cookies and site data) removes them. With alerts on during a ride, the app’s server also keeps that ride’s timer and end dock (never your location) until the ride ends. The app also sends anonymous usage counts (no identifier or location); Do Not Track or Global Privacy Control turns them off.',
+    'Saved places, recent destinations, starred stations, your ride history and your current ride are stored on this device only. Clearing this site’s data (cookies and site data) removes them. With alerts on during a ride, the app’s server also keeps that ride’s timer and end dock (never your location) until the ride ends. The app also sends anonymous usage counts (no identifier or location); Do Not Track or Global Privacy Control turns them off.',
   storageNoteNative:
-    'Saved places, recent destinations, starred stations and your current ride are stored on this phone only; deleting the app removes them. Ride alerts are scheduled on the phone itself, so the app’s server keeps nothing about your ride. The app also sends anonymous usage counts (no identifier or location).',
+    'Saved places, recent destinations, starred stations, your ride history and your current ride are stored on this phone only; deleting the app removes them. Ride alerts are scheduled on the phone itself, so the app’s server keeps nothing about your ride. The app also sends anonymous usage counts (no identifier or location).',
   aboutLink: 'About & attributions',
 
   // About
@@ -262,6 +262,12 @@ export const en = {
     minutesWord: 'min',
     saveTime: 'Save',
     deleteRide: 'Delete this ride',
+    deleteRideConfirm: 'Delete this ride from this device? This can’t be undone.',
+    confirmDelete: 'Delete',
+    recordRides: 'Record my rides',
+    deleteAll: 'Delete all rides',
+    deleteAllConfirm: (n: number) => (n === 1 ? 'Delete your 1 ride from this device? This can’t be undone.' : `Delete all ${n} rides from this device? This can’t be undone.`),
+    showMore: (n: number) => (n === 1 ? 'Show 1 more ride' : `Show ${n} more rides`),
   },
   review: {
     title: (period: string) => `Review: ${period}`,
@@ -315,6 +321,7 @@ export const en = {
     },
     connectFirst: 'Connect Strava above to send this ride.',
     noLine: 'This ride is too old to send: only recent rides keep their route.',
+    notOverYet: 'You can send this ride once it’s over (its time ends later). Or correct its time above.',
     rideName: (from: string, to: string) => `Bike-share ride: ${from} → ${to}`,
     loopName: (from: string) => `Bike-share ride from ${from}`,
     activityName: 'Activity name',
@@ -425,6 +432,7 @@ export const en = {
   errorRouteOffline: 'Couldn’t reach the route server. Check your connection, then try again.',
   errorRouteFailed: 'Couldn’t get a route right now. Please try again in a moment.',
   errorTooClose: 'The destination is right where the ride starts. Pick one farther away.',
+  errorTooFar: 'This destination is too far from this city’s bikes. Pick one nearer.',
   errorBusy:
     'The route server is busy right now. We use a free public routing service that handles about one request per second for everyone, so yours couldn’t get through. Please try again in a few seconds.',
   tryAgainIn: (s: number) => `Try again in ${s}s`,

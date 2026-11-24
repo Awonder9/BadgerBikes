@@ -1,14 +1,14 @@
 // Live status of a ride in progress (timer, end dock, replacements) and the one-shot alerts for it.
 import { useEffect, useRef } from 'react'
 import { useShallow } from 'zustand/react/shallow'
-import { LOOP, RIDE } from '../../config'
+import { RIDE } from '../../config'
 import { useNow, useStationsSnapshot } from '../../data/hooks'
 import { haversine } from '../../lib/geo'
 import { locationAllowed } from '../../location/geoSource'
 import { useLocationStore } from '../../location/locationStore'
 import { showAlertNow } from '../../native/notifications'
 import { ALERT_TAGS, endDockState, replacementDocks, rideTimer, type AlertKind } from '../../ride/rideProgress'
-import { useRideStore, rideActive } from '../../ride/rideStore'
+import { loopsBack, useRideStore, rideActive } from '../../ride/rideStore'
 import { isTrip, useTripStore } from '../../ride/tripStore'
 import { useAppStore } from '../../store/appStore'
 import { currentMessages } from '../../i18n/useT'
@@ -18,17 +18,24 @@ import type { RidePlan } from './useRidePlan'
 
 export function useRideStatus(plan: RidePlan) {
   const { systemId, partySize } = useAppStore(useShallow((s) => ({ systemId: s.systemId, partySize: s.settings.partySize })))
-  const { startedAt, destination, active } = useRideStore(useShallow((s) => ({ startedAt: s.rideStartedAtMs, destination: s.destination, active: rideActive(s) })))
+  const { startedAt, destination, active, roundTrip } = useRideStore(useShallow((s) => ({ startedAt: s.rideStartedAtMs, destination: s.destination, active: rideActive(s), roundTrip: loopsBack(s) })))
   const { snapshot } = useStationsSnapshot(systemId, { active })
   // The clock ticks only while a ride timer runs (this hook is used by always-mounted pieces).
   const now = useNow(1000, active && startedAt !== null)
   const timer = active && startedAt ? rideTimer(startedAt, now, plan.includedMinutes) : null
   const endStation = plan.end?.station
-  const dock = endDockState(endStation, partySize)
+  // A loop just started from its own (perhaps full) end dock: not watched until the feed shows the bikes taken.
+  const settling = roundTrip && startedAt !== null && now - startedAt < RIDE.loopEndWatchDelayMs
+  const dock = settling ? 'ok' : endDockState(endStation, partySize)
   const near = destination?.coord ?? endStation?.coord
   const replacements = active && endStation && near && snapshot && dock !== 'ok' ? replacementDocks(snapshot.stations, endStation.id, near, partySize) : []
   return { active, startedAt, timer, endStation, dock, replacements }
 }
+
+/** A position's accuracy widens the arrival circle (RIDE.arrivedMeters) by up to this much. */
+const ARRIVAL_ACCURACY_ALLOWANCE = 50
+/** The farthest from the destination a position can be and still count as arrived. */
+const ARRIVAL_REACH_METERS = RIDE.arrivedMeters + ARRIVAL_ACCURACY_ALLOWANCE
 
 /**
  * Arrival: when the rider's location is already available (permission granted earlier) and they are
@@ -36,11 +43,20 @@ export function useRideStatus(plan: RidePlan) {
  * Never prompts for location by itself.
  */
 export function useArrivalCheck(): void {
-  const { active, destination, roundTrip } = useRideStore(
-    useShallow((s) => ({ active: s.openedParts.length > 0, destination: s.destination, roundTrip: !!s.loop && s.destination?.stationId === s.startId })),
+  const { active, destination, startsThere, startedAt, plannedS, continuing } = useRideStore(
+    useShallow((s) => ({
+      active: s.openedParts.length > 0,
+      destination: s.destination,
+      // The ride starts within arrival range of where it ends: a loop back to its start dock, or a destination right by
+      // the start (the first link is opened there, which must not count as arriving).
+      startsThere: !!s.destination && (loopsBack(s) || (!!s.route && haversine(s.route.from, s.destination.coord) <= ARRIVAL_REACH_METERS)),
+      startedAt: s.rideStartedAtMs,
+      plannedS: s.route?.duration ?? null,
+      continuing: s.continuingRide,
+    })),
   )
   const fix = useLocationStore((s) => s.fix)
-  // A loop back to the start dock begins at its destination: it can only be arrived at after leaving (per destination).
+  // Such a ride can only be arrived at after leaving (per destination).
   const away = useRef<{ from: unknown; left: boolean }>({ from: null, left: false })
   useEffect(() => {
     if (!active) return
@@ -57,11 +73,14 @@ export function useArrivalCheck(): void {
     if (!active || !fix || !destination || fix.accuracy > RIDE.arrivedMaxAccuracyMeters) return
     const meters = haversine(fix.coord, destination.coord)
     if (away.current.from !== destination) away.current = { from: destination, left: false }
-    if (roundTrip && !away.current.left) {
-      if (meters >= LOOP.awayBeforeArrivalMeters) away.current.left = true
-      return
+    if (startsThere && !away.current.left) {
+      // Seen far enough away — or, after a reload that didn't see the rider leave, ridden for a good part of the route
+      // (not a timer carried over from an earlier leg, which says nothing about this one).
+      const ridden = startedAt !== null && !continuing && plannedS !== null && fix.timestampMs - startedAt >= plannedS * 1000 * RIDE.awayAfterPlannedShare
+      if (meters >= RIDE.awayBeforeArrivalMeters || ridden) away.current.left = true
+      if (!ridden) return
     }
-    if (meters <= RIDE.arrivedMeters + Math.min(fix.accuracy, 50)) {
+    if (meters <= RIDE.arrivedMeters + Math.min(fix.accuracy, ARRIVAL_ACCURACY_ALLOWANCE)) {
       // A trip's stop with a leg after it: the planner asks whether the leg is done and the bike docked (the rider
       // may ride on with it), so the ride and its timer stay as they are until then.
       const trip = useTripStore.getState()
@@ -72,7 +91,7 @@ export function useArrivalCheck(): void {
       useRideStore.getState().finishPlan()
       useRideStore.getState().endRide()
     }
-  }, [active, fix, destination, roundTrip])
+  }, [active, fix, destination, startsThere, startedAt, plannedS, continuing])
 }
 
 /**

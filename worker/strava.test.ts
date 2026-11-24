@@ -99,9 +99,15 @@ describe('Strava', () => {
     expect(gpx).toContain(new Date(NOW - 3_600_000 + 900_000).toISOString().replace('.000Z', 'Z'))
   })
 
+  it('takes a ride from any city (the rider’s own, to their own account)', async () => {
+    const { post } = appWith(() => ({ id_str: '1', error: null, activity_id: null }))
+    const boulder = encodePolyline([[-105.2705, 40.015], [-105.28, 40.02]], 6)
+    expect((await post('/api/strava/upload', upload({ polyline: boulder }))).status).toBe(200)
+  })
+
   it('refuses implausible uploads', async () => {
     const { post, asked } = appWith(() => ({}))
-    for (const o of [{ elapsedS: 10 }, { elapsedS: 13 * 3600 }, { startedAtMs: NOW + 3_600_000 }, { externalId: 'other-1' }, { name: '  ' }, { polyline: '!' }, { accessToken: 'x' }, { lang: 'fr' }]) {
+    for (const o of [{ elapsedS: 10 }, { elapsedS: 13 * 3600 }, { startedAtMs: NOW + 3_600_000 }, { startedAtMs: NOW - 600_000, elapsedS: 1800 }, { externalId: 'other-1' }, { name: '  ' }, { polyline: '!' }, { accessToken: 'x' }, { lang: 'fr' }]) {
       expect((await post('/api/strava/upload', upload(o))).status).toBe(400)
     }
     expect(asked).toHaveLength(0)

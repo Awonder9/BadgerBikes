@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import { api } from '../api/client'
 import { GEOCODE } from '../config'
 import { qk } from '../data/hooks'
+import { nearAnySystem } from '../data/systems'
 import { AppError, toAppError } from '../lib/errors'
 import type { LngLat, Place } from '../types'
 import { normalizeQuery } from './photon'
@@ -51,7 +52,8 @@ export function useReverseGeocode(coord: LngLat | null): { place: Place | null; 
   const q = useQuery({
     queryKey: qk.reverse(lon5, lat5),
     queryFn: ({ signal }) => api.reverse(coord as LngLat, signal),
-    enabled: coord !== null,
+    // Far from every BCycle city the server names nothing anyway: no request ("Dropped pin").
+    enabled: coord !== null && nearAnySystem(coord),
     staleTime: 60 * 60_000,
     retry: false,
   })

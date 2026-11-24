@@ -150,9 +150,24 @@ describe('ride records', () => {
     const open = ride({ id: 'open', endedAtMs: null })
     const h = restoreHistory({ rides: [good, open, { junk: true }], active: { id: 'open', planKey: 'k' }, seenReviews: ['week:2026-11-16', 'bogus'] })
     expect(h.rides.map((r) => r.id)).toEqual(['ok', 'open'])
-    expect(h.active).toEqual({ id: 'open', planKey: 'k' })
+    expect(h.active).toEqual({ id: 'open', planKey: 'k', ridden: true }) // saved by an older version: taken as set off on
     expect(h.seenReviews).toEqual(['week:2026-11-16'])
     // An open ride nobody is recording any more can't be closed: dropped.
     expect(restoreHistory({ rides: [open] }).rides).toEqual([])
+  })
+})
+
+describe('reviews of a long history', () => {
+  it('stay quick: each ride’s day is worked out once, not once per day of the period', () => {
+    const tz = 'America/Chicago'
+    const start = Date.UTC(2026, 0, 1, 18)
+    const rides = Array.from({ length: HISTORY.maxRides }, (_, i) => ride({ id: `x${i}`, startedAtMs: start + i * 4 * 3_600_000, endedAtMs: start + i * 4 * 3_600_000 + 900_000 }))
+    const t0 = performance.now()
+    const year = buildReview(rides, periodContaining('year', '2026-06-01'), tz)
+    const month = buildReview(rides, periodContaining('month', '2026-03-10'), tz)
+    expect(performance.now() - t0).toBeLessThan(1_000)
+    expect(year.buckets.reduce((a, b) => a + b, 0)).toBe(year.rides)
+    expect(month.buckets).toHaveLength(31)
+    expect(month.buckets.reduce((a, b) => a + b, 0)).toBe(month.rides)
   })
 })

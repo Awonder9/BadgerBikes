@@ -2,42 +2,12 @@
 // favorite docks, habits, a ride persona. Pure: no DOM; the time zone (the rider's own) is injected, and periods are
 // calendar days in it (src/lib/usage.ts day keys, DST-safe).
 import { HISTORY } from '../config'
-import { addDays, dayGap, dayKey, hourOf } from '../lib/usage'
+import { addDays, dayGap } from '../lib/usage'
 import type { PathKind } from '../routing/details'
+import { previousPeriod, ridesIn, startOf, weekday, type Period } from './periods'
 import { rideSecondsOf, type RideRecord } from './rides'
 
-export type PeriodKind = 'week' | 'month' | 'year'
-
-export interface Period {
-  kind: PeriodKind
-  /** "week:2026-11-17" (its Monday), "month:2026-11", "year:2026" — also what "seen" remembers. */
-  key: string
-  /** First and last day (YYYY-MM-DD), inclusive. */
-  first: string
-  last: string
-}
-
-const pad = (n: number) => String(n).padStart(2, '0')
-const weekday = (day: string) => new Date(`${day}T00:00:00Z`).getUTCDay()
-const daysInMonth = (y: number, m: number) => new Date(Date.UTC(y, m, 0)).getUTCDate() // m: 1–12
-
-/** The week, month or year that contains `day` (YYYY-MM-DD). Weeks start on HISTORY.weekStartsOn (Monday). */
-export function periodContaining(kind: PeriodKind, day: string): Period {
-  const y = Number(day.slice(0, 4))
-  const m = Number(day.slice(5, 7))
-  if (kind === 'year') return { kind, key: `year:${y}`, first: `${y}-01-01`, last: `${y}-12-31` }
-  if (kind === 'month') return { kind, key: `month:${y}-${pad(m)}`, first: `${y}-${pad(m)}-01`, last: `${y}-${pad(m)}-${pad(daysInMonth(y, m))}` }
-  const first = addDays(day, -((weekday(day) - HISTORY.weekStartsOn + 7) % 7))
-  return { kind, key: `week:${first}`, first, last: addDays(first, 6) }
-}
-
-export const previousPeriod = (p: Period): Period => periodContaining(p.kind, addDays(p.first, -1))
-export const nextPeriod = (p: Period): Period => periodContaining(p.kind, addDays(p.last, 1))
-
-/** Finished rides that started in `p` (in `timeZone`). */
-export function ridesIn(rides: readonly RideRecord[], p: Period, timeZone: string): RideRecord[] {
-  return rides.filter((r) => r.endedAtMs !== null && dayKey(r.startedAtMs, timeZone) >= p.first && dayKey(r.startedAtMs, timeZone) <= p.last)
-}
+export { nextPeriod, periodContaining, previousPeriod, reviewToOffer, ridesIn, type Period, type PeriodKind } from './periods'
 
 export type Persona = 'trailblazer' | 'explorer' | 'commuter' | 'earlyBird' | 'nightOwl' | 'weekendWarrior' | 'loopLover' | 'steady'
 export type TimeOfDay = 'morning' | 'midday' | 'evening' | 'night'
@@ -114,19 +84,26 @@ export function buildReview(all: readonly RideRecord[], p: Period, timeZone: str
   const prev = ridesIn(all, previousPeriod(p), timeZone)
   const meters = rides.reduce((s, r) => s + r.meters, 0)
   const seconds = rides.reduce((s, r) => s + rideSecondsOf(r), 0)
-  const days = [...new Set(rides.map((r) => dayKey(r.startedAtMs, timeZone)))].sort()
+  const days = [...new Set(rides.map((r) => startOf(r, timeZone).day))].sort()
   const pairs = top(rides.map((r) => `${r.startName}\u0000${r.endName}`))
   const withPaths = rides.filter((r) => Object.keys(r.pathM).length > 0)
   const pathTotal = withPaths.reduce((s, r) => s + Object.values(r.pathM).reduce((a, b) => a + (b ?? 0), 0), 0)
   const trailMeters = withPaths.reduce((s, r) => s + TRAIL_KINDS.reduce((a, k) => a + (r.pathM[k] ?? 0), 0), 0)
-  const hours = rides.map((r) => hourOf(r.startedAtMs, timeZone))
+  const hours = rides.map((r) => startOf(r, timeZone).hour)
   const tod = top(hours.map(timeOfDayOf))
   const weekdays = days.map(weekday)
-  const wd = top(rides.map((r) => String(weekday(dayKey(r.startedAtMs, timeZone)))))
+  const wd = top(rides.map((r) => String(weekday(startOf(r, timeZone).day))))
+  // Rides per day (or month, for a year), counted in one pass.
+  const perBucket = new Map<string, number>()
+  for (const r of rides) {
+    const day = startOf(r, timeZone).day
+    const key = p.kind === 'year' ? day.slice(5, 7) : day
+    perBucket.set(key, (perBucket.get(key) ?? 0) + 1)
+  }
   const buckets =
     p.kind === 'year'
-      ? Array.from({ length: 12 }, (_, m) => rides.filter((r) => Number(dayKey(r.startedAtMs, timeZone).slice(5, 7)) === m + 1).length)
-      : Array.from({ length: dayGap(p.first, p.last) + 1 }, (_, i) => rides.filter((r) => dayKey(r.startedAtMs, timeZone) === addDays(p.first, i)).length)
+      ? Array.from({ length: 12 }, (_, m) => perBucket.get(String(m + 1).padStart(2, '0')) ?? 0)
+      : Array.from({ length: dayGap(p.first, p.last) + 1 }, (_, i) => perBucket.get(addDays(p.first, i)) ?? 0)
   const kcal = rides.reduce((s, r) => s + HISTORY.met[r.electric ? 'electric' : 'classic'] * HISTORY.assumedWeightKg * (rideSecondsOf(r) / 3600), 0)
   const prevMeters = prev.reduce((s, r) => s + r.meters, 0)
   const docks = new Set(rides.flatMap((r) => [`${r.systemId}:${r.startStationId}`, ...(r.endStationId ? [`${r.systemId}:${r.endStationId}`] : [])])).size
@@ -179,20 +156,3 @@ function personaOf(r: Review, hours: readonly number[], weekdays: readonly numbe
   return 'steady'
 }
 
-/**
- * The review to offer on the home panel now, if any: the year's from December through January (Wrapped season), else
- * last month's in the first days of a month, else last week's in the first days of a week — only one with rides that
- * the rider hasn't opened yet.
- */
-export function reviewToOffer(rides: readonly RideRecord[], nowMs: number, timeZone: string, seen: readonly string[]): Period | null {
-  const today = dayKey(nowMs, timeZone)
-  const month = Number(today.slice(5, 7)) - 1
-  const candidates: Period[] = []
-  if (month >= HISTORY.yearlyFromMonth) candidates.push(periodContaining('year', today))
-  else if (month === 0) candidates.push(periodContaining('year', addDays(today, -40)))
-  const thisMonth = periodContaining('month', today)
-  if (dayGap(thisMonth.first, today) < HISTORY.monthlyOfferDays) candidates.push(previousPeriod(thisMonth))
-  const thisWeek = periodContaining('week', today)
-  if (dayGap(thisWeek.first, today) < HISTORY.weeklyOfferDays) candidates.push(previousPeriod(thisWeek))
-  return candidates.find((p) => !seen.includes(p.key) && ridesIn(rides, p, timeZone).length > 0) ?? null
-}

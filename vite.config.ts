@@ -46,13 +46,15 @@ export default defineConfig(({ mode }) => {
           // The Capacitor plugins' chunks (src/native/plugins.ts and the plugins' lazy parts) are loaded only inside
           // the iOS/Android apps: named native-* so the web app's service worker can leave them out. (A chunk group
           // would also take Vite's preload helper along, which the startup code shares.)
-          // Each city's trails and scenery for "Just ride" (src/data/scenic/*.json) is its own scenic-* chunk, loaded
-          // only for that city and only when a loop is planned: the service worker leaves them out too.
+          // Each city's trails and scenery for "Just ride" (src/data/scenic/*.json) is its own scenery-* chunk, loaded
+          // only for that city and only when a loop is planned: the service worker leaves them out too. (Not scenic-*:
+          // the loop planner's own code chunks are named after src/routing/scenic.ts and src/data/scenic.ts, and the
+          // app's code must stay in the precache.)
           chunkFileNames: (chunk) =>
             NATIVE_CHUNK.test(chunk.facadeModuleId ?? '')
               ? 'assets/native-[name]-[hash].js'
               : SCENIC_CHUNK.test(chunk.facadeModuleId ?? '')
-                ? 'assets/scenic-[name]-[hash].js'
+                ? 'assets/scenery-[name]-[hash].js'
                 : 'assets/[name]-[hash].js',
         },
       },
@@ -92,7 +94,7 @@ export default defineConfig(({ mode }) => {
           globPatterns: ['**/*.{js,css,html,svg,png,webmanifest}'],
           // The usage dashboard is for the operator: never downloaded to riders' phones. Nor are the native apps'
           // plugins, which a browser never loads.
-          globIgnores: ['analytics.html', 'assets/analytics-*', 'assets/native-*', 'assets/scenic-*'],
+          globIgnores: ['analytics.html', 'assets/analytics-*', 'assets/native-*', 'assets/scenery-*'],
           navigateFallback: 'index.html',
           navigateFallbackDenylist: [/^\/api\//, /^\/analytics/],
           maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
