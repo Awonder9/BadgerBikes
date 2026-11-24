@@ -41,6 +41,8 @@ playwright/.cache
 *.p12
 *.mobileprovision
 *.provisionprofile
+*.pem
+*.key
 google-services.json
 GoogleService-Info.plist
 

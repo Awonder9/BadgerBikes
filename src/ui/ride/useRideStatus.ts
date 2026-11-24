@@ -49,7 +49,8 @@ export function useArrivalCheck(): void {
     }
   }, [active])
   useEffect(() => {
-    if (!active || !fix || !destination) return
+    // A coarse fix (cell towers, a jump) could be anywhere near: only an accurate one may end the ride.
+    if (!active || !fix || !destination || fix.accuracy > RIDE.arrivedMaxAccuracyMeters) return
     if (haversine(fix.coord, destination.coord) <= RIDE.arrivedMeters + Math.min(fix.accuracy, 50)) {
       // A trip's stop with a leg after it: the planner asks whether the leg is done and the bike docked (the rider
       // may ride on with it), so the ride and its timer stay as they are until then.

@@ -7,8 +7,19 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Override point for customization after application launch.
+        excludeWebViewDataFromBackup()
         return true
+    }
+
+    /// Saved places (Home, Work), recent destinations and the ride plan live in the web view's storage and stay on
+    /// this phone, as the app says: its data folder (Library/WebKit) is left out of iCloud and computer backups.
+    /// Set on every launch, since WebKit may create the folder anew.
+    private func excludeWebViewDataFromBackup() {
+        guard var webKit = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask).first?.appendingPathComponent("WebKit", isDirectory: true) else { return }
+        try? FileManager.default.createDirectory(at: webKit, withIntermediateDirectories: true)
+        var values = URLResourceValues()
+        values.isExcludedFromBackup = true
+        try? webKit.setResourceValues(values)
     }
 
     func applicationWillResignActive(_ application: UIApplication) {

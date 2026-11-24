@@ -16,7 +16,7 @@ import { shareTextFile } from '../../native/share'
 import { waitForFix } from '../../location/locationStore'
 import { useMapApiGetter } from '../../map/mapApiContext'
 import { passChoiceMatters } from '../../ride/rideProgress'
-import { chooseRoute, docksAlong, loadRideRoute, reoptimizeStops, useRideStore, type RideErrorKind } from '../../ride/rideStore'
+import { chooseRoute, docksAlong, loadRideRoute, reoptimizeStops, routeChoiceLocked, useRideStore, type RideErrorKind } from '../../ride/rideStore'
 import { rideSeconds, type RouteDock } from '../../ride/stationsAlongRoute'
 import { sameRoute } from '../../routing/sameRoute'
 import { findSavedPlace, useAppStore } from '../../store/appStore'
@@ -88,6 +88,8 @@ export function RidePlannerPanel() {
   const viaCounts = useMemo(() => ride.routes.map((r, i) => viaPointCount(r, BIKE_ROUTING.options[i]?.handoff ?? 'docks')), [ride.routes])
   const order = along.map((s) => s.station.id)
   const riding = ride.openedParts.length > 0
+  // Mid-ride, choosing another option would clear the ride's timer and alerts: the options are locked until it ends.
+  const routeLocked = routeChoiceLocked(ride)
 
   return (
     <section aria-label={t.planARide} className="space-y-3 p-4">
@@ -154,8 +156,9 @@ export function RidePlannerPanel() {
                     role="radio"
                     aria-checked={i === ride.routeIndex}
                     aria-label={t.routeAria(label, formatDuration(r.duration, lang), formatDistance(r.distance, units, lang), sameAs, dockCounts[i] ?? 0, stops)}
-                    onClick={() => snapshot && chooseRoute(i, snapshot, partySize)}
-                    className={`flex min-h-20 flex-col items-center justify-center rounded-xl px-1 py-2 text-center ring-1 ${i === ride.routeIndex ? 'bg-brand-50 ring-2 ring-brand-700 dark:bg-brand-900' : 'ring-slate-300 dark:ring-slate-600'}`}
+                    disabled={routeLocked && i !== ride.routeIndex}
+                    onClick={() => snapshot && !routeLocked && chooseRoute(i, snapshot, partySize)}
+                    className={`flex min-h-20 flex-col items-center justify-center rounded-xl px-1 py-2 text-center ring-1 disabled:opacity-60 ${i === ride.routeIndex ? 'bg-brand-50 ring-2 ring-brand-700 dark:bg-brand-900' : 'ring-slate-300 dark:ring-slate-600'}`}
                   >
                     <span className="whitespace-nowrap text-[13px] font-semibold leading-tight">{label}</span>
                     <span className="mt-1 text-lg font-bold leading-tight">~{formatDuration(r.duration, lang)}</span>
@@ -165,6 +168,7 @@ export function RidePlannerPanel() {
                 )
               })}
             </div>
+            {routeLocked && <p className="text-xs leading-snug text-slate-500">{t.routeLockedMidRide}</p>}
             <p className="text-xs leading-snug text-slate-500">{t.handoffHelp(plan.handoff, plan.viaCount)}</p>
           </div>
           <TripSummary plan={plan} units={units} />
@@ -568,20 +572,23 @@ function RouteError({ error }: { error: { kind: RideErrorKind; message: string }
   }, [counting, until])
   const now = useNow(500, counting)
   const { t } = useI18n()
-  const message = { busy: t.errorBusy, unroutable: t.errorUnroutable, noRoute: t.errorNoRoute, offline: t.errorRouteOffline, other: t.errorRouteFailed }[error.kind]
+  const message = { busy: t.errorBusy, unroutable: t.errorUnroutable, noRoute: t.errorNoRoute, offline: t.errorRouteOffline, tooClose: t.errorTooClose, other: t.errorRouteFailed }[error.kind]
   const wait = counting ? Math.max(1, Math.ceil((until - now) / 1000)) : 0
   return (
     <div role="alert" className={`space-y-2 rounded-xl p-3 ${error.kind === 'busy' ? 'bg-amber-50 text-amber-950 dark:bg-amber-950 dark:text-amber-100' : 'bg-red-50 text-red-900 dark:bg-red-950 dark:text-red-200'}`}>
       {error.kind === 'busy' && <p className="font-semibold">{t.routeServerBusy}</p>}
       <p className="text-sm">{message}</p>
-      <button
-        type="button"
-        disabled={wait > 0}
-        className="min-h-11 rounded-lg bg-white px-3 text-sm font-semibold ring-1 ring-current disabled:opacity-60 dark:bg-slate-900"
-        onClick={() => useRideStore.setState({ status: 'idle' })}
-      >
-        {wait > 0 ? t.tryAgainIn(wait) : t.tryAgain}
-      </button>
+      {/* A destination right at the start stays too close however often it is tried: the rider picks another. */}
+      {error.kind !== 'tooClose' && (
+        <button
+          type="button"
+          disabled={wait > 0}
+          className="min-h-11 rounded-lg bg-white px-3 text-sm font-semibold ring-1 ring-current disabled:opacity-60 dark:bg-slate-900"
+          onClick={() => useRideStore.setState({ status: 'idle' })}
+        >
+          {wait > 0 ? t.tryAgainIn(wait) : t.tryAgain}
+        </button>
+      )}
     </div>
   )
 }
@@ -645,6 +652,8 @@ function ShareRideButton({ systemId, startId, destination, routeIndex }: { syste
 function ExactRouteFile({ plan }: { plan: RidePlan }) {
   const { route, destination, bikeAt } = useRideStore(useShallow((s) => ({ route: s.route, destination: s.destination, bikeAt: s.bikeAt })))
   const [msg, setMsg] = useState<string | null>(null)
+  // One file at a time: a second tap while the share sheet is open would be refused and fall back to a download.
+  const [saving, setSaving] = useState(false)
   const { t } = useI18n()
   const systemId = useAppStore((s) => s.systemId)
   // The routed last stretch to an off-route end dock (the map's request, shared), so the track reaches it on streets.
@@ -700,7 +709,15 @@ function ExactRouteFile({ plan }: { plan: RidePlan }) {
     <div className="space-y-2 rounded-xl bg-slate-50 p-3 dark:bg-slate-900">
       <p className="text-sm font-medium">{t.preferKomoot}</p>
       <p className="text-sm text-slate-600 dark:text-slate-300">{t.komootIntro}</p>
-      <button type="button" onClick={() => void save()} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-white px-3 text-sm font-semibold ring-1 ring-slate-300 dark:bg-slate-950 dark:ring-slate-600">
+      <button
+        type="button"
+        disabled={saving}
+        onClick={() => {
+          setSaving(true)
+          void save().finally(() => setSaving(false))
+        }}
+        className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-white px-3 text-sm font-semibold ring-1 ring-slate-300 disabled:opacity-60 dark:bg-slate-950 dark:ring-slate-600"
+      >
         <Icon name="download" size={18} /> {t.exactRouteButton}
       </button>
       <details className="text-xs text-slate-500">

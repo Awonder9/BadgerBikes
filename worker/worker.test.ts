@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { APP, BIKE_ROUTING, NATIVE_APP } from '../src/config'
+import { APP, BIKE_ROUTING, NATIVE_APP, UPSTREAM } from '../src/config'
 import { resetHttpState, setFetchImpl } from '../src/lib/http'
 import type { PushRideRequest, StatsResponse, UsageRequest } from '../src/api/contract'
 import { makeSnapshot, makeStation } from '../src/test/factories'
@@ -405,6 +405,28 @@ describe('upstream layer', () => {
     const up2 = createUpstream({ gateFor: () => denied })
     await expect(up2({ ...req, cacheKey: 'other' })).rejects.toMatchObject({ code: 'upstream_unavailable' })
     restore()
+  })
+
+  it('with its gate unreachable, still keeps the public servers’ spacing (in this isolate) instead of none', async () => {
+    vi.useFakeTimers()
+    const started: number[] = []
+    const restore = setFetchImpl(async () => {
+      started.push(Date.now())
+      return new Response('{"a":1}', { headers: { 'Content-Type': 'application/json' } })
+    })
+    try {
+      const unreachable: Gate = { acquire: () => Promise.reject(new Error('Durable Object unavailable')), release: async () => {} }
+      const up = createUpstream({ gateFor: () => unreachable })
+      const req = (path: string) => ({ url: `https://u.test/${path}`, group: 'fossgis' as const, priority: 'interactive' as const, provider: 'valhalla' })
+      const both = Promise.all([up(req('a')), up(req('b'))])
+      await vi.advanceTimersByTimeAsync(UPSTREAM.groups.fossgis.minSpacingMs + 50)
+      expect(await both).toEqual([{ a: 1 }, { a: 1 }])
+      expect(started).toHaveLength(2)
+      expect(started[1]! - started[0]!).toBeGreaterThanOrEqual(UPSTREAM.groups.fossgis.minSpacingMs)
+    } finally {
+      restore()
+      vi.useRealTimers()
+    }
   })
 
   it('answers without waiting for the Cache API write, and keeps gate releases alive past the response', async () => {

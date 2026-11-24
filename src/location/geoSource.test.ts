@@ -68,6 +68,28 @@ describe('where positions come from', () => {
     expect(plugin.watchPosition).not.toHaveBeenCalled()
   })
 
+  it('ignores a position that is no position (out-of-range or missing numbers), keeping the next good one', () => {
+    const broken = [
+      { ...position, coords: { ...position.coords, latitude: Number.NaN } },
+      { ...position, coords: { ...position.coords, longitude: 200 } },
+      { ...position, coords: { ...position.coords, accuracy: Number.POSITIVE_INFINITY } },
+      { ...position, coords: { ...position.coords, accuracy: -1 } },
+      { ...position, timestamp: Number.NaN },
+    ]
+    const geo = {
+      watchPosition: vi.fn<(ok: (p: unknown) => void) => number>((ok) => (broken.forEach(ok), ok({ ...position, coords: { ...position.coords, heading: Number.POSITIVE_INFINITY } }), 3)),
+      clearWatch: vi.fn<(id: number) => void>(),
+    }
+    vi.stubGlobal('window', {})
+    vi.stubGlobal('navigator', { geolocation: geo })
+    const got: unknown[] = []
+    geoSource()!.watch(
+      (f) => got.push(f),
+      (e) => got.push(e),
+    )()
+    expect(got).toEqual([fix])
+  })
+
   it('tells whether location is already allowed without asking', async () => {
     vi.stubGlobal('window', { Capacitor: { isNativePlatform: () => true } })
     plugin.checkPermissions.mockResolvedValueOnce({ location: 'granted', coarseLocation: 'granted' }).mockResolvedValueOnce({ location: 'prompt', coarseLocation: 'prompt' })

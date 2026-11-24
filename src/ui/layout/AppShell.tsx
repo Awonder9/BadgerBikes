@@ -27,6 +27,7 @@ import { RideBanner } from '../ride/RideProgress'
 import { useRidePlan } from '../ride/useRidePlan'
 import { useArrivalCheck, useRideAlerts } from '../ride/useRideStatus'
 import { useOnline } from '../useOnline'
+import { locationProblemText } from '../platform'
 import { useRideStore, rideActive } from '../../ride/rideStore'
 import { tripResumedAtLaunch } from '../../ride/tripStore'
 import { LoadingScreen } from './LoadingScreen'
@@ -375,7 +376,7 @@ export function AppShell() {
     if (known) mapRef.current?.flyTo(known.coord, { zoom: 16 })
     void waitForFix().then((coord) => {
       if (coord && coord !== known?.coord) mapRef.current?.flyTo(coord, { zoom: 16 })
-      else if (!coord) setNotice(useLocationStore.getState().geoError === 'geo_denied' ? currentMessages().locationDenied : currentMessages().locationNotFound)
+      else if (!coord) setNotice(locationProblemText(currentMessages(), useLocationStore.getState().geoError === 'geo_denied'))
     })
   }
   // Coming back mid-ride (e.g. after Google Maps, or the page was reloaded), or to a trip's next leg: show the

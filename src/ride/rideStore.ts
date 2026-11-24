@@ -9,7 +9,7 @@ import { createJSONStorage, persist } from 'zustand/middleware'
 import { api } from '../api/client'
 import { APP, BIKE_ROUTING, RIDE } from '../config'
 import { toAppError } from '../lib/errors'
-import { isValidLngLat } from '../lib/geo'
+import { haversine, isValidLngLat } from '../lib/geo'
 import { safeStorage } from '../lib/storage'
 import { ridesElectric } from '../lib/stationState'
 import { validatePlace } from '../store/validate'
@@ -17,8 +17,11 @@ import type { LngLat, Place, RouteLeg, StationsSnapshot } from '../types'
 import { useAppStore } from '../store/appStore'
 import { optimizedStops, routeDocks, type RouteDock } from './stationsAlongRoute'
 
-/** What went wrong with a route request; the planner shows each in the rider's language (RouteError). */
-export type RideErrorKind = 'busy' | 'unroutable' | 'noRoute' | 'offline' | 'other'
+/**
+ * What went wrong with a route request; the planner shows each in the rider's language (RouteError). 'tooClose':
+ * the destination is where the ride starts (no request is made).
+ */
+export type RideErrorKind = 'busy' | 'unroutable' | 'noRoute' | 'offline' | 'tooClose' | 'other'
 
 export interface RideState {
   /** Where the rider starts: a place (walk to the pickup dock first) or a dock (origin.stationId). */
@@ -117,6 +120,14 @@ export const rideUnderWay = (s: Pick<RideState, 'openedParts' | 'rideStartedAtMs
 export const rideActive = (s: Pick<RideState, 'openedParts' | 'walkToDockOpened' | 'continuingRide' | 'rideStartedAtMs'>): boolean =>
   s.openedParts.length > 0 || s.walkToDockOpened || (s.continuingRide && s.rideStartedAtMs !== null)
 
+/**
+ * Another route option can't be chosen now: it would throw away the ride under way — its opened links and, unless
+ * the rider is on a bike kept from before this plan (continuingRide, whose timer chooseRoute keeps), the ride timer
+ * and its alerts. A stray tap on the other option mid-ride used to do exactly that. Ending the ride unlocks it.
+ */
+export const routeChoiceLocked = (s: Pick<RideState, 'openedParts' | 'rideStartedAtMs' | 'continuingRide'>): boolean =>
+  s.openedParts.length > 0 || (s.rideStartedAtMs !== null && !s.continuingRide)
+
 let inflight: AbortController | null = null
 
 /** Drops a route request for the previous start/destination, so its late answer can't come back as the plan. */
@@ -192,17 +203,23 @@ export function restoreRide(raw: unknown, nowMs: number): Partial<RideState> {
   const startId = typeof raw.startId === 'string' && ID_RE.test(raw.startId) ? raw.startId : null
   const destination = validatePlace(raw.destination)
   if (!startId || !destination) return {}
-  // Routes saved for other route options (an older version of the app) are dropped: the plan is routed again.
-  const routes = Array.isArray(raw.routes) && raw.routes.every(isRouteLeg) && matchesOptions(raw.routes as RouteLeg[]) ? (raw.routes as RouteLeg[]) : []
+  const savedStart = finite(raw.rideStartedAtMs) && raw.rideStartedAtMs <= nowMs ? raw.rideStartedAtMs : null
+  // A timer older than RIDE.maxRideAgeMs is a ride that ended long ago without being ended here: the plan stays,
+  // its progress (timer, opened links, the walk to the dock, a kept bike) doesn't.
+  const stale = savedStart !== null && nowMs - savedStart > RIDE.maxRideAgeMs
+  const started = stale ? null : savedStart
+  // Routes saved for other route options (an older version of the app) are dropped: the plan is routed again. So are
+  // a stale ride's routes from where the rider was on a bike: without that ride, the plan starts at its dock.
+  const fromRider = raw.continuingRide === true && isValidLngLat(raw.bikeAt)
+  const routes = Array.isArray(raw.routes) && raw.routes.every(isRouteLeg) && matchesOptions(raw.routes as RouteLeg[]) && !(stale && fromRider) ? (raw.routes as RouteLeg[]) : []
   const routeIndex = finite(raw.routeIndex) && raw.routeIndex >= 0 && raw.routeIndex < routes.length ? Math.floor(raw.routeIndex) : 0
   const ids = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string' && ID_RE.test(x)).slice(0, 50) : [])
-  const parts = Array.isArray(raw.openedParts) ? raw.openedParts.filter((x): x is number => finite(x) && x >= 0 && x < 50) : []
-  const started = finite(raw.rideStartedAtMs) && raw.rideStartedAtMs <= nowMs ? raw.rideStartedAtMs : null
+  const parts = Array.isArray(raw.openedParts) && !stale ? raw.openedParts.filter((x): x is number => finite(x) && x >= 0 && x < 50) : []
   const origin = validatePlace(raw.origin)
   return {
     origin,
     pickupPinned: raw.pickupPinned === true,
-    walkToDockOpened: routes.length > 0 && raw.walkToDockOpened === true,
+    walkToDockOpened: routes.length > 0 && !stale && raw.walkToDockOpened === true,
     stopsForMaxRide: finite(raw.stopsForMaxRide) ? raw.stopsForMaxRide : null,
     startId,
     destination,
@@ -402,6 +419,13 @@ export async function loadRideRoute(systemId: string, snapshot: StationsSnapshot
   const { startId, destination, bikeAt } = useRideStore.getState()
   const start = startId ? snapshot.byId.get(startId) : undefined
   if (!start || !destination) return
+  // The start dock itself (or a spot right by it) as the destination: nothing to ride, and nothing to ask the routers.
+  // Already on a bike, the ride starts where the rider is (the start dock is only the dock nearest them, and may well
+  // be where they're riding to): only the distance counts then.
+  if ((!bikeAt && destination.stationId === start.id) || haversine(bikeAt ?? start.coord, destination.coord) < RIDE.minRideMeters) {
+    useRideStore.setState((s) => ({ status: 'error', error: { kind: 'tooClose', message: 'Destination is where the ride starts' }, routes: [], route: null, stopIds: [], openedParts: [], rideStartedAtMs: null, ...carried(s) }))
+    return
+  }
   const electric = ridesElectric(snapshot.stations, useAppStore.getState().settings.preferEbikes)
   inflight?.abort()
   const ctrl = new AbortController()

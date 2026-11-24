@@ -3,8 +3,9 @@
 // WebKit's "“localhost” Would Like to Use Your Current Location", again every day), and only the plugin can tell
 // whether location is allowed without asking.
 import { LOCATION } from '../config'
+import { isValidLngLat } from '../lib/geo'
 import { nativePlugins } from '../native'
-import type { GeoFix } from '../types'
+import type { GeoFix, LngLat } from '../types'
 import { isNativeApp } from '../ui/platform'
 
 export type GeoErrorCode = 'geo_denied' | 'geo_unavailable' | 'geo_timeout' | 'geo_unsupported'
@@ -20,10 +21,16 @@ interface PositionLike {
   coords: { latitude: number; longitude: number; accuracy: number; heading: number | null; speed: number | null }
 }
 
-export function toGeoFix(pos: PositionLike): GeoFix {
+/**
+ * A position as the app's GeoFix, or null for one that is no position at all (coordinates out of range or not
+ * numbers, no finite accuracy or time): drawn or measured, it would put NaN on the map and in every distance.
+ */
+export function toGeoFix(pos: PositionLike): GeoFix | null {
   const c = pos.coords
-  const num = (v: number | null) => (v === null || Number.isNaN(v) || v < 0 ? null : v)
-  return { coord: [c.longitude, c.latitude], accuracy: c.accuracy, heading: num(c.heading), speed: num(c.speed), timestampMs: pos.timestamp }
+  const coord: LngLat = [c.longitude, c.latitude]
+  if (!isValidLngLat(coord) || !Number.isFinite(c.accuracy) || c.accuracy < 0 || !Number.isFinite(pos.timestamp)) return null
+  const num = (v: number | null) => (v === null || !Number.isFinite(v) || v < 0 ? null : v)
+  return { coord, accuracy: c.accuracy, heading: num(c.heading), speed: num(c.speed), timestampMs: pos.timestamp }
 }
 
 const BROWSER_ERRORS: Record<number, GeoErrorCode> = { 1: 'geo_denied', 2: 'geo_unavailable', 3: 'geo_timeout' }
@@ -51,7 +58,10 @@ function browserSource(geo: Geolocation): GeoSource {
   return {
     watch(onFix, onError) {
       const id = geo.watchPosition(
-        (pos) => onFix(toGeoFix(pos)),
+        (pos) => {
+          const fix = toGeoFix(pos)
+          if (fix) onFix(fix)
+        },
         (err) => onError(BROWSER_ERRORS[err.code] ?? 'geo_unavailable'),
         { enableHighAccuracy: false, maximumAge: LOCATION.maximumAgeMs, timeout: LOCATION.timeoutMs },
       )
@@ -70,8 +80,9 @@ const nativeSource: GeoSource = {
           { enableHighAccuracy: LOCATION.nativeHighAccuracy, maximumAge: LOCATION.maximumAgeMs, timeout: LOCATION.timeoutMs, interval: LOCATION.nativeIntervalMs },
           (pos, err) => {
             if (stopped) return
-            if (pos) onFix(toGeoFix(pos))
-            else onError(nativeGeoError(err))
+            const fix = pos ? toGeoFix(pos) : null
+            if (fix) onFix(fix)
+            else if (!pos) onError(nativeGeoError(err))
           },
         ),
       )

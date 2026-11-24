@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Files the app may hand to other apps (FileProvider): only its cache folder, where the GPX route is written before
+     the share sheet opens (src/native/share.ts). Nothing on shared storage is ever offered. -->
 <paths xmlns:android="http://schemas.android.com/apk/res/android">
-    <external-path name="my_images" path="." />
     <cache-path name="my_cache_images" path="." />
 </paths>

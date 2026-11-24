@@ -84,6 +84,8 @@ export function SearchBox({ label, placeholder, initialValue = '', autoFocus, on
           className="min-h-11 w-full bg-transparent text-base outline-none placeholder:text-slate-500"
           placeholder={placeholder ?? t.searchStationsOrPlaces}
           value={q}
+          // Longer text is never searched (normalizeQuery cuts it); a huge paste would only slow the station match.
+          maxLength={GEOCODE.maxQueryLength}
           autoFocus={autoFocus}
           enterKeyHint="search"
           onFocus={() => setOpen(true)}

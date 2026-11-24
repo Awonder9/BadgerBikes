@@ -188,10 +188,12 @@ export function PinCard() {
   const saved = useAppStore((s) => s.savedPlaces)
   // Mid-ride (a long press, or a saved place's marker tapped on the map) the pin must not re-plan the ride.
   const riding = useRideStore(rideUnderWay)
-  const { place, loading } = useReverseGeocode(pin)
+  // A saved place (its marker tapped) already has its name: its spot — Home, Work — isn't sent out to look it up.
+  const savedHere = pin ? findSavedPlace(saved, systemId, null, pin) : undefined
+  const { place, loading } = useReverseGeocode(savedHere ? null : pin)
   const { t } = useI18n()
   if (!pin) return null
-  const p: Place = place ?? { kind: 'mapPick', name: t.droppedPin, coord: pin }
+  const p: Place = savedHere?.place ?? place ?? { kind: 'mapPick', name: t.droppedPin, coord: pin }
   const asPlace: Place = { ...p, coord: pin }
   return (
     <section aria-label={t.droppedPin} className="space-y-3 p-4">

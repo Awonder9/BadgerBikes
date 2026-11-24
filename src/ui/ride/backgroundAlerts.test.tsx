@@ -18,6 +18,7 @@ const ENDPOINT = 'https://fcm.googleapis.com/fcm/send/device'
 function fakePush() {
   const keyBytes = Uint8Array.from(atob(KEY.replace(/-/g, '+').replace(/_/g, '/') + '='), (c) => c.charCodeAt(0))
   const subscription = {
+    endpoint: ENDPOINT,
     options: { applicationServerKey: keyBytes.buffer },
     toJSON: () => ({ endpoint: ENDPOINT, keys: { p256dh: KEY, auth: 'BTBZMqHH6r4Tts7J_aSIgg' } }),
     unsubscribe: async () => true,
@@ -92,5 +93,23 @@ describe('background ride alerts (browser side)', () => {
     expect(calls).toEqual(['register']) // the cancel waits for it
     await act(async () => arrive())
     await waitFor(() => expect(calls).toEqual(['register', 'cancel']))
+  })
+
+  it('a ride ended after a reload, before it was registered again (offline, stations loading), is still cancelled', async () => {
+    const register = vi.spyOn(api, 'pushRide').mockImplementation(async () => void calls.push('register'))
+    const cancelled = vi.mocked(api.pushCancel)
+    render(plan({ loaded: false })) // the restored ride: the server still has it from before the reload
+    await act(async () => {})
+    act(() => useRideStore.getState().endRide())
+    await waitFor(() => expect(calls).toEqual(['cancel']))
+    expect(cancelled).toHaveBeenCalledWith(ENDPOINT)
+    expect(register).not.toHaveBeenCalled()
+  })
+
+  it('opening the app without a ride cancels nothing', async () => {
+    useRideStore.getState().reset()
+    render(plan())
+    await act(async () => {})
+    expect(calls).toEqual([])
   })
 })

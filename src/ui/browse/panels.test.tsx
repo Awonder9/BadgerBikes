@@ -1,5 +1,5 @@
 import { QueryClientProvider } from '@tanstack/react-query'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 import { createQueryClient, qk } from '../../data/hooks'
 import { setFetchImpl } from '../../lib/http'
@@ -40,6 +40,40 @@ describe('a dropped pin’s card', () => {
       const link = screen.getByRole('link', { name: 'Bike directions to Memorial Union in Google Maps' })
       expect(new URL(link.getAttribute('href')!).searchParams.get('travelmode')).toBe('bicycling')
       expect(useRideStore.getState()).toMatchObject({ openedParts: [0], rideStartedAtMs: startedAt })
+    } finally {
+      restore()
+    }
+  })
+
+  it('on a saved place (its marker tapped) shows its saved name and never sends its spot out to look it up', async () => {
+    const requested: string[] = []
+    const restore = setFetchImpl(async (url) => {
+      requested.push(url)
+      return new Response('{"place":null}', { status: 200, headers: { 'Content-Type': 'application/json' } })
+    })
+    try {
+      const home = MADISON.libraryMall
+      useAppStore.setState({ systemId: 'bcycle_madison', panel: 'pin' })
+      useAppStore.getState().savePlace({ systemId: 'bcycle_madison', icon: 'home', label: 'Home', place: { kind: 'saved', name: '728 State St', coord: home } })
+      useAppStore.getState().dropPin(home)
+      render(
+        <QueryClientProvider client={createQueryClient()}>
+          <PinCard />
+        </QueryClientProvider>,
+      )
+      expect(screen.getByRole('heading', { name: '728 State St' })).toBeTruthy()
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      expect(requested).toEqual([])
+      // Any other spot is looked up as before.
+      cleanup()
+      useAppStore.getState().dropPin(MADISON.memorialUnion)
+      render(
+        <QueryClientProvider client={createQueryClient()}>
+          <PinCard />
+        </QueryClientProvider>,
+      )
+      await waitFor(() => expect(requested).toHaveLength(1))
+      expect(requested[0]).toContain('/api/reverse?')
     } finally {
       restore()
     }

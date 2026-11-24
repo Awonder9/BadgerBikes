@@ -26,4 +26,20 @@ describe('the ride banner over the map', () => {
     expect(banner.className).toContain('bg-brand-700')
     expect(banner.className).not.toContain('bg-red-700')
   })
+
+  it('shows only mid-ride with the planner closed', () => {
+    const banner = () =>
+      render(
+        <QueryClientProvider client={createQueryClient()}>
+          <RideBanner />
+        </QueryClientProvider>,
+      )
+    banner()
+    expect(screen.queryByRole('button', { name: /Ride in progress/ })).toBeNull() // no ride
+    cleanup()
+    useRideStore.setState({ openedParts: [0], rideStartedAtMs: Date.now() - 60_000 })
+    useAppStore.setState({ panel: 'ride' })
+    banner()
+    expect(screen.queryByRole('button', { name: /Ride in progress/ })).toBeNull() // the planner shows the ride
+  })
 })

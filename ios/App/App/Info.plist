@@ -25,7 +25,7 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Your location shows you on the map, finds docks near you, starts rides from where you are and tells when you have arrived. It stays on your phone.</string>
+	<string>Your location shows you on the map, finds docks near you, starts rides from where you are and tells when you have arrived. It is never tracked: it is sent only to plan a route from where you are or to rank nearby search results.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

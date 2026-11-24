@@ -2,7 +2,7 @@
 // apps whenever a link opens them (src/native/useNativeApp.ts).
 import { currentMessages } from '../i18n/useT'
 import type { LaunchParams } from '../lib/urlParams'
-import { useRideStore } from '../ride/rideStore'
+import { rideUnderWay, useRideStore } from '../ride/rideStore'
 // Loaded at launch: the trip follows the plan from the start (a share link or a city change clears both).
 import { useTripStore } from '../ride/tripStore'
 import { useAppStore } from '../store/appStore'
@@ -11,9 +11,18 @@ import { changeCity } from './ride/rideActions'
 
 export function openLaunchParams(p: LaunchParams): void {
   const app = useAppStore.getState()
+  // A link never ends a ride under way (a link opened mid-ride, say into the app from a chat): its timer and alerts
+  // would be lost. A link to another city is left unopened then, and a shared ride's destination opens as a pin,
+  // whose card gives directions from here and keeps the ride.
+  const riding = rideUnderWay(useRideStore.getState())
+  if (riding && p.systemId && p.systemId !== app.systemId) return
   // Another city than the stored one: like Settings → City (a saved plan belongs to the old city's docks).
   if (p.systemId) changeCity(p.systemId)
   if (p.stationId) app.selectStation(p.stationId)
+  if (p.rideStartId && p.to && riding) {
+    app.dropPin(p.to.coord)
+    return
+  }
   // A shared ride: start dock + destination (+ route option). The planner routes it once stations load.
   if (p.rideStartId && p.to) {
     const ride = useRideStore.getState()

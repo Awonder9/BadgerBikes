@@ -100,9 +100,12 @@ export class RideAlerts extends DurableObject<Env> {
       const message = alertMessage(kind, state, now, stationName)
       const req = await pushRequest(state, JSON.stringify(message), keys, { nowSeconds: Math.floor(now / 1000), urgency: 'high', topic: message.tag })
       const { status } = await postBytes(req.url, req.body, { headers: req.headers, provider: 'push' })
-      // 404/410: the browser unsubscribed or the subscription expired. Other failures are retried.
-      if (status === 404 || status === 410) return 'gone'
-      return status >= 200 && status < 300 ? 'sent' : 'retry'
+      if (status >= 200 && status < 300) return 'sent'
+      // 404/410: the browser unsubscribed or the subscription expired. Any other refusal of the request itself (a
+      // 400 malformed message, a 401/403 key the push service won't take after the VAPID keys changed) fails the
+      // same way every time: stop, rather than send it again every PUSH.retryMs for hours. A timeout (408), a rate
+      // limit (429) and server errors are retried.
+      return status >= 400 && status < 500 && status !== 408 && status !== 429 ? 'gone' : 'retry'
     } catch {
       return 'retry'
     }

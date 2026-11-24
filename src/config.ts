@@ -323,16 +323,32 @@ export const RIDE = {
   pickupNoEbikePenaltyS: 300,
   /** A start this close to its pickup dock needs no walking link. */
   walkLinkMinMeters: 60,
+  /**
+   * A destination this close to where the ride starts (the start dock, or the rider already on a bike) is not routed:
+   * there is nothing to ride, and the routers would only answer "no route".
+   */
+  minRideMeters: 60,
   /** "Walking is about as fast" when walking is within this many seconds of the bike trip. */
   walkComparableSeconds: 120,
   /** Choices offered in Settings; 0 = Unlimited (no re-docks just for time). */
   maxRideChoices: [15, 20, 25, 30, 45, 60, 0],
   /** Within this distance of the destination (with a known location) the ride counts as arrived. */
   arrivedMeters: 100,
+  /**
+   * Only a position this accurate (meters) can count as arrived: arriving ends the ride, its timer and its background
+   * alerts, so a coarse network fix that happens to land near the destination mid-ride must not do it.
+   */
+  arrivedMaxAccuracyMeters: 75,
   /** Ride timer turns amber this many minutes before the pass's included time runs out. */
   timerWarnMinutes: 5,
   /** "Docked along the way" restarted the timer: Undo is offered this long (an accidental tap would lose the ride time). */
   redockUndoSeconds: 20,
+  /**
+   * A saved plan whose ride timer started longer ago than this belongs to a ride that ended long ago (the rider
+   * never came back to end it in the app): the plan is restored without that ride's progress, instead of
+   * reopening on a timer days old.
+   */
+  maxRideAgeMs: 12 * 60 * 60_000,
   /**
    * A link starting at a dock opened this soon after "Docked along the way" is the same unlock: the claimed (earlier,
    * so safer against fees) start is kept instead of restarting the timer again.

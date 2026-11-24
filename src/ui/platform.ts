@@ -1,5 +1,6 @@
 // The rider's device, for platform-specific hand-offs (app store links, install steps, background alerts).
-import { NATIVE_APP } from '../config'
+import { APP, NATIVE_APP } from '../config'
+import type { Messages } from '../i18n'
 
 export function platform(): 'ios' | 'android' | 'desktop' {
   if (typeof navigator === 'undefined') return 'desktop'
@@ -26,6 +27,15 @@ export function isNativeApp(): boolean {
 export function isStandalone(): boolean {
   if (typeof window === 'undefined') return false
   return isNativeApp() || window.matchMedia?.('(display-mode: standalone)').matches === true || (navigator as Navigator & { standalone?: boolean }).standalone === true
+}
+
+/**
+ * Why there is no position, for the rider: location turned off (for this site in a browser, for the app in the
+ * iOS/Android app, where it is allowed in the phone's settings), or just not found yet.
+ */
+export function locationProblemText(t: Pick<Messages, 'locationDenied' | 'locationDeniedApp' | 'locationNotFound'>, denied: boolean): string {
+  if (!denied) return t.locationNotFound
+  return isNativeApp() ? t.locationDeniedApp(APP.name) : t.locationDenied
 }
 
 /** Where share links point: this page's origin in the web app; the deployed site from the native apps (their page is on the phone). */

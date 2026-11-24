@@ -4,10 +4,10 @@ import valhallaBike from '../test/fixtures/valhalla/route_bicycle.json'
 import { MADISON, makeSnapshot, makeStation } from '../test/factories'
 import { normalizeValhallaRoute } from '../routing/valhalla'
 import { AppError } from '../lib/errors'
-import { BIKE_ROUTING } from '../config'
+import { BIKE_ROUTING, RIDE } from '../config'
 import { initialAppState, useAppStore } from '../store/appStore'
 import type { StationsSnapshot } from '../types'
-import { chooseRoute, loadRideRoute, reoptimizeStops, restoreRide, rideError, useRideStore } from './rideStore'
+import { chooseRoute, loadRideRoute, reoptimizeStops, restoreRide, rideError, routeChoiceLocked, useRideStore } from './rideStore'
 
 const leg = normalizeValhallaRoute(valhallaBike, { role: 'ride', mode: 'bike', from: [-89.3842, 43.07467], to: [-89.4003, 43.07652], units: 'imperial', language: 'en-US' })
 const dest = { kind: 'search' as const, name: 'Memorial Union', coord: [-89.4003, 43.07652] as [number, number] }
@@ -36,6 +36,18 @@ describe('ride plan persistence', () => {
     const r = restoreRide(saved, now)
     expect(r).toMatchObject({ startId: 'bcycle_madison_1', routeIndex: 1, status: 'ready', stopIds: ['a', 'b'], openedParts: [0], rideStartedAtMs: now - 60_000 })
     expect(r.route?.distance).toBe(leg.distance)
+  })
+
+  it('drops the progress of a ride whose timer started too long ago (it ended without being ended here)', () => {
+    const old = { ...saved, walkToDockOpened: true, rideStartedAtMs: now - RIDE.maxRideAgeMs - 1, redockedAtMs: now - RIDE.maxRideAgeMs - 1 }
+    // The plan itself is kept, ready to ride again.
+    expect(restoreRide(old, now)).toMatchObject({ startId: 'bcycle_madison_1', status: 'ready', stopIds: ['a', 'b'], openedParts: [], walkToDockOpened: false, rideStartedAtMs: null, continuingRide: false, redockedAtMs: null })
+    // Within the limit, all of it comes back.
+    expect(restoreRide({ ...old, rideStartedAtMs: now - RIDE.maxRideAgeMs, redockedAtMs: null }, now)).toMatchObject({ status: 'ready', openedParts: [0], walkToDockOpened: true, rideStartedAtMs: now - RIDE.maxRideAgeMs })
+    // Planned from where the rider was on a bike: its routes start there, so without that ride it is routed again from the dock.
+    const onBike = { ...old, continuingRide: true, bikeAt: [-89.39, 43.07] }
+    expect(restoreRide(onBike, now)).toMatchObject({ startId: 'bcycle_madison_1', status: 'idle', routes: [], bikeAt: null, continuingRide: false, rideStartedAtMs: null })
+    expect(restoreRide({ ...onBike, rideStartedAtMs: now - 60_000, redockedAtMs: null }, now)).toMatchObject({ status: 'ready', bikeAt: [-89.39, 43.07], continuingRide: true })
   })
 
   it('restores a trip\'s finished legs, dropping malformed ones', () => {
@@ -110,6 +122,23 @@ describe('ride progress', () => {
     expect(useRideStore.getState()).toMatchObject({ stopIds: ['x'], openedParts: [0], rideStartedAtMs: t0 })
     s.setDestination(dest)
     expect(useRideStore.getState()).toMatchObject({ openedParts: [], rideStartedAtMs: null })
+  })
+
+  it('locks the route options while a ride is under way (choosing one would clear its timer and alerts)', () => {
+    const locked = () => routeChoiceLocked(useRideStore.getState())
+    expect(locked()).toBe(false)
+    useRideStore.getState().startRideTimer() // "I've unlocked a bike"
+    expect(locked()).toBe(true)
+    useRideStore.getState().endRide()
+    useRideStore.getState().markPartOpened(0, false, false) // walking to the dock: a link is open
+    expect(locked()).toBe(true)
+    useRideStore.getState().endRide()
+    expect(locked()).toBe(false)
+    // Already on a bike, before a link is opened: switching options keeps the timer (chooseRoute), so it is free.
+    useRideStore.getState().startOnBike([-89.39, 43.07], { kind: 'station', name: 'Dock', coord: [-89.39, 43.07], stationId: 'd' }, Date.now() - 60_000)
+    expect(locked()).toBe(false)
+    useRideStore.getState().markPartOpened(0, false)
+    expect(locked()).toBe(true)
   })
 })
 
@@ -199,6 +228,32 @@ describe('routing the plan', () => {
     await done
     expect(useRideStore.getState()).toMatchObject({ status: 'ready', routeIndex: 0 })
     expect(useRideStore.getState().routes).toHaveLength(3)
+  })
+
+  it('a destination at the start dock (or right by it) is not sent to the routers: it says so instead', async () => {
+    let requests = 0
+    restore = setFetchImpl(async () => {
+      requests++
+      return new Response(JSON.stringify({ routes: [leg, leg] }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+    })
+    useRideStore.getState().setStart('a')
+    useRideStore.getState().setDestination({ kind: 'station', name: 'a', coord: MADISON.capitol, stationId: 'a' })
+    await loadRideRoute('bcycle_madison', snapshot, 'imperial', 1)
+    expect(useRideStore.getState()).toMatchObject({ status: 'error', error: { kind: 'tooClose' }, routes: [] })
+    useRideStore.getState().setDestination({ kind: 'search', name: 'Across the street', coord: [MADISON.capitol[0] + 0.0003, MADISON.capitol[1]] })
+    await loadRideRoute('bcycle_madison', snapshot, 'imperial', 1)
+    expect(useRideStore.getState().error?.kind).toBe('tooClose')
+    expect(requests).toBe(0)
+    useRideStore.getState().setDestination(dest)
+    await loadRideRoute('bcycle_madison', snapshot, 'imperial', 1)
+    expect(useRideStore.getState().status).toBe('ready')
+    expect(requests).toBe(1)
+    // Already on a bike, riding to the dock nearest them (the plan's start dock): a real ride, routed.
+    useRideStore.getState().startOnBike(MADISON.memorialUnion, { kind: 'station', name: 'a', coord: MADISON.capitol, stationId: 'a' }, Date.now() - 60_000)
+    useRideStore.getState().setDestination({ kind: 'station', name: 'a', coord: MADISON.capitol, stationId: 'a' })
+    await loadRideRoute('bcycle_madison', snapshot, 'imperial', 1)
+    expect(useRideStore.getState().status).toBe('ready')
+    expect(requests).toBe(2)
   })
 
   it('already on a bike: routes from where the rider is, with the timer from when they unlocked; a new destination keeps it', async () => {

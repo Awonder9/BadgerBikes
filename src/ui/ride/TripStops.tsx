@@ -52,6 +52,13 @@ function bikeDockAt(stop: Place): Place | null {
  */
 export function LegCompleteCard() {
   const { active, leg, stops, finishedLeg } = useTripView()
+  const stop = stops[leg]
+  // Only while it shows: the card works out the leg's drawn line, which costs a ride plan of its own.
+  if (!active || finishedLeg < leg || !stop || !stops[leg + 1]) return null
+  return <LegComplete leg={leg} stop={stop} />
+}
+
+function LegComplete({ leg, stop }: { leg: number; stop: Place }) {
   const timerRunning = useRideStore((s) => s.rideStartedAtMs !== null)
   const [docked, setDocked] = useState(false)
   const { t } = useI18n()
@@ -59,8 +66,6 @@ export function LegCompleteCard() {
   const systemId = useAppStore((s) => s.systemId)
   const route = useRideStore((s) => s.route)
   const { track } = useRideLines(systemId, useRidePlan(), route)
-  const stop = stops[leg]
-  if (!active || finishedLeg < leg || !stop || !stops[leg + 1]) return null
   const finish = () => {
     const keepBike = timerRunning && !docked
     useTripStore.getState().completeLeg(!keepBike, keepBike ? bikeDockAt(stop) : null, track)

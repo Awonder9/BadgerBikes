@@ -15,7 +15,7 @@ export interface Gate {
 }
 
 export interface UpstreamDeps {
-  /** Resolves the gate for a group; null → per-isolate HostScheduler fallback. */
+  /** Resolves the gate for a group; null (or a gate that can't be reached) → per-isolate HostScheduler fallback. */
   gateFor: (group: UpstreamGroup) => Gate | null
   contactEmail?: string | null
   now?: () => number
@@ -97,6 +97,16 @@ export function createUpstream(deps: UpstreamDeps): UpstreamFetch {
     deps.waitUntil?.(done)
   }
 
+  /** Without the global gate: this isolate alone keeps the group's spacing (the public servers' policy, as far as it can). */
+  function viaIsolateScheduler<T>(req: UpstreamRequest, group: UpstreamGroup): Promise<T> {
+    let s = fallbackSchedulers.get(group)
+    if (!s) {
+      s = new HostScheduler(UPSTREAM.groups[group].minSpacingMs)
+      fallbackSchedulers.set(group, s)
+    }
+    return s.schedule(() => doFetch<T>(req), req.signal)
+  }
+
   return async function upstream<T>(req: UpstreamRequest): Promise<T> {
     if (req.cacheKey) {
       const cached = await cacheGet(req.cacheKey)
@@ -107,13 +117,15 @@ export function createUpstream(deps: UpstreamDeps): UpstreamFetch {
       result = await doFetch<T>(req)
     } else {
       const gate = deps.gateFor(req.group)
+      let grant: GateGrant | null = null
       if (gate) {
-        let grant: GateGrant
         try {
           grant = await gate.acquire(req.group, req.priority)
         } catch {
-          grant = { ok: true, ticket: '' } // gate unreachable: proceed rather than fail the user
+          grant = null // gate unreachable: proceed rather than fail the user, spaced out by this isolate
         }
+      }
+      if (gate && grant) {
         if (!grant.ok) throw new AppError('upstream_unavailable', `${req.provider} is busy; try again shortly`, { provider: req.provider, retryable: true })
         if (req.signal?.aborted) {
           release(gate, grant.ticket, 'aborted')
@@ -127,12 +139,7 @@ export function createUpstream(deps: UpstreamDeps): UpstreamFetch {
           throw err
         }
       } else {
-        let s = fallbackSchedulers.get(req.group)
-        if (!s) {
-          s = new HostScheduler(UPSTREAM.groups[req.group].minSpacingMs)
-          fallbackSchedulers.set(req.group, s)
-        }
-        result = await s.schedule(() => doFetch<T>(req), req.signal)
+        result = await viaIsolateScheduler<T>(req, req.group)
       }
     }
     if (req.cacheKey && req.cacheTtlMs !== undefined) {

@@ -8,6 +8,7 @@ import { useLocationStore, waitForFix } from '../../location/locationStore'
 import { useMapApiGetter } from '../../map/mapApiContext'
 import { nearestBike, nearestOpenDock } from '../../ride/rideProgress'
 import { useAppStore } from '../../store/appStore'
+import { locationProblemText } from '../platform'
 import { countUse } from '../usage'
 
 export type NearestKind = 'bike' | 'dock'
@@ -27,7 +28,7 @@ export function useNearestStation(kind: NearestKind): { find: () => void; findin
     void waitForFix().then((here) => {
       setFinding(false)
       const t = currentMessages()
-      if (!here) return setMessage(useLocationStore.getState().geoError === 'geo_denied' ? t.locationDenied : t.locationNotFound)
+      if (!here) return setMessage(locationProblemText(t, useLocationStore.getState().geoError === 'geo_denied'))
       const app = useAppStore.getState()
       const f = FINDERS[kind]
       const hit = f.find(latestSnapshot(app.systemId)?.stations ?? [], here, app.settings.partySize)

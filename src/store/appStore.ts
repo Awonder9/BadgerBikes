@@ -15,9 +15,9 @@ function samePlace(a: Place, b: Place): boolean {
   return a.name === b.name && Math.abs(a.coord[0] - b.coord[0]) < 1e-5 && Math.abs(a.coord[1] - b.coord[1]) < 1e-5
 }
 
-/** The saved place of this kind at (about) this spot in this city, if any. */
-export function findSavedPlace(saved: readonly SavedPlace[], systemId: string | null, icon: SavedPlace['icon'], coord: LngLat): SavedPlace | undefined {
-  return saved.find((p) => p.systemId === systemId && p.icon === icon && Math.abs(p.place.coord[0] - coord[0]) < 1e-5 && Math.abs(p.place.coord[1] - coord[1]) < 1e-5)
+/** The saved place of this kind (any kind without `icon`) at (about) this spot in this city, if any. */
+export function findSavedPlace(saved: readonly SavedPlace[], systemId: string | null, icon: SavedPlace['icon'] | null, coord: LngLat): SavedPlace | undefined {
+  return saved.find((p) => p.systemId === systemId && (icon === null || p.icon === icon) && Math.abs(p.place.coord[0] - coord[0]) < 1e-5 && Math.abs(p.place.coord[1] - coord[1]) < 1e-5)
 }
 
 let idCounter = 0

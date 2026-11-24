@@ -11,7 +11,7 @@ import { useNow } from '../../data/hooks'
 import { formatDistance } from '../../lib/format'
 import { directionsFromHereUrl } from '../../ride/googleMaps'
 import { clock } from '../../ride/rideProgress'
-import { useRideStore } from '../../ride/rideStore'
+import { rideActive, useRideStore } from '../../ride/rideStore'
 import { useAppStore } from '../../store/appStore'
 import { useI18n } from '../../i18n/useT'
 import { useNearestOpenDock } from '../browse/useNearestOpenDock'
@@ -136,11 +136,16 @@ function RedockAlongWay() {
 
 /** Shown over the map when a ride is in progress and the planner is closed (placed by AppShell's banner stack). */
 export function RideBanner() {
-  const panel = useAppStore((s) => s.panel)
+  const hidden = useAppStore((s) => s.panel === 'ride')
+  const active = useRideStore(rideActive)
+  // Only while it shows: its ride plan and once-a-second clock would otherwise run under the open planner too.
+  return active && !hidden ? <RideBannerShown /> : null
+}
+
+function RideBannerShown() {
   const plan = useRidePlan()
-  const { active, timer, dock, endStation } = useRideStatus(plan)
+  const { timer, dock, endStation } = useRideStatus(plan)
   const { t } = useI18n()
-  if (!active || panel === 'ride') return null
   // Without an end dock (stations still loading after a reload, or every stop unchecked) there is none to be full.
   const alert = (!!endStation && dock !== 'ok') || timer?.state === 'over'
   const next = plan.nextPart !== null && plan.rideParts.length > 1 ? t.nextShort(plan.nextPart + 1) : null

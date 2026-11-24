@@ -40,6 +40,8 @@ export const en = {
   newVersion: (app: string) => `A new version of ${app} is ready. Refresh to update.`,
   watchReady: (name: string, n: number, kind: Kind, baseline: number) => `${name} now has ${count(n, kind)} (up from ${baseline}).`,
   locationDenied: 'Location is off for this site. Allow it in your browser settings, then try again.',
+  /** The same in the iOS/Android app, whose location permission lives in the phone's settings. */
+  locationDeniedApp: (app: string) => `Location is off for ${app}. Allow it in your phone’s settings, then try again.`,
   locationNotFound: 'Couldn’t find your location. Try again in a moment.',
   ebikesMode: 'E-bikes',
   offline: 'You’re offline. Bike and dock counts may be out of date.',
@@ -230,6 +232,7 @@ export const en = {
   onBikeFromLastLeg: 'On your bike from the last leg: the ride timer keeps running.',
   thenTo: (name: string) => `Then: ${name}`,
   stopsLockedMidRide: 'End this ride or finish the leg to change the stops.',
+  routeLockedMidRide: 'The route stays as it is during the ride. End the ride to choose another.',
   findingRoute: 'Finding the best route and docks along it…',
   stepChooseRoute: '3. Choose a route',
   routeOptions: 'Route options',
@@ -299,6 +302,7 @@ export const en = {
   errorNoRoute: 'There’s no bike route to this destination. Pick a destination nearby, on a street or path.',
   errorRouteOffline: 'Couldn’t reach the route server. Check your connection, then try again.',
   errorRouteFailed: 'Couldn’t get a route right now. Please try again in a moment.',
+  errorTooClose: 'The destination is right where the ride starts. Pick one farther away.',
   errorBusy:
     'The route server is busy right now. We use a free public routing service that handles about one request per second for everyone, so yours couldn’t get through. Please try again in a few seconds.',
   tryAgainIn: (s: number) => `Try again in ${s}s`,

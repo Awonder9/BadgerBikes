@@ -54,9 +54,22 @@ function inOrder(task: () => Promise<unknown>): void {
   queue = queue.then(task).catch(() => {})
 }
 
-/** Stops the device's alerts; if offline, tries again once the connection is back (a stale alert is worse than none). */
-function cancel(endpoint: string): void {
-  inOrder(() => api.pushCancel(endpoint).catch(() => window.addEventListener('online', () => inOrder(() => api.pushCancel(endpoint)), { once: true })))
+/** The endpoint of this device's push subscription, if it has one (nothing is subscribed or asked for here). */
+async function existingEndpoint(): Promise<string | null> {
+  const reg = await navigator.serviceWorker.getRegistration()
+  return (await reg?.pushManager.getSubscription())?.endpoint ?? null
+}
+
+/**
+ * Stops the device's alerts (`endpoint`, or the device's own subscription's when this page never registered the
+ * ride); if offline, tries again once the connection is back (a stale alert is worse than none).
+ */
+function cancel(endpoint: string | null): void {
+  inOrder(async () => {
+    const target = endpoint ?? (await existingEndpoint().catch(() => null))
+    if (!target) return
+    await api.pushCancel(target).catch(() => window.addEventListener('online', () => inOrder(() => api.pushCancel(target)), { once: true }))
+  })
 }
 
 /** Mounted once (AppShell): keeps the Worker's copy of the ride in step with the plan, and ends it with the ride. */
@@ -107,12 +120,21 @@ export function useBackgroundRideAlerts(plan: RidePlan): void {
   }, [ride, publicKey])
 
   // The ride ended (End ride, arrived, plan cleared): no more background alerts. Queued after any
-  // registration still on its way, so it is the last word.
+  // registration still on its way, so it is the last word. A ride registered before a reload, and ended before this
+  // page registered it again (stations still loading, or offline), is cancelled through the device's own
+  // subscription: the server would otherwise keep alerting for it.
+  const wasActive = useRef(false)
   useEffect(() => {
-    if (active) return
+    if (active) {
+      wasActive.current = true
+      return
+    }
     const endpoint = registered.current
+    const ended = wasActive.current
     registered.current = null
+    wasActive.current = false
     useBackgroundAlerts.setState({ on: false, failed: false })
     if (endpoint) cancel(endpoint)
+    else if (ended && pushSupported()) cancel(null)
   }, [active])
 }

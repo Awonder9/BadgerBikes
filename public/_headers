@@ -1,6 +1,8 @@
+# Referrer-Policy strict-origin: requests send the site's origin only, never the page's path or query; a share
+# link's query (a destination's coordinates and name) is still in the address bar while the first /api/* requests go out.
 /*
   Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tiles.openfreemap.org; font-src 'self'; connect-src 'self' https://tiles.openfreemap.org https://photon.komoot.io; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'
-  Referrer-Policy: strict-origin-when-cross-origin
+  Referrer-Policy: strict-origin
   X-Content-Type-Options: nosniff
   Permissions-Policy: geolocation=(self), camera=(), microphone=()
 

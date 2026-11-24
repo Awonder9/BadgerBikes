@@ -197,6 +197,26 @@ describe('RideAlerts Durable Object', () => {
     expect(fake.alarm()).toBeNull()
   })
 
+  it('stops, instead of retrying for hours, when the push service refuses the request itself', async () => {
+    for (const status of [400, 403, 413]) {
+      const { obj, fake } = await alertsObject()
+      await obj.schedule(request({ endStationId: null }))
+      pushStatus = status
+      vi.setSystemTime(T0 + 25 * MIN)
+      await obj.alarm()
+      expect(fake.stored()).toBeUndefined()
+      expect(fake.alarm()).toBeNull()
+    }
+    for (const status of [408, 429, 500]) {
+      const { obj, fake } = await alertsObject()
+      await obj.schedule(request({ endStationId: null }))
+      pushStatus = status
+      vi.setSystemTime(T0 + 25 * MIN)
+      await obj.alarm()
+      expect(fake.alarm()).toBe(T0 + 25 * MIN + PUSH.retryMs) // retried shortly
+    }
+  })
+
   it('retries a push that failed for now', async () => {
     const { obj, fake } = await alertsObject()
     await obj.schedule(request({ endStationId: null }))

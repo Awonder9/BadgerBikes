@@ -131,7 +131,9 @@ Durable Object per group (`interactive > background` priority, ≥ `minSpacingMs
 `upstream_unavailable`) → fetch with `APP.userAgent` + contact email → cache with TTL. The gate's logic is
 a pure core (`worker/gateCore.ts`) tested in Node; `worker/gate.ts` is the thin Durable Object. Work the
 response doesn't wait for runs under `ctx.waitUntil`: Cache API writes (the in-isolate copy is stored at
-once) and gate releases (a lost release would hold FOSSGIS's single slot until the 30 s reclaim).
+once) and gate releases (a lost release would hold FOSSGIS's single slot until the 30 s reclaim). When the gate
+can't be reached, the request still goes out rather than failing the rider, but spaced by the isolate's own
+scheduler (`minSpacingMs`), never unthrottled.
 
 **Capacity**: FOSSGIS allows ~1 request/second for the whole site, and one `/api/routes` call makes one
 Valhalla request per route option (two). When the gate or the servers refuse, the route options would degrade to straight-line
@@ -140,10 +142,14 @@ and the planner shows "Route server busy … try again in a few seconds" with a 
 (`RIDE.busyRetrySeconds` = 3). Already-computed options are cached, so the retry is cheap. When both routers
 answered that there is no route at all, retrying can't help: `/api/routes` returns 422 `no_route` and the
 planner asks for a destination on a street or path. Other failures are worded by kind too (offline, other;
-`rideError`), never shown as the raw technical message.
+`rideError`), never shown as the raw technical message. A destination at the start dock, or within
+`RIDE.minRideMeters` of where the ride starts, isn't sent to the routers at all: the planner says it is too close
+(`tooClose`, no Try again). Already on a bike only the distance from the rider counts (the start dock is just the dock
+nearest them, and may be where they ride to).
 
 **Static asset headers** (`public/_headers`): CSP (`connect-src 'self' https://tiles.openfreemap.org`, …),
-`Referrer-Policy: strict-origin-when-cross-origin`, `X-Content-Type-Options: nosniff`,
+`Referrer-Policy: strict-origin` (the origin only, also to `/api/*`: a share link's query — a destination's
+coordinates — is still in the address bar while the first requests go out), `X-Content-Type-Options: nosniff`,
 `Permissions-Policy: geolocation=(self), camera=(), microphone=()`; `/assets/*` (content-hashed names) is
 `Cache-Control: public, max-age=31536000, immutable` (Cloudflare's default is `max-age=0, must-revalidate`).
 
@@ -308,10 +314,14 @@ starts the ride like opening the Google parts (and finishes the saved plan when 
 stops, opened parts and ride start time, saved to `localStorage` (`bcycle.ride`) and validated on restore
 (`restoreRide`). `finishPlan()` stops saving it — called when the rider opens the trip's last link (the
 walk, or the last ride part) or arrives within `RIDE.arrivedMeters` of the destination (checked only when
-location permission was already granted; the app never prompts for this). Changing the start, destination
+location permission was already granted — the app never prompts for this — and only on a position accurate to
+`RIDE.arrivedMaxAccuracyMeters`: arriving ends the ride and its alerts, which a coarse fix must not do mid-ride). Changing the start, destination
 or route option clears progress and saves again; changing the stops keeps it (mid-ride, a rider switching to
 another dock — say the end dock filled up — keeps the ride timer and background alerts). Opening a part that
-starts at a dock (the rider unlocks a bike there) restarts the ride timer.
+starts at a dock (the rider unlocks a bike there) restarts the ride timer. While a ride is under way the route
+options are locked (`routeChoiceLocked`: a link opened, or a timer that isn't a kept bike's): a stray tap on the
+other option used to clear the timer and its alerts; ending the ride unlocks them. A saved ride whose timer started
+more than `RIDE.maxRideAgeMs` ago (12 h: the rider never came back to end it) is restored without its progress.
 
 **Ride in progress** (`rideProgress.ts` pure; `useRideStatus.ts`, `RideProgress.tsx`): timer vs the pass's
 included minutes (warn at `RIDE.timerWarnMinutes`), end dock `ok | low | full` for the party, replacement
@@ -337,15 +347,18 @@ passes include different times; `passChoiceMatters`), so the timer warns at the 
 `worker/webPush.ts`): a web page cannot run while Google Maps is in front, so while a ride is under way and
 notifications are allowed, the client subscribes to push (VAPID key from `/api/meta`) and sends the Worker
 the ride's start, the pass's included minutes, the end dock, party size and language (`POST /api/push/ride`,
-re-sent whenever one changes; `POST /api/push/cancel` when the ride ends). A `RideAlerts` Durable Object per
+re-sent whenever one changes; `POST /api/push/cancel` when the ride ends — through the device's own subscription
+when the ride ends after a reload before this page registered it again, say offline). A `RideAlerts` Durable Object per
 subscription (named by the endpoint's SHA-256) wakes on alarms: "almost up" at `RIDE.timerWarnMinutes`
 before the included time, "past your included time" when it runs out (only "over" once both are due), and
 "end dock full" from a check of the live feed every `PUSH.dockCheckMs`; each once per ride (re-registering
 the same ride repeats nothing). The text comes from the app's messages in the rider's language — never from
 the request. Messages are encrypted per RFC 8291 (aes128gcm) and authorized with VAPID (RFC 8292) using
 WebCrypto only, tested against the RFC 8291 Appendix A vectors; `TTL` `PUSH.ttlSeconds`, `Urgency: high`, a
-`Topic` per alert. 404/410 from the push service deletes the ride; other failures retry after
-`PUSH.retryMs`; everything is deleted at the latest `PUSH.maxRideMs` after the ride started. Pushed and
+`Topic` per alert. 404/410 from the push service deletes the ride, and so does any other refusal of the request
+itself (a 4xx other than 408/429: a malformed message, a key it won't take after the VAPID keys changed), which
+retrying can't fix; timeouts, 429 and server errors retry after `PUSH.retryMs`; everything is deleted at the latest
+`PUSH.maxRideMs` after the ride started. Pushed and
 in-app alerts share notification tags (`ALERT_TAGS`), so one replaces the other. Without push the in-app
 alerts still work. The ride card's alerts section (`src/ui/ride/AlertsHelp.tsx`, rules in `alertsGuide.ts`)
 tells the rider what this phone needs: on iPhone in a Safari tab, the Add to Home Screen steps (tabs can't
@@ -365,7 +378,9 @@ trailing `.`. A multi-stop trip is shared whole: `start` is leg 1's start dock, 
 whose route option `route` is; a stop that doesn't parse drops the trip's extra stops. An app without trips
 ignores `stop`/`leg` and opens leg 1. A trip whose leg 1 has no start dock yet is shared as the leg on screen. Links are
 validated on load, applied to the ride store (replacing any saved plan; a link to another city switches it
-like Settings → City), then removed from the address bar.
+like Settings → City), then removed from the address bar. A link never ends a ride under way (`rideUnderWay`, e.g.
+a link opened into the app mid-ride): a shared ride's destination opens as a pin instead (its card gives directions
+from here and keeps the ride), and a link to another city is left unopened (`openLaunchParams`).
 
 ---
 
@@ -391,11 +406,13 @@ like Settings → City), then removed from the address bar.
   planner (start, then destination) instead of opening the station card. A station opened from search, the
   list, a star or a link is brought into view at street level (`MAP.revealZoom`) when it is off screen, under
   the panel or the map is zoomed out further; a tapped dot leaves the camera alone. Attribution links open
-  beside the app (the Home Screen app has no browser bar to come back with).
+  beside the app (the Home Screen app has no browser bar to come back with). A saved place's marker opens its
+  place card with the saved name: its spot (Home, Work) is never sent out for a reverse lookup, as a dropped pin's is.
 - **Location** (`src/location/locationStore.ts`): watched only after the rider asks (Locate, Nearest dock,
   "My location" search); asking again after an error (denied, unavailable) starts a new watch, and Locate
-  says why when there is no position. `waitForFix()` for one-shot needs: a fresh fix, else the next one, else
-  (on timeout) the last known position.
+  says why when there is no position (in the apps: allow it in the phone's settings, `locationProblemText`).
+  `waitForFix()` for one-shot needs: a fresh fix, else the next one, else (on timeout) the last known position. A
+  position that is none (coordinates out of range or not numbers, no finite accuracy) is dropped (`toGeoFix`).
 - **Stores**: `useAppStore` (persisted: settings, saved/starred/recent places — device-only, explained in
   Settings), `useRideStore` (§7), `useLocationStore` (never persisted).
 - **Refresh**: the home panel's *Refresh* button refetches station counts immediately (BCycle itself
@@ -509,6 +526,12 @@ how, without tracking anyone. **No identifier leaves the device**, and nothing s
 - `/.well-known/apple-app-site-association` and `/.well-known/assetlinks.json` (share links opening the apps,
   §12) are public by design: they name the apps' ID, Apple Team ID and signing-certificate fingerprints, nothing
   secret. Served only once configured; every other `/.well-known/*` path is 404.
+- Where the rider's location goes: Photon gets the search bias rounded to ~1 km (`GEOCODE.biasDecimals`); route
+  requests carry a start or end the rider chose (their position only when they plan from it); the Worker logs
+  request URLs without query strings (`observability.redact_query_string` in `wrangler.jsonc`: `/api/reverse` and
+  `/api/geocode` carry a pin's coordinates and typed text) and keeps no request bodies; `Referrer-Policy:
+  strict-origin` keeps share-link queries out of every Referer. Saved places, recents and the ride plan stay on
+  the device, also out of the phone's cloud backups in the apps (§12).
 
 ---
 
@@ -593,7 +616,10 @@ few Capacitor plugins where the web view falls short.
   defaults; `server.*` stays unset). Every API request is therefore cross-origin, and the JSON POSTs need a
   preflight: the Worker answers both origins (`NATIVE_APP.origins`, `worker/app.ts`, §9), errors included so the
   app can read their codes. The dev server leaves CORS to the Worker (`server.cors: false`), as production does.
-  Saved places, settings and the ride plan live in that origin's storage, separate from the browser's.
+  Saved places, settings and the ride plan live in that origin's storage, separate from the browser's, and stay on
+  the phone: Android's cloud backup is off (`android:allowBackup="false"`) and iOS leaves the web view's data folder
+  (`Library/WebKit`) out of iCloud and computer backups (`AppDelegate.excludeWebViewDataFromBackup`, every launch).
+  Android's FileProvider offers only the app's cache folder (`res/xml/file_paths.xml`), where the GPX file is written.
 - **Telling the app apart**: `isNativeApp()` (`src/ui/platform.ts`) reads `window.Capacitor`, which the native
   bridge defines before the page runs. The app counts as installed (`isStandalone()`): no install tip and no
   "Add to Home Screen" alert steps. Its usage counts say it is the app (`nativeApp`), so the dashboard tells it
