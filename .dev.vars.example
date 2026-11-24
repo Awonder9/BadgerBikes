@@ -5,3 +5,8 @@ CONTACT_EMAIL=you@example.com
 # Optional: background ride alerts (Web Push). Make your own pair with `npm run vapid-keys` and paste both lines.
 # VAPID_PUBLIC_KEY=
 # VAPID_PRIVATE_KEY=
+
+# Optional: "Send to Strava". Create an app at https://www.strava.com/settings/api (Authorization Callback Domain: your
+# site's domain; localhost works for development) and paste its Client ID and Client Secret.
+# STRAVA_CLIENT_ID=
+# STRAVA_CLIENT_SECRET=

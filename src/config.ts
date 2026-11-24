@@ -13,6 +13,13 @@ export const ENDPOINTS = {
   photon: trimSlash(env.VITE_PHOTON_URL || 'https://photon.komoot.io'),
   /** Weather (no key; free for non-commercial use, attribution "Weather data by Open-Meteo.com", CC BY 4.0). */
   openMeteo: 'https://api.open-meteo.com',
+  /**
+   * OpenStreetMap trails and scenic places for "Just ride" loops (Overpass API; ODbL, "© OpenStreetMap contributors").
+   * Public instance policy: under 10,000 queries/day, no parallel queries, a User-Agent; cached per city (SCENIC).
+   */
+  overpass: trimSlash(env.VITE_OVERPASS_URL || 'https://overpass-api.de/api/interpreter'),
+  /** Strava API (rides sent to Strava; the Worker holds the app's client secret). */
+  strava: 'https://www.strava.com',
 } as const
 
 export const APP = {
@@ -89,6 +96,20 @@ export const UPSTREAM = {
       maxInFlight: 2,
       circuitOpenMs: 60_000,
     },
+    /** One query per city per CACHE_TTL_MS.scenic at most (cached); the public instance asks for no parallel queries. */
+    overpass: {
+      hosts: ['overpass-api.de'],
+      minSpacingMs: 2_000,
+      maxInFlight: 1,
+      circuitOpenMs: 120_000,
+    },
+    /** Strava's limit is per app (STRAVA.rateLimitNote); riders' token exchanges and uploads only. */
+    strava: {
+      hosts: ['www.strava.com'],
+      minSpacingMs: 100,
+      maxInFlight: 4,
+      circuitOpenMs: 60_000,
+    },
   },
   /** A queued request not granted a slot within this long is rejected (it is stale by then). */
   queueDeadlineMs: { interactive: 10_000, background: 15_000 },
@@ -124,6 +145,10 @@ export const CACHE_TTL_MS = {
   geocode: 24 * 60 * 60_000,
   /** Open-Meteo's current values update every 15 minutes. */
   weather: 15 * 60_000,
+  /** A city's trails and scenic places (Overpass) change slowly; one query per city per week. */
+  scenic: 7 * 24 * 60 * 60_000,
+  /** A failed scenic query isn't retried for this long (loops are planned without scenery meanwhile). */
+  scenicFailure: 30 * 60_000,
 } as const
 
 export const MAP = {
@@ -207,7 +232,7 @@ export const BIKE_ROUTING = {
   options: [
     { key: 'direct', label: 'Direct', useRoads: 0.5, handoff: 'docks' },
     { key: 'bikeFriendly', label: 'Bike-friendly', useRoads: 0.0, handoff: 'trails' },
-  ] as ReadonlyArray<{ key: string; label: string; useRoads: number; handoff: 'docks' | 'trails' | 'exact' }>,
+  ] as ReadonlyArray<{ key: string; label: string; useRoads: number; handoff: 'docks' | 'trails' | 'exact' | 'loop' }>,
   /** use_roads for single bike routes (planner, reroutes). */
   defaultUseRoads: 0.15,
   useLivingStreets: 0.6,
@@ -436,4 +461,117 @@ export const GOOGLE_HANDOFF = {
   maxViaPoints: 12,
   /** Docks within this distance of the route line are sent to Google as the point ON the line. */
   snapToRouteMeters: 60,
+  /**
+   * 'loop' hand-off ("Just ride"): a loop has no destination for Google to aim at, so it is steered by a via point
+   * at least every this many meters (fewer taps than 'exact', still the loop's shape).
+   */
+  loopGuidedGapMeters: 1_600,
+} as const
+
+/**
+ * "Just ride" (src/routing/loop.ts, POST /api/loop): a ride with no destination, of a chosen length, along bike
+ * trails and past scenic places (OpenStreetMap via Overpass), back to the start dock or ending at another dock.
+ */
+export const LOOP = {
+  /** Ride-time choices (minutes); the default is the rider's pass's included time when it is one of these. */
+  minuteChoices: [15, 20, 30, 45, 60, 90],
+  defaultMinutes: 30,
+  /** Valhalla use_roads for loops: as far from car traffic as the network allows. */
+  useRoads: 0,
+  /** Street-network meters per straight-line meter between loop waypoints (sizes the loop before routing). */
+  detourFactor: 1.3,
+  /** A routed loop more than this far off the wanted length (fraction) is re-planned once, rescaled. */
+  lengthTolerance: 0.3,
+  /** Most routing attempts for one loop (each is one request to the public routing server). */
+  maxAttempts: 2,
+  /** Scenic points considered per waypoint (best scored, then picked with the seed). */
+  candidatesPerPick: 30,
+  /** Synthesized waypoints (no scenic point fits) may snap this far to a street or path. */
+  viaSearchCutoffMeters: 1_500,
+  /** A scenic place within this distance of the routed line is listed as a highlight. */
+  highlightMeters: 120,
+  maxHighlights: 5,
+  /** One-way rides end at a dock with space this far (fraction of the straight-line length) from the start, or more. */
+  oneWayMinEndFraction: 0.35,
+  /**
+   * A loop back to the start dock starts at its own destination: arriving there counts only once the rider has been
+   * at least this far from it.
+   */
+  awayBeforeArrivalMeters: 400,
+  /** POST /api/loop accepts at most this many via points, each within maxRadiusMeters of the start. */
+  maxVia: 3,
+  maxRadiusMeters: 30_000,
+} as const
+
+/** OpenStreetMap trail + scenery data for loops (src/routing/scenic.ts). */
+export const SCENIC = {
+  /** The city's station box is padded by this much for the query (loops leave the station area). */
+  bboxPadMeters: 4_000,
+  /** Overpass's own time limit for the query (seconds) and ours for the request. */
+  queryTimeoutSeconds: 25,
+  requestTimeoutMs: 30_000,
+  /** Trail lines are sampled into candidate waypoints this far apart. */
+  sampleEveryMeters: 350,
+  /** Most candidate points kept per city (best scored), so the cached summary stays small. */
+  maxPoints: 4_000,
+  /** A trail point this close to water, inside a park, or near a viewpoint counts as scenic. */
+  waterMeters: 150,
+  viewpointMeters: 300,
+  /** Score added per feature (a plain trail point scores 1). */
+  score: { water: 2, park: 2, viewpoint: 3, namedRoute: 1 },
+} as const
+
+/** Ride history on this device and its weekly / monthly / yearly reviews (src/history). */
+export const HISTORY = {
+  /** Most rides kept; the oldest are dropped. */
+  maxRides: 2_000,
+  /** Only the newest this many rides keep their route line (for Strava and the review map); stats need none. */
+  maxRidesWithLine: 300,
+  /** A saved route line is thinned to points at least this far apart. */
+  lineThinMeters: 20,
+  /** A ride that ended sooner than this after it started was a mis-tap, not a ride: it isn't kept. */
+  minRideSeconds: 60,
+  /**
+   * The ride's end isn't seen (the app wasn't open when the rider docked): when the app learns the ride is over more
+   * than (planned time × this + slack) after it started, the planned time is used instead, marked as estimated.
+   */
+  lateEndFactor: 1.75,
+  lateEndSlackMs: 15 * 60_000,
+  /** Weeks start on Monday (ISO). */
+  weekStartsOn: 1,
+  /** The yearly review is offered from this month (0-based: 11 = December) of the year it covers through January. */
+  yearlyFromMonth: 11,
+  /** Days into a new week / month that the review of the one just ended is offered on the home panel. */
+  weeklyOfferDays: 3,
+  monthlyOfferDays: 7,
+  /** Car emissions avoided per km ridden instead of driven (US EPA average passenger vehicle: ~400 g CO2 per mile). */
+  co2KgPerKm: 0.25,
+  /** Riding effort (MET) for the calories estimate, and the body weight it assumes. */
+  met: { classic: 6.8, electric: 4.0 },
+  assumedWeightKg: 70,
+  /** Story card auto-advance in the review. */
+  storyCardMs: 6_000,
+} as const
+
+/**
+ * Sending rides to Strava. The Worker exchanges and refreshes tokens with the app's client secret (Worker secrets
+ * STRAVA_CLIENT_ID / STRAVA_CLIENT_SECRET; without them the feature is hidden) and forwards uploads; the rider's
+ * tokens stay on their device. New Strava apps accept only their owner until Strava raises their athlete capacity.
+ */
+export const STRAVA = {
+  scope: 'read,activity:write',
+  /** The access token is refreshed when it expires within this long. */
+  refreshBeforeMs: 5 * 60_000,
+  /** Upload status checks: Strava asks for at most one a second; processing takes ~2 s on average. */
+  pollEveryMs: 1_500,
+  maxPolls: 20,
+  /** Largest GPX file accepted for forwarding (a long ride's track is far smaller). */
+  maxGpxBytes: 400_000,
+  /** OAuth `state` older than this is refused. */
+  stateMaxAgeMs: 15 * 60_000,
+  activityUrl: 'https://www.strava.com/activities/',
+  /** Strava's brand orange, required for "View on Strava" links. */
+  brandColor: '#FC5200',
+  maxNameLength: 120,
+  maxDescriptionLength: 1_000,
 } as const

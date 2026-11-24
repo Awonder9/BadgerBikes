@@ -10,6 +10,7 @@ import { endpointKey, type PushSecrets } from './rideAlerts'
 import { createUpstream } from './upstream'
 import { USAGE_OBJECT } from './usage'
 import { vapidKeysFrom } from './webPush'
+import { stravaAppFrom, type StravaSecrets } from './strava'
 
 export { UpstreamGate } from './gate'
 export { RideAlerts } from './rideAlerts'
@@ -44,7 +45,9 @@ export default {
       now: () => Date.now(),
       contactEmail: env.CONTACT_EMAIL || null,
       version: env.APP_VERSION,
-      limiters: { route: env.ROUTE_LIMITER, geocode: env.GEOCODE_LIMITER, push: env.PUSH_LIMITER, usage: env.USAGE_LIMITER },
+      limiters: { route: env.ROUTE_LIMITER, geocode: env.GEOCODE_LIMITER, push: env.PUSH_LIMITER, usage: env.USAGE_LIMITER, strava: env.STRAVA_LIMITER },
+      // "Send to Strava" only when this deployment has a Strava app (Worker secrets STRAVA_CLIENT_ID / _SECRET).
+      strava: stravaAppFrom(env as Env & StravaSecrets),
       push: vapid
         ? { publicKey: vapid.publicKey, rideAlerts: async (endpoint) => env.RIDE_ALERTS.get(env.RIDE_ALERTS.idFromName(await endpointKey(endpoint))) }
         : null,

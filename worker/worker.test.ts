@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { APP, BIKE_ROUTING, NATIVE_APP, UPSTREAM } from '../src/config'
+import { APP, BIKE_ROUTING, LOOP, NATIVE_APP, UPSTREAM } from '../src/config'
 import { resetHttpState, setFetchImpl } from '../src/lib/http'
 import type { PushRideRequest, StatsResponse, UsageRequest } from '../src/api/contract'
 import { makeSnapshot, makeStation } from '../src/test/factories'
@@ -446,4 +446,53 @@ describe('upstream layer', () => {
     expect(released).toEqual(['t1:ok'])
     restore()
   })
+
+  describe('POST /api/loop', () => {
+    const loopBody = (o: Record<string, unknown> = {}) =>
+      JSON.stringify({ systemId: 'bcycle_madison', role: 'ride', mode: 'bike', from: [-89.38, 43.07], to: [-89.38, 43.07], units: 'imperial', via: [{ coord: [-89.4, 43.08], synthetic: false }, { coord: [-89.36, 43.09], synthetic: true }], ...o })
+
+    it('routes through the via points at the loop setting, a synthesized one allowed to snap further', async () => {
+      const seen: Array<{ req: { via?: unknown; useRoads?: number; mode: string }; levels: readonly number[] }> = []
+      const app = createApp(
+        deps({
+          createRouter: () =>
+            ({
+              route: async () => ({}) as never,
+              routeDetails: async () => ({}) as never,
+              routeLadder: async (r: { via?: unknown; useRoads?: number; mode: string }, levels: readonly number[]) => {
+                seen.push({ req: r, levels })
+                return [{ provider: 'valhalla', useRoads: levels[0], maneuvers: [maneuver], distance: 7000 }]
+              },
+            }) as never,
+        }),
+      )
+      const res = await call(app, '/api/loop', { method: 'POST', body: loopBody({ useRoads: 1, mode: 'walk' }) })
+      expect(res.status).toBe(200)
+      const { route } = (await res.json()) as { route: { distance: number; maneuvers: Array<Record<string, unknown>> } }
+      expect(route.distance).toBe(7000)
+      // Without the spoken text, like every route the app gets.
+      expect(route.maneuvers[0]).not.toHaveProperty('verbalPre')
+      expect(seen[0]!.levels).toEqual([LOOP.useRoads])
+      expect(seen[0]!.req.mode).toBe('bike')
+      expect(seen[0]!.req.via).toEqual([{ coord: [-89.4, 43.08] }, { coord: [-89.36, 43.09], searchCutoffMeters: LOOP.viaSearchCutoffMeters }])
+    })
+
+    it('refuses missing, too many, or far-flung via points', async () => {
+      const app = createApp(deps())
+      const status = async (o: Record<string, unknown>) => (await call(app, '/api/loop', { method: 'POST', body: loopBody(o) })).status
+      expect(await status({ via: [] })).toBe(400)
+      expect(await status({ via: Array.from({ length: LOOP.maxVia + 1 }, () => ({ coord: [-89.4, 43.08] })) })).toBe(400)
+      expect(await status({ via: [{ coord: [200, 43] }] })).toBe(400)
+      expect(await status({ via: [{ coord: [-88.0, 43.07] }] })).toBe(400) // ~110 km away
+      expect(await status({ to: [-87.9, 43.07] })).toBe(400)
+    })
+
+    it('passes no_route and a busy server on like /api/routes', async () => {
+      const failing = (code: 'no_route' | 'upstream_unavailable') =>
+        createApp(deps({ createRouter: () => ({ route: async () => ({}) as never, routeDetails: async () => ({}) as never, routeLadder: async () => { throw new AppError(code, code) } }) }))
+      expect((await call(failing('no_route'), '/api/loop', { method: 'POST', body: loopBody() })).status).toBe(422)
+      expect((await call(failing('upstream_unavailable'), '/api/loop', { method: 'POST', body: loopBody() })).status).toBe(503)
+    })
+  })
 })
+

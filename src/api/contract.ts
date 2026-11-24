@@ -5,7 +5,7 @@ import type { Lang } from '../i18n/lang'
 import type { RouteDetails } from '../routing/details'
 import type { RouteRequest } from '../routing/types'
 import type { Weather } from '../weather/openMeteo'
-import type { Place, RouteLeg, Station, SystemDetails } from '../types'
+import type { LngLat, Place, RouteLeg, Station, SystemDetails } from '../types'
 
 export const API_PATHS = {
   health: '/api/health',
@@ -14,6 +14,7 @@ export const API_PATHS = {
   system: '/api/system',
   routes: '/api/routes',
   route: '/api/route',
+  loop: '/api/loop',
   weather: '/api/weather',
   locate: '/api/locate',
   routeDetails: '/api/route-details',
@@ -22,6 +23,10 @@ export const API_PATHS = {
   pushRide: '/api/push/ride',
   pushCancel: '/api/push/cancel',
   usage: '/api/usage',
+  stravaToken: '/api/strava/token',
+  stravaUpload: '/api/strava/upload',
+  stravaUploadStatus: '/api/strava/upload-status',
+  stravaRevoke: '/api/strava/revoke',
   analytics: '/api/analytics',
 } as const
 
@@ -43,6 +48,63 @@ export interface MetaResponse {
   version: string
   /** VAPID public key (base64url) for background ride alerts; null when this server has none set up. */
   pushPublicKey: string | null
+  /** The Strava app's client id for "Send to Strava"; null when this server has none set up (the feature is hidden). */
+  stravaClientId?: string | null
+}
+
+/**
+ * POST /api/strava/token — `{ code }` (from Strava's OAuth redirect) or `{ refreshToken }`. The Worker adds the app's
+ * client secret; nothing is stored there. 401 unauthorized: the rider must connect again.
+ */
+export type StravaTokenRequest = { code: string } | { refreshToken: string }
+
+export interface StravaTokenResponse {
+  accessToken: string
+  refreshToken: string
+  expiresAtMs: number
+  scope?: string
+  /** The athlete's first name, for "Connected as …". */
+  athleteName: string | null
+}
+
+/**
+ * POST /api/strava/upload — one ride as a Strava activity. The Worker builds the GPX file from `polyline` (the route as
+ * planned, polyline6) with times spread from `startedAtMs` over `elapsedS`, and appends a note in `lang` saying it is
+ * the planned route. Answer: StravaUploadResponse; then poll /api/strava/upload-status.
+ */
+export interface StravaUploadRequest {
+  accessToken: string
+  lang: Lang
+  polyline: string
+  startedAtMs: number
+  elapsedS: number
+  name: string
+  description: string
+  sportType: 'Ride' | 'EBikeRide'
+  commute: boolean
+  /** "badgerbikes-<ride id>": the same ride is never sent twice as two activities. */
+  externalId: string
+}
+
+export interface StravaUploadResponse {
+  uploadId: string
+}
+
+/** POST /api/strava/upload-status */
+export interface StravaUploadStatusRequest {
+  accessToken: string
+  uploadId: string
+}
+
+export interface StravaUploadStatusResponse {
+  state: 'processing' | 'ready' | 'duplicate' | 'error'
+  /** The activity (ready), or the existing one it duplicates. */
+  activityId: string | null
+}
+
+/** POST /api/strava/revoke — disconnect: the token (and the app's access) stops working. Answer: OkResponse. */
+export interface StravaRevokeRequest {
+  token: string
 }
 
 /** GET /api/locate — the BCycle system nearest the request's approximate (IP) location, or null. */
@@ -105,6 +167,20 @@ export interface RoutesResponse {
  * both routers fail the leg is a straight line (provider 'straight').
  */
 export interface RouteResponse {
+  route: RouteLeg
+}
+
+/**
+ * POST /api/loop — "Just ride": one bike route from `from` through `via` (in order, without stopping) to `to` (the
+ * start dock again for a loop), at LOOP.useRoads (as far from car traffic as possible). The client picks the via
+ * points (src/routing/loop.ts); `synthetic` ones may snap further to a street or path. `useRoads` is ignored.
+ * Errors like POST /api/routes: 422 no_route, 503 upstream_unavailable.
+ */
+export interface LoopApiRequest extends RouteApiRequest {
+  via: Array<{ coord: LngLat; synthetic: boolean }>
+}
+
+export interface LoopResponse {
   route: RouteLeg
 }
 

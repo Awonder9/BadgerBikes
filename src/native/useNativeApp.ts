@@ -7,6 +7,7 @@ import { safeStorage } from '../lib/storage'
 import { parseLaunchParams } from '../lib/urlParams'
 import { useAppStore } from '../store/appStore'
 import { openLaunchParams } from '../ui/launchParams'
+import { openStravaReturn } from '../ui/rides/stravaReturn'
 import { goBack } from '../ui/layout/backButton'
 import { isNativeApp, platform } from '../ui/platform'
 import { appLinkSearch, shouldOpenLink, type OpenedLink } from './appLinks'
@@ -27,6 +28,7 @@ function openLink(url: string, via: 'launch' | 'event'): void {
   const now = Date.now()
   if (!shouldOpenLink(url, via, last, now)) return
   session.setItem(LAST_LINK_KEY, JSON.stringify({ url, atMs: now } satisfies OpenedLink))
+  if (openStravaReturn(search)) return
   openLaunchParams(parseLaunchParams(search, SYSTEM_IDS))
 }
 

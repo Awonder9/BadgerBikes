@@ -12,6 +12,14 @@ import {
   API_PATHS,
   type GeocodeResponse,
   type LocateResponse,
+  type StravaTokenRequest,
+  type StravaTokenResponse,
+  type StravaUploadRequest,
+  type StravaUploadResponse,
+  type StravaUploadStatusRequest,
+  type StravaUploadStatusResponse,
+  type LoopApiRequest,
+  type LoopResponse,
   type MetaResponse,
   type OkResponse,
   type PushRideRequest,
@@ -79,6 +87,11 @@ export const api = {
     return (await postJson<RoutesResponse>(apiUrl(API_PATHS.routes), body, { signal, provider: PROVIDER })).routes
   },
 
+  /** "Just ride": one bike route through the loop's via points (src/routing/loop.ts picks them). */
+  async loop(body: LoopApiRequest, signal?: AbortSignal): Promise<RouteLeg> {
+    return (await postJson<LoopResponse>(apiUrl(API_PATHS.loop), body, { signal, provider: PROVIDER })).route
+  },
+
   async weather(systemId: string, signal?: AbortSignal): Promise<WeatherResponse['weather']> {
     return (await fetchJson<WeatherResponse>(apiUrl(API_PATHS.weather, { system: systemId }), { signal, provider: PROVIDER })).weather
   },
@@ -122,6 +135,24 @@ export const api = {
   /** The ride ended: no more background alerts for this device. */
   async pushCancel(endpoint: string, signal?: AbortSignal): Promise<void> {
     await postJson<OkResponse>(apiUrl(API_PATHS.pushCancel), { endpoint }, { signal, provider: PROVIDER })
+  },
+
+  /** Strava: exchange an authorization code, or refresh (the Worker holds the client secret). */
+  stravaToken(body: StravaTokenRequest, signal?: AbortSignal): Promise<StravaTokenResponse> {
+    return postJson<StravaTokenResponse>(apiUrl(API_PATHS.stravaToken), body, { signal, provider: PROVIDER })
+  },
+
+  /** Strava: one ride as an activity (the Worker builds the GPX file); poll stravaUploadStatus after. */
+  stravaUpload(body: StravaUploadRequest, signal?: AbortSignal): Promise<StravaUploadResponse> {
+    return postJson<StravaUploadResponse>(apiUrl(API_PATHS.stravaUpload), body, { signal, provider: PROVIDER, timeoutMs: 30_000 })
+  },
+
+  stravaUploadStatus(body: StravaUploadStatusRequest, signal?: AbortSignal): Promise<StravaUploadStatusResponse> {
+    return postJson<StravaUploadStatusResponse>(apiUrl(API_PATHS.stravaUploadStatus), body, { signal, provider: PROVIDER })
+  },
+
+  async stravaRevoke(token: string): Promise<void> {
+    await postJson<OkResponse>(apiUrl(API_PATHS.stravaRevoke), { token }, { provider: PROVIDER })
   },
 
   /** An anonymous usage report (src/ui/usage.ts). */

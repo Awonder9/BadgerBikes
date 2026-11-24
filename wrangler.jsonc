@@ -35,7 +35,8 @@
     { "name": "GEOCODE_LIMITER", "namespace_id": "1003", "simple": { "limit": 60, "period": 60 } },
     { "name": "PUSH_LIMITER", "namespace_id": "1004", "simple": { "limit": 20, "period": 60 } },
     // Generous: a campus or office network can put many riders behind one IP.
-    { "name": "USAGE_LIMITER", "namespace_id": "1005", "simple": { "limit": 300, "period": 60 } }
+    { "name": "USAGE_LIMITER", "namespace_id": "1005", "simple": { "limit": 300, "period": 60 } },
+    { "name": "STRAVA_LIMITER", "namespace_id": "1006", "simple": { "limit": 30, "period": 60 } }
   ],
   "vars": {
     // Secrets, not set here (`npx wrangler secret put NAME` for production, `.dev.vars` for local dev):

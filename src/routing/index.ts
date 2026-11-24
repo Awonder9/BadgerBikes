@@ -43,7 +43,8 @@ export function createRouter(deps: RouterDeps): AltRouter {
   async function fromProviders(req: RouteRequest, opts: RequestOpts): Promise<RouteLeg | AppError[]> {
     const failures: AppError[] = []
     const priority = opts.priority ?? 'interactive'
-    const keyTail = `${req.mode}|${req.bikeKind ?? 'classic'}|${req.useRoads ?? BIKE_ROUTING.defaultUseRoads}|${req.units}|${req.language}|${r5(req.from)}|${r5(req.to)}|${req.headingDeg ?? ''}`
+    const via = (req.via ?? []).map((v) => `${r5(v.coord)}~${v.searchCutoffMeters ?? ''}`).join(';')
+    const keyTail = `${req.mode}|${req.bikeKind ?? 'classic'}|${req.useRoads ?? BIKE_ROUTING.defaultUseRoads}|${req.units}|${req.language}|${r5(req.from)}|${r5(req.to)}|${req.headingDeg ?? ''}${via ? `|via:${via}` : ''}`
     try {
       const json = await up<unknown>({
         url: valhallaUrl(ep.valhalla, 'route', routeBody(req)),
@@ -61,6 +62,8 @@ export function createRouter(deps: RouterDeps): AltRouter {
       if (!isFallbackable(err)) throw err
       failures.push(toAppError(err))
     }
+    // OSRM can't keep a route on our through points without stopping at them: a loop is Valhalla's or none.
+    if (req.via?.length) return failures
     try {
       const json = await up<unknown>({
         url: osrmRouteUrl(req.mode === 'bike' ? ep.osrmBike : ep.osrmFoot, req),

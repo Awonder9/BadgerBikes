@@ -46,7 +46,14 @@ export default defineConfig(({ mode }) => {
           // The Capacitor plugins' chunks (src/native/plugins.ts and the plugins' lazy parts) are loaded only inside
           // the iOS/Android apps: named native-* so the web app's service worker can leave them out. (A chunk group
           // would also take Vite's preload helper along, which the startup code shares.)
-          chunkFileNames: (chunk) => (NATIVE_CHUNK.test(chunk.facadeModuleId ?? '') ? 'assets/native-[name]-[hash].js' : 'assets/[name]-[hash].js'),
+          // Each city's trails and scenery for "Just ride" (src/data/scenic/*.json) is its own scenic-* chunk, loaded
+          // only for that city and only when a loop is planned: the service worker leaves them out too.
+          chunkFileNames: (chunk) =>
+            NATIVE_CHUNK.test(chunk.facadeModuleId ?? '')
+              ? 'assets/native-[name]-[hash].js'
+              : SCENIC_CHUNK.test(chunk.facadeModuleId ?? '')
+                ? 'assets/scenic-[name]-[hash].js'
+                : 'assets/[name]-[hash].js',
         },
       },
     },
@@ -85,7 +92,7 @@ export default defineConfig(({ mode }) => {
           globPatterns: ['**/*.{js,css,html,svg,png,webmanifest}'],
           // The usage dashboard is for the operator: never downloaded to riders' phones. Nor are the native apps'
           // plugins, which a browser never loads.
-          globIgnores: ['analytics.html', 'assets/analytics-*', 'assets/native-*'],
+          globIgnores: ['analytics.html', 'assets/analytics-*', 'assets/native-*', 'assets/scenic-*'],
           navigateFallback: 'index.html',
           navigateFallbackDenylist: [/^\/api\//, /^\/analytics/],
           maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
@@ -128,6 +135,7 @@ export function websiteOnlyDashboard(): Plugin {
 }
 
 const NATIVE_CHUNK = /node_modules[\\/]@capacitor[\\/]|src[\\/]native[\\/]plugins\.ts$/
+const SCENIC_CHUNK = /src[\\/]data[\\/]scenic[\\/][^\\/]+\.json$/
 
 /** The native apps load the app from the phone and call the deployed site, so a native build needs its address. */
 function checkWebOrigin(origin: string | undefined): void {

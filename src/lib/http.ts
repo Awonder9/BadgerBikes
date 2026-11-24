@@ -45,8 +45,11 @@ function redact(url: string): string {
 interface RawRequest {
   url: string
   method: 'GET' | 'POST'
-  /** A string is sent as JSON; bytes as given (with their own Content-Type header). */
-  body?: string | Uint8Array<ArrayBuffer>
+  /**
+   * A string is sent as JSON; bytes as given (with their own Content-Type header); form data as
+   * application/x-www-form-urlencoded (URLSearchParams) or multipart/form-data (FormData), typed by fetch itself.
+   */
+  body?: string | Uint8Array<ArrayBuffer> | URLSearchParams | FormData
   headers?: Record<string, string>
   cache?: RequestInit['cache']
   provider?: string
@@ -197,6 +200,17 @@ export function postJson<T>(url: string, body: unknown, opts: RequestOptions = {
   const { signal, timeoutMs = HTTP.timeoutMs } = opts
   if (signal?.aborted) return Promise.reject(new AppError('aborted', 'Aborted', { provider: opts.provider }))
   const req: RawRequest = { url, method: 'POST', body: JSON.stringify(body), headers: opts.headers, cache: opts.cache, provider: opts.provider }
+  return requestJson<T>(req, signal ?? neverAborted(), timeoutMs)
+}
+
+/**
+ * POST a form (URLSearchParams: urlencoded; FormData: multipart) and parse the JSON response. Never de-duplicated.
+ * Used for upstreams that don't take JSON (Overpass queries, Strava's OAuth and uploads).
+ */
+export function postForm<T>(url: string, form: URLSearchParams | FormData, opts: RequestOptions = {}): Promise<T> {
+  const { signal, timeoutMs = HTTP.timeoutMs } = opts
+  if (signal?.aborted) return Promise.reject(new AppError('aborted', 'Aborted', { provider: opts.provider }))
+  const req: RawRequest = { url, method: 'POST', body: form, headers: opts.headers, cache: opts.cache, provider: opts.provider }
   return requestJson<T>(req, signal ?? neverAborted(), timeoutMs)
 }
 

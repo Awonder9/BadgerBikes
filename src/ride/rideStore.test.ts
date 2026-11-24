@@ -1,13 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { resetHttpState, setFetchImpl } from '../lib/http'
 import valhallaBike from '../test/fixtures/valhalla/route_bicycle.json'
+import loopFixture from '../test/fixtures/valhalla/route_bicycle_loop.json'
 import { MADISON, makeSnapshot, makeStation } from '../test/factories'
 import { normalizeValhallaRoute } from '../routing/valhalla'
 import { AppError } from '../lib/errors'
 import { BIKE_ROUTING, RIDE } from '../config'
 import { initialAppState, useAppStore } from '../store/appStore'
 import type { StationsSnapshot } from '../types'
-import { chooseRoute, loadRideRoute, reoptimizeStops, restoreRide, rideError, routeChoiceLocked, useRideStore } from './rideStore'
+import { chooseRoute, docksAlong, loadLoopRoute, loadRideRoute, reoptimizeStops, restoreRide, rideError, routeChoiceLocked, useRideStore } from './rideStore'
 
 const leg = normalizeValhallaRoute(valhallaBike, { role: 'ride', mode: 'bike', from: [-89.3842, 43.07467], to: [-89.4003, 43.07652], units: 'imperial', language: 'en-US' })
 const dest = { kind: 'search' as const, name: 'Memorial Union', coord: [-89.4003, 43.07652] as [number, number] }
@@ -373,5 +374,71 @@ describe('docked along the way', () => {
     useRideStore.getState().redockAlongWay()
     useRideStore.getState().endRide()
     expect(useRideStore.getState()).toMatchObject({ rideStartedAtMs: null, redockedAtMs: null })
+  })
+})
+
+describe('"Just ride" loops', () => {
+  const loopLeg = normalizeValhallaRoute(loopFixture, { role: 'ride', mode: 'bike', from: MADISON.capitol, to: MADISON.capitol, units: 'imperial', language: 'en-US', stationId: 'cap' })
+  const start = makeStation({ id: 'cap', name: 'Capitol', coord: MADISON.capitol, docks: 5 })
+  // A dock right by the start: it must not become "the dock nearest the destination" of a loop back to the start.
+  const neighbor = makeStation({ id: 'nb', name: 'Next door', coord: MADISON.wisconsinMifflin, docks: 5 })
+  const lakeshore = makeStation({ id: 'ls', name: 'Lakeshore', coord: [-89.4064, 43.0776], docks: 5 })
+  const snapshot = makeSnapshot([start, neighbor, lakeshore])
+  let restore: (() => void) | null = null
+  beforeEach(() => {
+    resetHttpState()
+    useAppStore.setState({ ...initialAppState })
+    useRideStore.getState().reset()
+  })
+  afterEach(() => restore?.())
+
+  it('a loop back to the start ends at the start dock, at the end of the line', () => {
+    const docks = docksAlong(loopLeg, snapshot, 'cap', { kind: 'station', name: 'Capitol', coord: MADISON.capitol, stationId: 'cap' }, 1)
+    expect(docks.at(-1)).toMatchObject({ station: { id: 'cap' }, reason: 'onRoute' })
+    expect(docks.at(-1)!.along).toBeCloseTo(loopLeg.distance, -2)
+    expect(docks.some((d) => d.station.id === 'nb' && d.reason === 'nearDestination')).toBe(false)
+  })
+
+  it('plans, routes and preselects the start dock as the end; a destination of the rider’s own ends "Just ride"', async () => {
+    const bodies: Array<{ via: unknown[]; to: unknown; stationId: string }> = []
+    restore = setFetchImpl(async (url, init) => {
+      expect(String(url)).toContain('/api/loop')
+      bodies.push(JSON.parse(String(init?.body)))
+      return new Response(JSON.stringify({ route: loopLeg }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+    })
+    useRideStore.getState().setStart('cap')
+    useRideStore.getState().startLoop({ minutes: 45, roundTrip: true })
+    await loadLoopRoute('bcycle_madison', snapshot, 'imperial', 1)
+    const s = useRideStore.getState()
+    expect(s.status).toBe('ready')
+    expect(s.routes).toHaveLength(1)
+    expect(s.destination).toMatchObject({ kind: 'station', stationId: 'cap' })
+    expect(s.stopIds.at(-1)).toBe('cap')
+    expect(bodies[0]).toMatchObject({ to: MADISON.capitol, stationId: 'cap' })
+    expect(bodies[0]!.via).toHaveLength(2)
+    // Madison's scenery names what the loop passes.
+    expect(s.loop?.highlights.length).toBeGreaterThan(0)
+    // The start changes: the loop stays, its end is planned again.
+    useRideStore.getState().setStart('ls')
+    expect(useRideStore.getState()).toMatchObject({ loop: { minutes: 45 }, destination: null, status: 'idle' })
+    useRideStore.getState().setDestination(dest)
+    expect(useRideStore.getState().loop).toBeNull()
+  })
+
+  it('"Try another" picks a new seed and plans again', () => {
+    useRideStore.getState().setStart('cap')
+    useRideStore.getState().startLoop({ minutes: 30, roundTrip: false })
+    const seed = useRideStore.getState().loop!.seed
+    useRideStore.getState().shuffleLoop()
+    expect(useRideStore.getState().loop).toMatchObject({ minutes: 30, roundTrip: false })
+    expect(useRideStore.getState().loop!.seed).not.toBe(seed)
+  })
+
+  it('is saved with its one route, and restored; a loop not routed yet keeps its settings', () => {
+    const loop = { minutes: 30, roundTrip: true, seed: 5, highlights: [{ kind: 'park', name: 'Tenney Park' }, { kind: 'bogus', name: 'x' }], fellBack: false }
+    const r = restoreRide({ startId: 'cap', destination: { kind: 'station', name: 'Capitol', coord: MADISON.capitol, stationId: 'cap' }, routes: [loopLeg], routeIndex: 0, stopIds: ['cap'], loop }, now)
+    expect(r).toMatchObject({ status: 'ready', stopIds: ['cap'], loop: { minutes: 30, highlights: [{ kind: 'park', name: 'Tenney Park' }] } })
+    expect(restoreRide({ startId: 'cap', destination: null, loop }, now)).toMatchObject({ startId: 'cap', loop: { seed: 5 } })
+    expect(restoreRide({ startId: 'cap', destination: null, loop: { ...loop, minutes: 'x' } }, now)).toEqual({})
   })
 })

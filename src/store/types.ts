@@ -43,7 +43,7 @@ export interface SavedPlace {
   place: Place
 }
 
-export type Panel = 'browse' | 'station' | 'pin' | 'ride' | 'list' | 'settings' | 'about'
+export type Panel = 'browse' | 'station' | 'pin' | 'ride' | 'list' | 'settings' | 'about' | 'rides'
 export type SheetSnap = 'peek' | 'half' | 'full'
 
 export interface AppState {

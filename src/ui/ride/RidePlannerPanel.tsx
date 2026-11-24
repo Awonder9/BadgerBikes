@@ -16,7 +16,7 @@ import { shareTextFile } from '../../native/share'
 import { waitForFix } from '../../location/locationStore'
 import { useMapApiGetter } from '../../map/mapApiContext'
 import { passChoiceMatters } from '../../ride/rideProgress'
-import { chooseRoute, docksAlong, loadRideRoute, reoptimizeStops, routeChoiceLocked, useRideStore, type RideErrorKind } from '../../ride/rideStore'
+import { chooseRoute, docksAlong, loadLoopRoute, loadRideRoute, reoptimizeStops, routeChoiceLocked, useRideStore, type RideErrorKind } from '../../ride/rideStore'
 import { rideSeconds, type RouteDock } from '../../ride/stationsAlongRoute'
 import { sameRoute } from '../../routing/sameRoute'
 import { findSavedPlace, useAppStore } from '../../store/appStore'
@@ -33,6 +33,7 @@ import { Spinner } from '../primitives/Spinner'
 import { isNativeApp, shareOrigin } from '../platform'
 import { countUse } from '../usage'
 import { IosAlertsHint } from './AlertsHelp'
+import { JustRideButton, JustRideCard } from './JustRide'
 import { RideStatusCard } from './RideProgress'
 import { LegCompleteCard, LegIndicator, TripStops } from './TripStops'
 import { isTrip, useTripStore } from '../../ride/tripStore'
@@ -62,10 +63,13 @@ export function RidePlannerPanel() {
     if (r.origin && !r.origin.stationId && !r.pickupPinned && bestPickup && r.openedParts.length === 0 && (r.startId === null || r.status === 'idle')) r.autoPickup(bestPickup)
   }, [bestPickup, ride.status, ride.destination, ride.origin, ride.startId])
 
-  // Route whenever both ends are known.
+  // Route whenever both ends are known ("Just ride": once the start is; the ride decides where it ends).
+  const isLoop = ride.loop !== null
   useEffect(() => {
-    if (systemId && snapshot && ride.startId && ride.destination && ride.status === 'idle') void loadRideRoute(systemId, snapshot, units, partySize)
-  }, [systemId, snapshot, ride.startId, ride.destination, ride.status, units, partySize])
+    if (!systemId || !snapshot || !ride.startId || ride.status !== 'idle') return
+    if (isLoop) void loadLoopRoute(systemId, snapshot, units, partySize)
+    else if (ride.destination) void loadRideRoute(systemId, snapshot, units, partySize)
+  }, [systemId, snapshot, ride.startId, ride.destination, ride.status, units, partySize, isLoop])
 
   // The max-ride setting changed since these stops were picked (e.g. in Settings): re-pick the optimized
   // stops, unless mid-ride. Reopening the planner without a change keeps the rider's own choices.
@@ -96,7 +100,7 @@ export function RidePlannerPanel() {
       <header className="flex items-center gap-1">
         <IconButton icon="back" label={t.back} variant="ghost" onClick={() => useAppStore.getState().setPanel('browse')} />
         <h2 className="flex-1 text-xl font-semibold">{riding ? t.yourRide : t.planARide}</h2>
-        {systemId && start && dest && ride.status === 'ready' && <ShareRideButton systemId={systemId} startId={start.id} destination={dest} routeIndex={ride.routeIndex} />}
+        {systemId && start && dest && ride.status === 'ready' && !isLoop && <ShareRideButton systemId={systemId} startId={start.id} destination={dest} routeIndex={ride.routeIndex} />}
         {(ride.origin || ride.startId || ride.destination) && (
           <button
             type="button"
@@ -118,27 +122,35 @@ export function RidePlannerPanel() {
         {ride.bikeAt ? <OnBikeStart /> : ride.origin && !ride.origin.stationId ? <StartFromPlace plan={plan} partySize={partySize} units={units} /> : start ? <StartDock station={start} partySize={partySize} onBike={ride.continuingRide} canChange={!ride.continuingRide} /> : <StartPicker />}
       </div>
 
-      <div className="space-y-1">
-        <div className="flex min-h-6 items-center justify-between gap-2">
-          <p className="text-sm font-medium text-slate-500">{t.stepWhereTo}</p>
-          {systemId && dest && dest.kind !== 'myLocation' && <FavoriteToggle systemId={systemId} place={dest} />}
+      {isLoop ? (
+        <JustRideCard />
+      ) : (
+        <div className="space-y-1">
+          <div className="flex min-h-6 items-center justify-between gap-2">
+            <p className="text-sm font-medium text-slate-500">{t.stepWhereTo}</p>
+            {systemId && dest && dest.kind !== 'myLocation' && <FavoriteToggle systemId={systemId} place={dest} />}
+          </div>
+          <SearchBox key={`dest:${dest?.name ?? ''}`} label={t.destination} placeholder={t.destinationPlaceholder} initialValue={dest?.name ?? ''} onSelect={(p) => ride.setDestination(p)} />
+          {!dest && <QuickDestinations />}
+          {!dest && <JustRideButton />}
         </div>
-        <SearchBox key={`dest:${dest?.name ?? ''}`} label={t.destination} placeholder={t.destinationPlaceholder} initialValue={dest?.name ?? ''} onSelect={(p) => ride.setDestination(p)} />
-        {!dest && <QuickDestinations />}
-      </div>
+      )}
 
-      <TripStops />
+      {!isLoop && <TripStops />}
 
       {ride.status === 'routing' && (
         <p className="flex items-center gap-2 text-slate-600 dark:text-slate-300" role="status">
           <Spinner className="text-brand-600" />
-          {t.findingRoute}
+          {isLoop ? t.justRide.finding : t.findingRoute}
         </p>
       )}
-      {ride.status === 'error' && ride.error && <RouteError error={ride.error} />}
+      {ride.status === 'error' && ride.error && <RouteError error={ride.error} loop={isLoop} />}
 
       {ride.status === 'ready' && ride.route && start && (
         <>
+          {isLoop ? (
+            <LoopRouteSummary units={units} />
+          ) : (
           <div className="space-y-2">
             <p className="text-sm font-medium text-slate-500">{t.stepChooseRoute}</p>
             <div role="radiogroup" aria-label={t.routeOptions} className={`grid gap-2 ${ride.routes.length >= 3 ? 'grid-cols-3' : 'grid-cols-2'}`}>
@@ -171,6 +183,8 @@ export function RidePlannerPanel() {
             {routeLocked && <p className="text-xs leading-snug text-slate-500">{t.routeLockedMidRide}</p>}
             <p className="text-xs leading-snug text-slate-500">{t.handoffHelp(plan.handoff, plan.viaCount)}</p>
           </div>
+          )}
+          {isLoop && <p className="text-xs leading-snug text-slate-500">{t.handoffHelp(plan.handoff, plan.viaCount)}</p>}
           <TripSummary plan={plan} units={units} />
           <WeatherStrip />
           {/* On Direct, Google picks the streets: the details are for the suggested route, and say so. */}
@@ -560,7 +574,20 @@ function QuickDestinations() {
   )
 }
 
-function RouteError({ error }: { error: { kind: RideErrorKind; message: string } }) {
+/** "Just ride": the one route's time, length and where it ends (instead of the route options). */
+function LoopRouteSummary({ units }: { units: 'imperial' | 'metric' }) {
+  const { route, loop, destination } = useRideStore(useShallow((s) => ({ route: s.route, loop: s.loop, destination: s.destination })))
+  const { t, lang } = useI18n()
+  if (!route || !loop) return null
+  return (
+    <div className="rounded-xl bg-brand-50 p-3 ring-2 ring-brand-700 dark:bg-brand-900">
+      <p className="text-lg font-bold">{t.justRide.summary(formatDuration(route.duration, lang), formatDistance(route.distance, units, lang), loop.roundTrip && !loop.fellBack)}</p>
+      {destination && <p className="text-sm text-slate-600 dark:text-slate-300">{loop.roundTrip || loop.fellBack ? t.justRide.endsBack(destination.name) : t.justRide.endsAt(destination.name)}</p>}
+    </div>
+  )
+}
+
+function RouteError({ error, loop = false }: { error: { kind: RideErrorKind; message: string }; loop?: boolean }) {
   const [until] = useState(() => Date.now() + RIDE.busyRetrySeconds * 1000)
   // The countdown clock runs only until "Try again" is enabled (it used to re-render twice a second for as
   // long as the message stayed on screen).
@@ -584,9 +611,10 @@ function RouteError({ error }: { error: { kind: RideErrorKind; message: string }
           type="button"
           disabled={wait > 0}
           className="min-h-11 rounded-lg bg-white px-3 text-sm font-semibold ring-1 ring-current disabled:opacity-60 dark:bg-slate-900"
-          onClick={() => useRideStore.setState({ status: 'idle' })}
+          // "Just ride" that found no route: another one (a new seed) rather than the same one again.
+          onClick={() => (loop && error.kind === 'noRoute' ? useRideStore.getState().shuffleLoop() : useRideStore.setState({ status: 'idle' }))}
         >
-          {wait > 0 ? t.tryAgainIn(wait) : t.tryAgain}
+          {wait > 0 ? t.tryAgainIn(wait) : loop && error.kind === 'noRoute' ? t.justRide.tryAnother : t.tryAgain}
         </button>
       )}
     </div>

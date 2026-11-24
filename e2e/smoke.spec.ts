@@ -57,7 +57,7 @@ const systemDetails = {
 }
 
 /** Mocks every request; the returned object switches path details off and on during a test. */
-async function mockApi(context: BrowserContext, o: { stations?: 'ok' | 'down' | 'slow'; routes?: 'ok' | 'busy'; system?: Json; routeDetailsDown?: boolean; push?: boolean } = {}) {
+async function mockApi(context: BrowserContext, o: { stations?: 'ok' | 'down' | 'slow'; routes?: 'ok' | 'busy'; system?: Json; routeDetailsDown?: boolean; push?: boolean; strava?: boolean } = {}) {
   const control = { routeDetailsDown: o.routeDetailsDown ?? false }
   await context.route(/^https?:\/\/(?!localhost)/, (route) => route.abort())
   await context.route(API, async (route) => {
@@ -69,6 +69,14 @@ async function mockApi(context: BrowserContext, o: { stations?: 'ok' | 'down' | 
     }
     if (path === '/api/routes') return route.fulfill(o.routes === 'ok' ? { json: { routes: [leg, leg] } } : down)
     if (path === '/api/locate') return route.fulfill({ json: { systemId: 'bcycle_madison' } })
+    // "Just ride": a loop back to where it started, or one way to the dock asked for.
+    if (path === '/api/loop') {
+      const body = route.request().postDataJSON() as { from: [number, number]; to: [number, number]; stationId: string }
+      return route.fulfill({ json: { route: { ...leg, from: body.from, to: body.to, stationId: body.stationId, geometry: [body.from, [B[0], 43.075], [C[0], 43.078], body.to], distance: 3400, duration: 900 } } })
+    }
+    if (path === '/api/meta' && o.strava) return route.fulfill({ json: { contactEmail: null, version: 'test', pushPublicKey: null, stravaClientId: '12345' } })
+    if (path === '/api/strava/upload') return route.fulfill({ json: { uploadId: '777' } })
+    if (path === '/api/strava/upload-status') return route.fulfill({ json: { state: 'ready', activityId: '424242' } })
     // A server with background alerts set up (a VAPID public key; never used to send in these tests).
     if (path === '/api/meta' && o.push) return route.fulfill({ json: { contactEmail: null, version: 'test', pushPublicKey: 'BCVxsr7N_eNgVRqvHtD0zTZsEc6-VV-JvLexhqUzORcxaOzi6-AYWXvTBHm4bjyPjs7Vd8pZGH6SRpkNtoIAiw4' } })
     if (path === '/api/system' && o.system) return route.fulfill({ json: o.system })
@@ -682,3 +690,84 @@ test('the app has no way into the dashboard', async ({ page, context }) => {
   await expect(page.locator('a[href*="analytics"]')).toHaveCount(0)
   expect(await page.content()).not.toContain('/analytics')
 })
+
+test('"Just ride": a ride with no destination, back to the start or ending at another dock', async ({ page, context }) => {
+  await mockApi(context, { routes: 'ok' })
+  await skipInstallTip(page)
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Plan a ride' }).click()
+  await page.getByRole('combobox', { name: 'Start' }).fill('Alpha')
+  await page.getByRole('option', { name: /Alpha & Main/ }).click()
+  await page.getByRole('button', { name: /Just ride — no destination/ }).click()
+  const card = page.getByRole('region', { name: 'Just ride' })
+  await expect(card).toBeVisible()
+  await expect(page.getByText('Starts and ends at Alpha & Main')).toBeVisible()
+  await expect(page.getByText(/loop · /)).toBeVisible()
+  // Google Maps is held to the loop's shape: it starts and ends at the dock.
+  const link = new URL((await page.getByRole('link', { name: /Open in Google Maps|Part 1/ }).first().getAttribute('href'))!)
+  expect(link.searchParams.get('origin')).toBe(link.searchParams.get('destination'))
+  await page.screenshot({ path: 'test-results/just-ride.png', fullPage: true })
+  // A short one-way ride ends at a dock with space far enough away.
+  await card.getByRole('button', { name: '15 min' }).click()
+  await card.getByRole('radio', { name: 'At another dock' }).click()
+  await expect(page.getByText('Ends at Charlie Square')).toBeVisible()
+  // Searching a destination ends "Just ride".
+  await card.getByRole('button', { name: 'Pick a destination' }).click()
+  await expect(page.getByRole('combobox', { name: 'Destination' })).toBeVisible()
+})
+
+/** Rides already on this device (the history store), the newest an hour ago. */
+async function seedRides(page: Page) {
+  await page.addInitScript(() => {
+    const now = Date.now()
+    const ride = (i: number, o: Record<string, unknown> = {}) => ({
+      id: `seed-${i}`, systemId: 'bcycle_madison', startedAtMs: now - (i + 1) * 3_600_000, endedAtMs: now - (i + 1) * 3_600_000 + 14 * 60_000, endEstimated: false,
+      startName: 'Alpha & Main', startStationId: 'st_a', endName: 'Charlie Square', endStationId: 'st_c', destName: 'Charlie Square', meters: 2400, plannedS: 700,
+      electric: false, kind: 'ride', line: '_ibcqA~|pp`DoAgAoAgA', pathM: { bikePath: 1800, quietStreet: 600 }, climbM: 12, highlights: [], stravaActivityId: null, ...o,
+    })
+    localStorage.setItem('bcycle.history', JSON.stringify({ state: { rides: [ride(0), ride(1, { kind: 'loop', destName: null, endName: 'Alpha & Main', endStationId: 'st_a', highlights: ['Lake Mendota'] })], active: null, seenReviews: [] }, version: 1 }))
+  })
+}
+
+test('your rides: the history on this device and its review, as story cards', async ({ page, context }) => {
+  await mockApi(context)
+  await skipInstallTip(page)
+  await seedRides(page)
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Settings' }).click()
+  await page.getByRole('button', { name: 'Your rides & reviews' }).click()
+  await expect(page.getByRole('heading', { name: 'Your rides' })).toBeVisible()
+  await expect(page.getByText('Scenic ride from Alpha & Main')).toBeVisible()
+  await page.getByRole('radio', { name: 'Week' }).click()
+  await page.screenshot({ path: 'test-results/rides.png', fullPage: true })
+  await page.getByRole('button', { name: /Play your week in review/ }).click()
+  const story = page.getByRole('dialog')
+  await expect(story).toContainText('Your week on two wheels')
+  await story.click({ position: { x: 300, y: 400 } })
+  await expect(story).toContainText('You rode')
+  await expect(story).toContainText('2 rides')
+  await page.screenshot({ path: 'test-results/review.png' })
+  await page.keyboard.press('Escape')
+  await expect(story).toHaveCount(0)
+  // No Strava on this server: nothing about it shows.
+  await page.getByText('Alpha & Main → Charlie Square').click()
+  await expect(page.getByRole('button', { name: 'Delete this ride' })).toBeVisible()
+  await expect(page.getByText('Send to Strava')).toHaveCount(0)
+})
+
+test('a ride is sent to Strava once connected, then links to the activity', async ({ page, context }) => {
+  await mockApi(context, { strava: true })
+  await skipInstallTip(page)
+  await seedRides(page)
+  await page.addInitScript(() => localStorage.setItem('bcycle.strava', JSON.stringify({ state: { auth: { accessToken: 'A'.repeat(40), refreshToken: 'R'.repeat(40), expiresAtMs: Date.now() + 3_600_000, athleteName: 'Pat' } }, version: 1 })))
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Settings' }).click()
+  await page.getByRole('button', { name: 'Your rides & reviews' }).click()
+  await expect(page.getByText('Connected as Pat')).toBeVisible()
+  await page.getByText('Alpha & Main → Charlie Square').click()
+  await expect(page.getByRole('textbox', { name: 'Activity name' })).toHaveValue('Bike-share ride: Alpha & Main → Charlie Square')
+  await page.getByRole('button', { name: 'Send to Strava' }).click()
+  const view = page.getByRole('link', { name: 'View on Strava' })
+  await expect(view).toHaveAttribute('href', 'https://www.strava.com/activities/424242', { timeout: 10_000 })
+})
+

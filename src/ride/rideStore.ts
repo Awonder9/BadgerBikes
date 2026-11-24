@@ -7,13 +7,16 @@
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 import { api } from '../api/client'
-import { APP, BIKE_ROUTING, RIDE } from '../config'
+import { APP, BIKE_ROUTING, LOOP, RIDE, SPEEDS } from '../config'
+import { loadScenic } from '../data/scenic'
 import { toAppError } from '../lib/errors'
-import { haversine, isValidLngLat } from '../lib/geo'
+import { buildPolylineIndex, haversine, isValidLngLat } from '../lib/geo'
+import { loopTargetMeters, planLoop } from '../routing/loop'
+import { routeHighlights, type Highlight } from '../routing/scenic'
 import { safeStorage } from '../lib/storage'
 import { ridesElectric } from '../lib/stationState'
 import { validatePlace } from '../store/validate'
-import type { LngLat, Place, RouteLeg, StationsSnapshot } from '../types'
+import type { LngLat, Place, RouteLeg, Station, StationsSnapshot } from '../types'
 import { useAppStore } from '../store/appStore'
 import { optimizedStops, routeDocks, type RouteDock } from './stationsAlongRoute'
 
@@ -22,6 +25,19 @@ import { optimizedStops, routeDocks, type RouteDock } from './stationsAlongRoute
  * the destination is where the ride starts (no request is made).
  */
 export type RideErrorKind = 'busy' | 'unroutable' | 'noRoute' | 'offline' | 'tooClose' | 'other'
+
+/** "Just ride": a ride with no destination, of about `minutes`, back to the start dock or ending at another one. */
+export interface LoopSettings {
+  minutes: number
+  /** End at the start dock (true) or at another dock with space (false). */
+  roundTrip: boolean
+  /** Picks the waypoints (src/routing/loop.ts); "Try another" changes it. */
+  seed: number
+  /** Trails and scenic places the routed ride passes (empty until routed, or without scenery data). */
+  highlights: Highlight[]
+  /** Asked for one way, but no dock with space was in range: the ride came back to the start instead. */
+  fellBack: boolean
+}
 
 export interface RideState {
   /** Where the rider starts: a place (walk to the pickup dock first) or a dock (origin.stationId). */
@@ -72,6 +88,15 @@ export interface RideState {
    * show where the rider has been in one muted color. Kept until the plan is cleared or another leg is chosen.
    */
   pastLegs: LngLat[][]
+  /**
+   * "Just ride" (no destination): the loop's settings, or null for an ordinary plan. The destination is filled in
+   * once the ride is routed (loadLoopRoute): the start dock for a loop back, else the dock the ride ends at.
+   */
+  loop: LoopSettings | null
+  /** Plan a ride with no destination from the current start (replaces the destination; keeps a kept bike's timer). */
+  startLoop(settings: { minutes: number; roundTrip: boolean }): void
+  /** Another ride with the same settings (a different seed). */
+  shuffleLoop(): void
   /** Start from a place or a dock (a dock is also the pickup); null clears the start. */
   setOrigin(place: Place | null): void
   /**
@@ -145,7 +170,7 @@ const planReset = (): Partial<RideState> => {
 const carried = (s: Pick<RideState, 'continuingRide' | 'rideStartedAtMs' | 'bikeAt'>): Partial<RideState> =>
   s.continuingRide && s.rideStartedAtMs !== null ? { continuingRide: true, rideStartedAtMs: s.rideStartedAtMs, bikeAt: s.bikeAt } : {}
 
-type RideActions = 'setOrigin' | 'startOnBike' | 'setStart' | 'autoPickup' | 'setDestination' | 'planLeg' | 'toggleStop' | 'markPartOpened' | 'openWalkToDock' | 'startRideTimer' | 'redockAlongWay' | 'undoRedock' | 'endRide' | 'finishPlan' | 'reset'
+type RideActions = 'startLoop' | 'shuffleLoop' | 'setOrigin' | 'startOnBike' | 'setStart' | 'autoPickup' | 'setDestination' | 'planLeg' | 'toggleStop' | 'markPartOpened' | 'openWalkToDock' | 'startRideTimer' | 'redockAlongWay' | 'undoRedock' | 'endRide' | 'finishPlan' | 'reset'
 const empty = (): Omit<RideState, RideActions> => ({
   origin: null,
   startId: null,
@@ -167,9 +192,10 @@ const empty = (): Omit<RideState, RideActions> => ({
   continuingRide: false,
   bikeAt: null,
   redockedAtMs: null,
+  loop: null,
 })
 
-type Persisted = Partial<Pick<RideState, 'origin' | 'pickupPinned' | 'walkToDockOpened' | 'stopsForMaxRide' | 'startId' | 'destination' | 'routes' | 'routeIndex' | 'stopIds' | 'openedParts' | 'rideStartedAtMs' | 'continuingRide' | 'redockedAtMs' | 'pastLegs' | 'bikeAt'>>
+type Persisted = Partial<Pick<RideState, 'loop' | 'origin' | 'pickupPinned' | 'walkToDockOpened' | 'stopsForMaxRide' | 'startId' | 'destination' | 'routes' | 'routeIndex' | 'stopIds' | 'openedParts' | 'rideStartedAtMs' | 'continuingRide' | 'redockedAtMs' | 'pastLegs' | 'bikeAt'>>
 
 const ID_RE = /^[A-Za-z0-9_.:-]{1,120}$/
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v)
@@ -194,6 +220,20 @@ function isRouteLeg(v: unknown): v is RouteLeg {
 const matchesOptions = (routes: readonly RouteLeg[]) =>
   routes.length <= BIKE_ROUTING.options.length && routes.every((r, i) => r.useRoads === undefined || r.useRoads === BIKE_ROUTING.options[i]?.useRoads)
 
+const HIGHLIGHT_KINDS = new Set<Highlight['kind']>(['trail', 'park', 'water', 'viewpoint'])
+
+/** A stored loop's settings (storage is untrusted), or null. */
+export function validateLoop(v: unknown): LoopSettings | null {
+  if (!isObj(v) || !finite(v.minutes) || v.minutes < 5 || v.minutes > 240 || typeof v.roundTrip !== 'boolean' || !finite(v.seed)) return null
+  const highlights = Array.isArray(v.highlights)
+    ? v.highlights
+        .filter((h): h is Highlight => isObj(h) && HIGHLIGHT_KINDS.has(h.kind as Highlight['kind']) && typeof h.name === 'string' && h.name.length <= 80)
+        .slice(0, LOOP.maxHighlights)
+        .map((h) => ({ kind: h.kind, name: h.name }))
+    : []
+  return { minutes: Math.round(v.minutes), roundTrip: v.roundTrip, seed: Math.floor(v.seed) >>> 0, highlights, fellBack: v.fellBack === true }
+}
+
 /** A saved finished-leg line longer than this is dropped (storage is untrusted; real ones are far shorter). */
 const MAX_PAST_LEG_POINTS = 20_000
 
@@ -202,6 +242,9 @@ export function restoreRide(raw: unknown, nowMs: number): Partial<RideState> {
   if (!isObj(raw)) return {}
   const startId = typeof raw.startId === 'string' && ID_RE.test(raw.startId) ? raw.startId : null
   const destination = validatePlace(raw.destination)
+  const loop = validateLoop(raw.loop)
+  // A loop not routed yet has no destination: it is planned again from its settings.
+  if (startId && loop && !destination) return { startId, origin: validatePlace(raw.origin), pickupPinned: raw.pickupPinned === true, loop }
   if (!startId || !destination) return {}
   const savedStart = finite(raw.rideStartedAtMs) && raw.rideStartedAtMs <= nowMs ? raw.rideStartedAtMs : null
   // A timer older than RIDE.maxRideAgeMs is a ride that ended long ago without being ended here: the plan stays,
@@ -211,12 +254,15 @@ export function restoreRide(raw: unknown, nowMs: number): Partial<RideState> {
   // Routes saved for other route options (an older version of the app) are dropped: the plan is routed again. So are
   // a stale ride's routes from where the rider was on a bike: without that ride, the plan starts at its dock.
   const fromRider = raw.continuingRide === true && isValidLngLat(raw.bikeAt)
-  const routes = Array.isArray(raw.routes) && raw.routes.every(isRouteLeg) && matchesOptions(raw.routes as RouteLeg[]) && !(stale && fromRider) ? (raw.routes as RouteLeg[]) : []
+  // A loop is one route (at LOOP.useRoads), not the route options.
+  const fits = (r: RouteLeg[]) => (loop ? r.length === 1 : matchesOptions(r))
+  const routes = Array.isArray(raw.routes) && raw.routes.every(isRouteLeg) && fits(raw.routes as RouteLeg[]) && !(stale && fromRider) ? (raw.routes as RouteLeg[]) : []
   const routeIndex = finite(raw.routeIndex) && raw.routeIndex >= 0 && raw.routeIndex < routes.length ? Math.floor(raw.routeIndex) : 0
   const ids = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string' && ID_RE.test(x)).slice(0, 50) : [])
   const parts = Array.isArray(raw.openedParts) && !stale ? raw.openedParts.filter((x): x is number => finite(x) && x >= 0 && x < 50) : []
   const origin = validatePlace(raw.origin)
   return {
+    loop,
     origin,
     pickupPinned: raw.pickupPinned === true,
     walkToDockOpened: routes.length > 0 && !stale && raw.walkToDockOpened === true,
@@ -247,27 +293,34 @@ export const useRideStore = create<RideState>()(
   persist(
     (set, get) => ({
       ...empty(),
+      startLoop: ({ minutes, roundTrip }) =>
+        set((s) => ({ loop: { minutes, roundTrip, seed: newSeed(), highlights: [], fellBack: false }, destination: null, ...planReset(), ...carried(s), finished: false })),
+      shuffleLoop: () =>
+        set((s) => (s.loop ? { loop: { ...s.loop, seed: (s.loop.seed + 1 + Math.floor(Math.random() * 1000)) >>> 0, highlights: [], fellBack: false }, destination: null, ...planReset(), ...carried(s), finished: false } : s)),
+      // A loop keeps its settings when the start changes; its destination (where it ends) is planned again.
       setOrigin: (origin) =>
-        set(
-          origin?.stationId
-            ? { origin, startId: origin.stationId, pickupPinned: true, ...planReset(), finished: false }
-            : { origin, startId: null, pickupPinned: false, ...planReset(), finished: false },
-        ),
+        set((s) => ({
+          ...(origin?.stationId ? { origin, startId: origin.stationId, pickupPinned: true } : { origin, startId: null, pickupPinned: false }),
+          ...planReset(),
+          ...(s.loop ? { destination: null } : {}),
+          finished: false,
+        })),
       startOnBike: (at, dock, startedAtMs) =>
         dock.stationId
-          ? set({ origin: dock, startId: dock.stationId, pickupPinned: true, ...planReset(), finished: false, bikeAt: at, continuingRide: true, rideStartedAtMs: startedAtMs })
+          ? set((s) => ({ origin: dock, startId: dock.stationId, pickupPinned: true, ...planReset(), ...(s.loop ? { destination: null } : {}), finished: false, bikeAt: at, continuingRide: true, rideStartedAtMs: startedAtMs }))
           : undefined,
       setStart: (startId) =>
         set((s) =>
           startId === null
-            ? { origin: null, startId: null, pickupPinned: false, ...planReset(), finished: false }
-            : { startId, pickupPinned: true, origin: s.origin && !s.origin.stationId ? s.origin : null, ...planReset(), finished: false },
+            ? { origin: null, startId: null, pickupPinned: false, ...planReset(), ...(s.loop ? { destination: null } : {}), finished: false }
+            : { startId, pickupPinned: true, origin: s.origin && !s.origin.stationId ? s.origin : null, ...planReset(), ...(s.loop ? { destination: null } : {}), finished: false },
         ),
       // Unchanged: the same state object, so nothing re-renders (the planner calls this on every count update).
-      autoPickup: (id) => set((s) => (s.startId === id ? s : { startId: id, ...planReset(), finished: false })),
+      autoPickup: (id) => set((s) => (s.startId === id ? s : { startId: id, ...planReset(), ...(s.loop ? { destination: null } : {}), finished: false })),
       // On the bike from the previous leg, a new destination is still the same BCycle ride: its timer goes on.
-      setDestination: (destination) => set((s) => ({ destination, ...planReset(), ...carried(s), finished: false })),
-      planLeg: ({ origin, startId, pickupPinned, destination }) => set({ origin, startId, pickupPinned, destination, ...planReset(), finished: false }),
+      // A destination of the rider's own ends "Just ride".
+      setDestination: (destination) => set((s) => ({ destination, loop: null, ...planReset(), ...carried(s), finished: false })),
+      planLeg: ({ origin, startId, pickupPinned, destination }) => set({ origin, startId, pickupPinned, destination, loop: null, ...planReset(), finished: false }),
       // Keeps the ride's progress: mid-ride, a rider who switches to another dock (say the end dock filled up)
       // is still on the same BCycle ride, so its timer and background alerts carry on.
       toggleStop: (id, routeOrder) =>
@@ -317,6 +370,7 @@ export const useRideStore = create<RideState>()(
       storage: createJSONStorage(() => safeStorage('local')),
       // A finished plan is not saved: the next visit starts fresh.
       partialize: (s): Persisted => (s.finished ? {} : {
+        loop: s.loop,
         origin: s.origin,
         pickupPinned: s.pickupPinned,
         walkToDockOpened: s.walkToDockOpened,
@@ -338,6 +392,8 @@ export const useRideStore = create<RideState>()(
   ),
 )
 
+const newSeed = () => Math.floor(Math.random() * 2 ** 31)
+
 /** Options shared by the dock list and the optimized stops (rider's settings, fleet, route pace). */
 function dockOpts(route: RouteLeg, snapshot: StationsSnapshot, destination: Place, partySize: number) {
   const { maxRideMinutes, preferEbikes } = useAppStore.getState().settings
@@ -356,7 +412,15 @@ function dockOpts(route: RouteLeg, snapshot: StationsSnapshot, destination: Plac
  * `keepIds` (the stops already chosen) whatever their counts are now.
  */
 export function docksAlong(route: RouteLeg, snapshot: StationsSnapshot, startId: string, destination: Place, partySize = 1, keepIds: readonly string[] = []): RouteDock[] {
-  return routeDocks(route.geometry, snapshot.stations, { excludeIds: new Set([startId]), keepIds, ...dockOpts(route, snapshot, destination, partySize) })
+  const opts = { excludeIds: new Set([startId]), ...dockOpts(route, snapshot, destination, partySize) }
+  if (destination.stationId !== startId) return routeDocks(route.geometry, snapshot.stations, { keepIds, ...opts })
+  // A loop back to the start dock ("Just ride"): the start dock ends it, at the end of the line. (Without this the
+  // start would be skipped as the start, and the dock nearest it added as "near the destination" instead.)
+  const docks = routeDocks(route.geometry, snapshot.stations, { keepIds: keepIds.filter((id) => id !== startId), ...opts })
+  const start = snapshot.byId.get(startId)
+  if (!start) return docks
+  const back: RouteDock = { station: start, along: buildPolylineIndex(route.geometry).total, offset: haversine(route.geometry.at(-1)!, start.coord), reason: 'onRoute' }
+  return [...docks.filter((d) => d.reason !== 'nearDestination' || keepIds.includes(d.station.id)), back]
 }
 
 /** The route's own riding pace (seconds per meter), so stop timing matches the route cards. */
@@ -455,6 +519,78 @@ export async function loadRideRoute(systemId: string, snapshot: StationsSnapshot
     const { pendingRouteIndex: pending, routeIndex: had } = useRideStore.getState()
     useRideStore.setState({ routes, status: 'ready', pendingRouteIndex: null })
     chooseRoute(pending !== null && pending < routes.length ? pending : had < routes.length ? had : 0, snapshot, partySize)
+  } catch (err) {
+    if (ctrl.signal.aborted) return
+    useRideStore.setState({ status: 'error', error: rideError(err) })
+  }
+}
+
+/** Docks a "Just ride" may end at: installed, taking bikes back, with space for the party (the start dock aside). */
+const loopEndDocks = (snapshot: StationsSnapshot, startId: string, partySize: number) =>
+  snapshot.stations
+    .filter((s) => s.id !== startId && s.status?.isInstalled && s.status.isReturning && s.status.docks >= partySize)
+    .map((s) => ({ id: s.id, coord: s.coord }))
+
+/**
+ * "Just ride": plans the loop (src/routing/loop.ts: waypoints on the city's scenic trails, src/data/scenic.ts) for the
+ * rider's settings and routes it (POST /api/loop). A route that came out more than LOOP.lengthTolerance off the
+ * wanted length is planned once more at a corrected size. Then it becomes the plan's one route, with the dock it ends
+ * at as the destination, and the docks along it preselected like any ride's.
+ */
+export async function loadLoopRoute(systemId: string, snapshot: StationsSnapshot, units: 'imperial' | 'metric', partySize: number): Promise<void> {
+  const { startId, bikeAt, loop } = useRideStore.getState()
+  const start = startId ? snapshot.byId.get(startId) : undefined
+  if (!start || !loop) return
+  const electric = ridesElectric(snapshot.stations, useAppStore.getState().settings.preferEbikes)
+  inflight?.abort()
+  const ctrl = new AbortController()
+  inflight = ctrl
+  useRideStore.setState((s) => ({ status: 'routing', error: null, routes: [], route: null, stopIds: [], openedParts: [], rideStartedAtMs: null, ...carried(s) }))
+  try {
+    const points = await loadScenic(systemId)
+    if (ctrl.signal.aborted) return
+    const from = bikeAt ?? start.coord
+    const target = loopTargetMeters(loop.minutes, SPEEDS.bikeKph[electric ? 'electric' : 'classic'])
+    const endDocks = loopEndDocks(snapshot, start.id, partySize)
+    let scale = 1
+    let best: { route: RouteLeg; end: Station; fellBack: boolean } | null = null
+    for (let attempt = 0; attempt < LOOP.maxAttempts; attempt++) {
+      const plan = planLoop({ start: from, targetMeters: target, roundTrip: loop.roundTrip, seed: loop.seed, points, endDocks, scale })
+      const end = (plan.end && snapshot.byId.get(plan.end.id)) || start
+      const route = await api.loop(
+        {
+          systemId,
+          role: 'ride',
+          mode: 'bike',
+          from,
+          ...(bikeAt ? { fromIsUserPoint: true } : {}),
+          to: end.coord,
+          stationId: end.id,
+          units,
+          language: APP.language,
+          priority: 'interactive',
+          via: plan.via,
+          ...(electric ? { bikeKind: 'electric' as const } : {}),
+        },
+        ctrl.signal,
+      )
+      if (ctrl.signal.aborted) return
+      const off = (r: RouteLeg) => Math.abs(r.distance / target - 1)
+      if (!best || off(route) < off(best.route)) best = { route, end, fellBack: plan.fellBackToRoundTrip }
+      if (off(route) <= LOOP.lengthTolerance || route.distance <= 0) break
+      scale *= target / route.distance
+    }
+    if (!best) return
+    const destination: Place = { kind: 'station', name: best.end.name, coord: best.end.coord, stationId: best.end.id }
+    const highlights = routeHighlights(best.route.geometry, points, LOOP.highlightMeters, LOOP.maxHighlights)
+    useRideStore.setState((s) => ({
+      routes: [{ ...best.route, useRoads: LOOP.useRoads }],
+      status: 'ready',
+      pendingRouteIndex: null,
+      destination,
+      loop: s.loop ? { ...s.loop, highlights, fellBack: best.fellBack } : s.loop,
+    }))
+    chooseRoute(0, snapshot, partySize)
   } catch (err) {
     if (ctrl.signal.aborted) return
     useRideStore.setState({ status: 'error', error: rideError(err) })

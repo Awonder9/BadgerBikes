@@ -6,7 +6,7 @@ import { nativePlugins } from '.'
 const canceled = (err: unknown) => /cancel/i.test(err instanceof Error ? err.message : String(err))
 
 /** Resolves true once an app was chosen, false when the rider closed the sheet; rejects when sharing failed. */
-async function shareSheet(options: { title: string; url?: string; files?: string[] }): Promise<boolean> {
+async function shareSheet(options: { title: string; url?: string; text?: string; files?: string[] }): Promise<boolean> {
   const { Share } = await nativePlugins()
   try {
     await Share.share({ ...options, dialogTitle: options.title })
@@ -20,6 +20,11 @@ async function shareSheet(options: { title: string; url?: string; files?: string
 /** A link (a dock, a ride). */
 export function shareLink(title: string, url: string): Promise<boolean> {
   return shareSheet({ title, url })
+}
+
+/** Plain text (a ride review's summary). */
+export function shareText(title: string, text: string): Promise<boolean> {
+  return shareSheet({ title, text })
 }
 
 /** A text file such as the GPX route. */

@@ -207,6 +207,8 @@ export function trailRangesOf(maneuvers: ReadonlyArray<{ streetNames?: string[];
 function viaPoints(handoff: Handoff, stopAlongs: readonly number[], endAlong: number, pointAt: (along: number) => LngLat, trailRanges: ReadonlyArray<readonly [number, number]>): Waypoint[] {
   if (handoff === 'docks') return []
   if (handoff === 'trails') return trailPoints(stopAlongs, endAlong, GOOGLE_HANDOFF.maxViaPoints, pointAt, trailRanges)
+  // A loop has no destination to aim Google at (it may end where it starts): it is held to the loop's shape.
+  if (handoff === 'loop') return shapingPoints(stopAlongs, endAlong, GOOGLE_HANDOFF.maxViaPoints, pointAt, trailRanges, GOOGLE_HANDOFF.loopGuidedGapMeters)
   return shapingPoints(stopAlongs, endAlong, GOOGLE_HANDOFF.maxViaPoints, pointAt, trailRanges)
 }
 

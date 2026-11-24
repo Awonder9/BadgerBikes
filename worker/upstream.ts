@@ -2,7 +2,7 @@
 // fetch with the app User-Agent → outcome reporting.
 import { APP, UPSTREAM, type Priority, type UpstreamGroup } from '../src/config'
 import { AppError, isAbort } from '../src/lib/errors'
-import { fetchJson, postJson } from '../src/lib/http'
+import { fetchJson, postForm, postJson } from '../src/lib/http'
 import { LruCache } from '../src/lib/lru'
 import { HostScheduler } from '../src/lib/rateLimiter'
 import type { UpstreamFetch, UpstreamRequest } from '../src/lib/upstream'
@@ -83,8 +83,20 @@ export function createUpstream(deps: UpstreamDeps): UpstreamFetch {
   }
 
   async function doFetch<T>(req: UpstreamRequest): Promise<T> {
-    const opts = { signal: req.signal, provider: req.provider, headers: { 'User-Agent': userAgent } }
-    return req.method === 'POST' ? postJson<T>(req.url, req.body, opts) : fetchJson<T>(req.url, { ...opts, dedupe: true })
+    const opts = { signal: req.signal, provider: req.provider, headers: { ...req.headers, 'User-Agent': userAgent }, ...(req.timeoutMs ? { timeoutMs: req.timeoutMs } : {}) }
+    let body: unknown
+    if (req.method === 'POST' && req.multipart) {
+      const form = new FormData()
+      for (const f of req.multipart) {
+        if (f.fileName) form.append(f.name, new Blob([f.value], { type: f.type ?? 'application/octet-stream' }), f.fileName)
+        else form.append(f.name, f.value)
+      }
+      body = await postForm<unknown>(req.url, form, opts)
+    } else if (req.method === 'POST' && req.form) body = await postForm<unknown>(req.url, new URLSearchParams(req.form), opts)
+    else if (req.method === 'POST') body = await postJson<unknown>(req.url, req.body, opts)
+    // An authorized GET is never shared with another caller's identical request.
+    else body = await fetchJson<unknown>(req.url, { ...opts, dedupe: !req.headers?.Authorization })
+    return (req.transform ? req.transform(body) : body) as T
   }
 
   /**

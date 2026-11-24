@@ -19,6 +19,8 @@ export type AppErrorCode =
   /** Upstream circuit open or upstream down; callers fall back to estimates. */
   | 'upstream_unavailable'
   | 'internal'
+  /** A third-party account link (Strava) was revoked or expired: connect again. */
+  | 'unauthorized'
   // device
   | 'geo_denied'
   | 'geo_unavailable'

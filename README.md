@@ -53,6 +53,24 @@ location — no location prompt; Madison if none is near), and Settings → City
    back from Google Maps finds it intact. When you start from a place, the timer waits until you tap
    *I've unlocked a bike*. *Share* sends a link to the same ride.
 
+**Just ride** — no destination in mind? Under *Where to?*, *Just ride* plans a ride of the length you pick
+(15–90 min; your pass's included time by default), **back at the start dock** or **ending at another dock** with
+space. It follows bike trails and passes scenic places — lakeshores, parks, viewpoints — from OpenStreetMap, and
+lists what you'll pass. *Try another ride* picks a different one. It's then an ordinary plan: docks along the way,
+Google Maps (held to the ride's shape with waypoints) or the Komoot/OsmAnd file.
+
+**Your rides** — every ride you start from a plan is saved on your device (home panel, or Settings → *Your rides &
+reviews*), with **weekly, monthly and yearly reviews** played as story cards: distance and time, your go-to dock and
+route, how much was on trails, your longest ride, riding habits and streaks, CO₂ saved, and your rider "persona".
+The home panel offers last week's review early in a week, last month's early in a month, and the year's in December
+and January. The app can't record GPS while Google Maps is in front, so a ride is the route as planned, timed from
+the ride timer to when you end it in the app (or the route's riding time, marked "~", when it never saw you dock —
+you can correct it).
+
+**Send to Strava** — once connected (*Connect with Strava* in Your rides), a ride can be sent to Strava as an
+activity, named and marked as a commute if you like. Its map is the route as planned, with times spread over the
+ride, and its description says so: it isn't a recorded GPS track.
+
 Also: **Nearest open dock** (where can I return this bike?) finds the closest dock with room from your
 location; each station card has walking **Directions**, **Share** and **Street View** (what the dock looks like
 from the street); **Prefer e-bikes** (in cities with both kinds) makes the map count e-bikes; the home panel and
@@ -61,7 +79,8 @@ keeps its finished legs on the map in violet and keeps your route option from le
 says when the counts can't update. Follow the app on Instagram: [@badgerbikes.app](https://www.instagram.com/badgerbikes.app/).
 
 If the free routing server is busy, the app says so and asks you to try again in a few seconds.
-Saved places, recents and the current ride live in the browser on that device only. The app sends anonymous
+Saved places, recents, the current ride and your ride history live in the browser on that device only (a ride
+leaves it only if you send it to Strava). The app sends anonymous
 usage counts (no identifier or location) for the operator's dashboard; Do Not Track or Global Privacy
 Control turns them off.
 
@@ -95,6 +114,13 @@ VAPID_PRIVATE_KEY` (and paste both lines into `.dev.vars` to try them locally �
 build: `npm run preview`). Without the keys everything else works the same, and ride alerts show only
 while the app is open. During a ride with alerts on, the Worker keeps that ride's timer, end dock and push
 subscription (no location) until the ride ends, at most 4 hours.
+
+**Send to Strava (optional):** create a Strava API app at <https://www.strava.com/settings/api> with your site's
+domain as its *Authorization Callback Domain* (`localhost` works for development), then `npx wrangler secret put
+STRAVA_CLIENT_ID` and `npx wrangler secret put STRAVA_CLIENT_SECRET` (and both in `.dev.vars` locally). Without them
+the Strava parts of the app stay hidden. A new Strava app accepts only its owner's account ("single player mode")
+until you raise its athlete capacity in Strava's API settings (10 athletes) or Strava reviews it (more than 10). The
+Worker only exchanges tokens and forwards uploads; it stores nothing.
 
 **Usage dashboard:** `https://<your domain>/analytics` (badgerbikes.app/analytics) shows unique users
 (today, 7, 30 and 90 days, all time), who is using the app now, new vs returning users, routes planned and
@@ -164,6 +190,12 @@ npm run check        # typecheck + lint + unit tests
 npm run e2e          # Playwright smoke tests (phone + desktop, network-free)
 ```
 
+**"Just ride" scenery:** each city's trails and scenic places are generated from OpenStreetMap (Overpass API) into
+`src/data/scenic/<city>.json` by `npm run update-scenic` (or `npm run update-scenic -- <city id>`), one query per
+city, spaced out; the app never queries Overpass itself. The public Overpass server is often busy: the script backs
+off and retries, `OVERPASS_URL=…` points it at another instance, and `OVERPASS_TIMEOUT_S=120` gives a big city
+more time. A city without a file still gets rides, along the quietest streets and paths, just without scenic stops.
+
 ## How it works
 
 - **Cloudflare Worker** (`worker/`): fetches and caches BCycle GBFS feeds, computes the route
@@ -184,6 +216,7 @@ only to describe what the app works with.
 
 Data shown in the app and in the test samples (`src/test/fixtures/`):
 - Map data © [OpenStreetMap contributors](https://www.openstreetmap.org/copyright) (ODbL), via
-  OpenFreeMap tiles, Valhalla and OSRM routing (FOSSGIS e.V.) and Photon search (komoot).
+  OpenFreeMap tiles, Valhalla and OSRM routing (FOSSGIS e.V.), Photon search (komoot), and the Overpass API
+  (the trails and scenic places in `src/data/scenic/`).
 - Station data from BCycle's public GBFS feeds.
 - Weather data by [Open-Meteo.com](https://open-meteo.com/) (CC BY 4.0).

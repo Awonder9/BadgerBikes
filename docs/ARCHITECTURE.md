@@ -47,9 +47,16 @@ cleared, since it belongs to the old city's stations).
    with direction (gusts when they beat it by `WEATHER.gustShowDeltaKph`), and today's sunrise/sunset in the
    city's time zone — from `GET /api/weather` (Open-Meteo, for the city's center: nothing about the rider is
    sent), refreshed every `CACHE_TTL_MS.weather`; hidden until it loads or when it can't.
+10. **Just ride** (§7b): a ride with no destination, of a chosen length, along trails and past scenic places, back
+    to the start dock or ending at another dock.
+11. **Your rides** (§8b): the rides started from plans, recorded on the device, with weekly / monthly / yearly
+    reviews as story cards.
+12. **Send to Strava** (§8c): a recorded ride as a Strava activity (opt-in; the planned route, said so).
 
 **Non-goals**: unlocking bikes or accounts (the official BCycle app does that), turn-by-turn guidance
-(Google Maps does that), fare calculation, offline maps, accounts/sync (saved data is device-only).
+(Google Maps does that), fare calculation, offline maps, accounts/sync (saved data, ride history included, is
+device-only; Strava is an export the rider starts, not a sync), recording GPS tracks (the page can't run while
+Google Maps is in front).
 
 ---
 
@@ -92,6 +99,8 @@ Browser (React app, static assets on Cloudflare)       Cloudflare Worker (/api/*
 | OSRM (FOSSGIS, `routing.openstreetmap.de/routed-{bike,foot}`) | **route-only** fallback | **Never use `/table`** (6 req/min per IP, burst 1, each cell counts as a request). HTTP 200 can carry `code != 'Ok'` (treat as error). Steps carry no text and no shape indices; arrive step geometry is degenerate. `radiuses` for user points; never send hints. |
 | Photon (`photon.komoot.io`) | search, reverse | `bbox` hard filter (`minLon,minLat,maxLon,maxLat`), `zoom=14`, `location_bias_scale=0.2`, `limit=8` then de-dup to 5. `extent` is `[minLon, maxLat, maxLon, minLat]`. Empty reverse → "Dropped pin". Fair use; extensive use gets throttled. |
 | Open-Meteo (`api.open-meteo.com/v1/forecast`) | weather | No key; free for non-commercial use, attribution "Weather data by Open-Meteo.com" (CC BY 4.0, shown under the weather and in About). Asked for the **city's center** in its IANA zone (`timezone`, so sunrise/sunset are the city's day) with `timeformat=unixtime`; metric units (the client converts). Errors: HTTP 400 `{error, reason}`. Gate group `openmeteo`; cached `CACHE_TTL_MS.weather` (its current values update every 15 min). |
+| Overpass API (`overpass-api.de`, at build time only) | trails + scenery for Just ride | Queried by `npm run update-scenic` (one query per city, 5 s apart, never by the app or Worker): the public instance asks for < 10,000 queries/day, no parallel queries, a User-Agent, and backing off on 429/504 (it also answers 502 when overloaded: the script retries after 30 s). Output: `src/data/scenic/<system>.json` (ODbL, "© OpenStreetMap contributors"). Big cities can time out at 25 s (`OVERPASS_TIMEOUT_S`); `OVERPASS_URL` selects another instance. |
+| Strava API (`www.strava.com`) | Send to Strava | OAuth 2 (authorization code); exchange **and refresh need the client secret** (no PKCE) → Worker. Access tokens last 6 h; every refresh returns a new refresh token (the old one stops working). Upload: multipart `file` + `data_type=gpx`, `sport_type` (`Ride` / `EBikeRide`), `external_id`; **every GPX point needs a `<time>`**. Async: poll `GET /uploads/{id}` (≤ 1/s; ~2 s typical); `error` "… duplicate of activity N". 401 = revoked. Limits per app: 200 requests / 15 min, 2,000 / day; new apps accept only their owner until their athlete capacity is raised (10) or reviewed (more). Brand rules: "Connect with Strava" links to its authorize page; "View on Strava" bold in #FC5200. |
 | OpenFreeMap (`tiles.openfreemap.org/styles/{liberty,dark}`) | tiles | Fonts: **Noto Sans Regular/Bold/Italic only** (MapLibre's default font 404s). Attribution comes from TileJSON — keep the attribution control on. |
 
 **Usage policies (must comply):** FOSSGIS = at most 1 request/second **for both hosts combined**, no heavy use,
@@ -115,13 +124,16 @@ stretch to an off-route end dock; background priority; a straight leg when both 
 (path breakdown + elevation), `GET /api/geocode?q=&system=[&lat=&lon=]`,
 `GET /api/reverse?lat=&lon=`, `GET /api/weather?system=` (the city's weather, §1; geocode rate limit), `POST /api/push/ride` and `POST /api/push/cancel` (background ride alerts;
 404 when the deployment has no VAPID keys — `/api/meta` then reports `pushPublicKey: null`),
-`POST /api/usage` and `GET /api/analytics?days=` (anonymous usage counts and the dashboard, §8a). Errors:
+`POST /api/usage` and `GET /api/analytics?days=` (anonymous usage counts and the dashboard, §8a), `POST /api/loop`
+(Just ride: one route through the client's via points, §7b), `POST /api/strava/{token,upload,upload-status,revoke}`
+(§8c; 404 without the Strava secrets — `/api/meta` then reports `stravaClientId: null`). Errors:
 `{ error: { code, message, retryable } }` with 4xx/5xx; codes from `AppErrorCode`.
 
 - Validate everything: `system` must match a registry id; coordinates finite and in range; strings trimmed
   and length-limited; body ≤ `HTTP.maxBodyBytes` (read as a stream and refused once past it, also without a
   Content-Length). Unknown fields ignored.
-- Per-client-IP limits via Rate Limiting bindings (`ROUTE_LIMITER`, `GEOCODE_LIMITER`, `PUSH_LIMITER`);
+- Per-client-IP limits via Rate Limiting bindings (`ROUTE_LIMITER` — also `/api/loop` —, `GEOCODE_LIMITER`,
+  `PUSH_LIMITER`, `STRAVA_LIMITER`);
   exceeded → 429 `rate_limited`.
 - Responses: JSON, `Cache-Control: no-store`, `X-Content-Type-Options: nosniff`, same-origin only.
 
@@ -382,6 +394,44 @@ like Settings → City), then removed from the address bar. A link never ends a 
 a link opened into the app mid-ride): a shared ride's destination opens as a pin instead (its card gives directions
 from here and keeps the ride), and a link to another city is left unopened (`openLaunchParams`).
 
+**Just ride** (§7b) routes through via points: `RouteRequest.via` becomes Valhalla `through` locations (no stop or
+U-turn there; one leg, so `normalizeValhallaRoute` is unchanged), a synthesized point with a wider `search_cutoff`.
+Such a route is Valhalla's or none — OSRM would stop at each point — and the via list is part of the cache key.
+
+---
+
+## 7b. Just ride (`src/routing/loop.ts`, `src/routing/scenic.ts`, `src/data/scenic.ts`, `scripts/update-scenic.mjs`)
+
+A ride with no destination: *Just ride* under *Where to?* (`JustRide.tsx`) sets `rideStore.loop` — minutes
+(`LOOP.minuteChoices`; the pass's included time when it is one, else the longest that fits, else 30), round trip
+(*Back at this dock*, the default) or one way (*At another dock*), and a seed. A destination of the rider's own ends
+it (`setDestination` clears `loop`); a new start keeps it and plans its end again.
+
+- **Scenery** (build time): `npm run update-scenic` asks Overpass once per city (its station box padded by
+  `SCENIC.bboxPadMeters`) for cycleways and paths/footways open to bikes — not `mtb:scale`, "mountain bike",
+  rough/unpaved surfaces or tracks: BCycle bikes are city bikes —, named parks / nature reserves / gardens / beaches,
+  viewpoints, and named water and rivers. Trails are sampled every `SCENIC.sampleEveryMeters`; each point scores 1,
+  +1 named, +2 within 150 m of water, +2 in a park's box, +3 within 300 m of a viewpoint, and names its best feature.
+  Best `SCENIC.maxPoints` kept; ~5–80 KB per city. Each file is its own lazily loaded `scenic-*` chunk
+  (`import.meta.glob`; the service worker leaves them out), loaded the first time a ride is planned in that city.
+- **Waypoints** (`planLoop`, pure, seeded): the target length is `minutes × bike speed`; straight-line size =
+  target ÷ `LOOP.detourFactor`. Round trip: a triangle start → A → B → start whose perimeter is that size, A and B
+  the best-scored (seed-jittered) scenic points in a ring around the start, leaving at clearly different angles; too
+  few points → an equilateral triangle of synthesized points in a seeded direction. One way: an end dock with space
+  for the party between `LOOP.oneWayMinEndFraction` and 95 % of the size away, through a scenic point roughly toward
+  it; none in range → a round trip, said so (`fellBack`); no scenic point → a point bowing out to one side.
+- **Routing** (`loadLoopRoute`): `POST /api/loop` (start → via → end at `LOOP.useRoads` = 0, e-bike speed when the
+  rider rides one); a route more than `LOOP.lengthTolerance` off the length is planned once more at a corrected size
+  (`LOOP.maxAttempts` = 2 routing requests at most). The route becomes the plan's single route (`routes.length ===
+  1`, saved and restored as such), its end dock the destination, and its highlights — named places and trails within
+  `LOOP.highlightMeters` of the line (`routeHighlights`) — listed under *Along the way*. *Try another ride* changes
+  the seed; a `noRoute` error offers the same.
+- **Docks and Google**: a round trip's destination is the start dock, so `docksAlong` ends the list with the start
+  dock at the end of the line (instead of skipping it as the start and adding its neighbor as "nearest the
+  destination"). Hand-off `'loop'`: via points at least every `GOOGLE_HANDOFF.loopGuidedGapMeters` (a loop has no
+  destination for Google to aim at). Arriving counts only once the rider has been `LOOP.awayBeforeArrivalMeters` from
+  a round trip's dock. No share link (a link can't express a loop); trips and loops don't mix.
+
 ---
 
 ## 8. Client UI (`src/ui`, `src/map`, `src/store`, `src/location`, `src/data/hooks.ts`)
@@ -500,6 +550,48 @@ how, without tracking anyone. **No identifier leaves the device**, and nothing s
 
 ---
 
+## 8b. Ride history and reviews (`src/history`, `src/ui/rides`, `src/ui/ride/RideRecorder.tsx`)
+
+- **Recording** (`RideRecorder`, mounted only while a ride is under way or a record is open; decisions in the pure
+  `recorderStep`): a record starts when a planned ride's timer starts (at the timer's start), follows the plan while it
+  is ridden (end dock, route line, path details, highlights), and ends when the ride does. Ended in the app (End
+  ride, arriving, the next leg of a trip) → that moment, unless implausibly late (planned time ×
+  `HISTORY.lateEndFactor` + slack) → the planned time; the plan simply gone at the next launch (its last link was
+  opened, so it wasn't saved) → the planned time; both marked `endEstimated` ("~", correctable in the ride's details).
+  Ended within `HISTORY.minRideSeconds` → dropped (a mis-tap). A new plan mid-ride (the next leg on the same bike)
+  closes the record and starts one.
+- **Storage** (`historyStore`, localStorage `bcycle.history`, validated record by record): newest first, at most
+  `HISTORY.maxRides`; only the newest `HISTORY.maxRidesWithLine` keep their route line (polyline6, thinned to
+  `HISTORY.lineThinMeters`; needed only for Strava); an open record nobody is recording is dropped on restore.
+- **Reviews** (`review.ts`, pure; the device's time zone, calendar days via `src/lib/usage.ts`): weeks Monday–Sunday,
+  months, years. Totals, rides per day/month, longest ride, go-to dock and route, docks visited, share on paths and
+  protected lanes (rides whose path details were known), climb, time of day, busiest weekday, streak, Just ride
+  places, CO₂ avoided (`HISTORY.co2KgPerKm`) and calories (MET × 70 kg), change vs the period before, and a persona
+  from the strongest habit. `ReviewStory` plays them as full-screen cards (tap sides / arrows, auto-advance
+  `HISTORY.storyCardMs`, Escape closes; cards without data are skipped; text share at the end). The home panel offers
+  the newest unseen review with rides: the year's in December and January, last month's in a month's first
+  `HISTORY.monthlyOfferDays`, last week's in a week's first `HISTORY.weeklyOfferDays`.
+
+## 8c. Send to Strava (`src/history/strava.ts`, `worker/strava.ts`, `src/history/stravaGpx.ts`)
+
+- **Off unless set up**: Worker secrets `STRAVA_CLIENT_ID` (numeric) and `STRAVA_CLIENT_SECRET`; `/api/meta`'s
+  `stravaClientId` shows the Strava parts of the app.
+- **Connecting**: *Connect with Strava* → `strava.com/oauth/authorize` (scope `read,activity:write`, a random `state`
+  saved on the device) → back to `<site>/?strava=callback&code&state&scope` (the iOS/Android apps claim that link;
+  without Universal/App Links set up the code lands in the browser instead, whose storage lacks the app's state, so
+  connecting from the apps needs them). The state must match and be under `STRAVA.stateMaxAgeMs`, and the rider must
+  have kept "upload activities" ticked; then `POST /api/strava/token` exchanges the code (the Worker adds the client
+  secret). Tokens live in localStorage `bcycle.strava`; refreshed within `STRAVA.refreshBeforeMs` of expiry; a 401
+  (`unauthorized`) disconnects. *Disconnect* revokes (`/oauth/revoke`, Basic auth with the app's credentials).
+- **Sending**: `POST /api/strava/upload` with the ride's line, start and riding time (the rider may correct an
+  estimated one first), name, commute flag, `sport_type` (`EBikeRide` on an e-bike) and `external_id`
+  `badgerbikes-<ride id>`. The Worker builds the GPX (`stravaGpx`: each point's time spread along the line by
+  distance) and **always** appends the note, in the rider's language, that the map is the planned route, not a
+  recorded GPS track. The client polls `upload-status` (`STRAVA.pollEveryMs`, at most `maxPolls`); ready or a
+  duplicate of an existing activity → the ride remembers the activity id and shows *View on Strava*.
+
+---
+
 ## 9. Security
 
 - Launch params: `system`, station and ride ids match `^[A-Za-z0-9_.-]{1,80}$`; coordinates validated;
@@ -526,6 +618,13 @@ how, without tracking anyone. **No identifier leaves the device**, and nothing s
 - `/.well-known/apple-app-site-association` and `/.well-known/assetlinks.json` (share links opening the apps,
   §12) are public by design: they name the apps' ID, Apple Team ID and signing-certificate fingerprints, nothing
   secret. Served only once configured; every other `/.well-known/*` path is 404.
+- Strava: the client secret is a Worker secret; the Worker stores no tokens or rides, only forwards them. Every
+  request carries the rider's token in its body (never a URL), validated as opaque alphanumerics; upload text is
+  stripped of control characters and angle brackets and bounded; times must be a plausible past ride; the GPX is
+  built server-side (XML-escaped), so no client file is forwarded. OAuth `state` is random, single-use and expires.
+  Ride history and Strava tokens stay on the device; a ride goes to Strava only when the rider sends it.
+- `POST /api/loop`: at most `LOOP.maxVia` via points, everything within `LOOP.maxRadiusMeters` of the start (no long
+  routes through the public router).
 - Where the rider's location goes: Photon gets the search bias rounded to ~1 km (`GEOCODE.biasDecimals`); route
   requests carry a start or end the rider chose (their position only when they plan from it); the Worker logs
   request URLs without query strings (`observability.redact_query_string` in `wrangler.jsonc`: `/api/reverse` and
@@ -562,12 +661,22 @@ how, without tracking anyone. **No identifier leaves the device**, and nothing s
 - Usage counts: the unique-user math against a 400-device simulation, the Usage object with fake storage
   (`worker/usage.test.ts`); what the browser sends and when, DNT/GPC (`src/ui/usage.test.tsx`); day and gap
   helpers across DST (`src/lib/usage.test.ts`); the dashboard's range numbers (`src/analytics/aggregate.test.ts`).
+- Just ride: waypoint planning on Madison's generated scenery (`src/routing/loop.test.ts`), the generator's scoring
+  and filters (`scripts/update-scenic.test.mjs`), Valhalla `through` locations and no OSRM fallback
+  (`src/routing/via.test.ts`), `/api/loop` validation (`worker/worker.test.ts`), the plan in the ride store with a
+  captured loop route (`valhalla/route_bicycle_loop.json`).
+- Ride history: periods across DST and month/year ends, review numbers and personas, which review to offer, ride
+  ends, record validation (`src/history/review.test.ts`); the recorder's decisions (`src/history/recorder.test.ts`).
+- Strava: the endpoints with a fake upstream (token exchange with the secret, 401 → `unauthorized`, the GPX and note,
+  refusals, upload states, revoke) and the GPX timing (`worker/strava.test.ts`); the OAuth state check and callback
+  parsing (`src/history/strava.test.ts`).
 - E2E (Playwright, phone + desktop, network-free with inline `/api/*` mocks): launch screen (slow and
   failing feed), install tip, default city + City setting, shared ride link with a busy route server, plan saved
   across a reload until the last link is opened, station card Directions/Share, Nearest open dock, offline
   banner, Prefer e-bikes + clearing recents, the first-ride pass question and the path-details retry, the
   alerts help on Android and iPhone (and the planner's iPhone hint), the `/analytics` dashboard, and that
-  the app has no link to it.
+  the app has no link to it; Just ride (round trip, one way, back to a destination), Your rides with a review story,
+  and sending a ride to Strava.
 
 ---
 
@@ -576,7 +685,8 @@ how, without tracking anyone. **No identifier leaves the device**, and nothing s
 Cloudflare Workers + static assets (`wrangler.jsonc`, custom domain badgerbikes.app). `npm run deploy`
 builds and runs `wrangler deploy`; `npm run cf-typegen` after changing bindings. Background ride alerts need
 the secrets `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` (`npm run vapid-keys` makes a pair; each deployment its
-own); without them `/api/meta` reports no push key and the client keeps to in-app alerts. Usage counts need
+own); without them `/api/meta` reports no push key and the client keeps to in-app alerts. "Send to Strava" needs the secrets `STRAVA_CLIENT_ID` / `STRAVA_CLIENT_SECRET` from a Strava API app whose
+Authorization Callback Domain is the site's (§8c); without them it is hidden. Usage counts need
 nothing to set up (the `Usage` Durable Object comes with the deploy); the dashboard is at `/analytics`. Free plan limits are ample
 (I/O-bound requests). For heavier traffic than FOSSGIS allows, point `VITE_VALHALLA_URL` / `VITE_OSRM_*` at a
 self-hosted or commercial Valhalla-compatible service. PWA: `registerType: 'prompt'`, no runtime caching of live data. When a new version is deployed, a

@@ -33,7 +33,12 @@ export function routeBody(req: RouteRequest): Record<string, unknown> {
   if (req.fromIsUserPoint) fromExtra.search_cutoff = BIKE_ROUTING.userPointSearchCutoffMeters
   if (req.headingDeg !== undefined) Object.assign(fromExtra, { heading: Math.round(req.headingDeg), heading_tolerance: 45 })
   return {
-    locations: [loc(req.from, fromExtra), loc(req.to, req.toIsUserPoint ? { search_cutoff: BIKE_ROUTING.userPointSearchCutoffMeters } : {})],
+    locations: [
+      loc(req.from, fromExtra),
+      // Passed through without stopping or a U-turn, in one leg.
+      ...(req.via ?? []).map((v) => loc(v.coord, { type: 'through', ...(v.searchCutoffMeters ? { search_cutoff: Math.round(v.searchCutoffMeters) } : {}) })),
+      loc(req.to, req.toIsUserPoint ? { search_cutoff: BIKE_ROUTING.userPointSearchCutoffMeters } : {}),
+    ],
     ...costing(req.mode, req.bikeKind, req.useRoads),
     directions_options: { units: req.units === 'imperial' ? 'miles' : 'kilometers', language: req.language },
   }

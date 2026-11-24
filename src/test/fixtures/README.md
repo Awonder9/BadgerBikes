@@ -14,6 +14,7 @@ dropoff candidates are the 4 nearest the destination (Madison BCycle).
 | `gbfs/madison_v2_station_status.json` | `https://gbfs.bcycle.com/2/bcycle_madison/station_status.json` (GBFS 2.1, booleans as true/false) |
 | `valhalla/route_pedestrian.json` | `/route` pedestrian, origin → pickup candidate 0, `units: kilometers` |
 | `valhalla/route_bicycle.json` | `/route` bicycle (Hybrid), pickup 0 → dropoff 0, `units: kilometers` |
+| `valhalla/route_bicycle_loop.json` | `/route` bicycle (City, use_roads 0, e-bike speed), a "Just ride" loop: Capitol → Lakeshore Path → Tenney Park → Capitol, the middle two as `through` locations (one leg), `units: miles` (2026-11-24) |
 | `valhalla/route_pedestrian_dest.json` | `/route` pedestrian, dropoff 0 → destination |
 | `valhalla/route_far_from_road.json` | `/route` pedestrian from a point in Lake Mendota (Valhalla snaps to the shore — NOT an error) |
 | `valhalla/error_no_route.json` | HTTP 400, error_code 154 (path distance exceeds 150 km limit for bicycle) |

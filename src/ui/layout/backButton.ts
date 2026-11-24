@@ -17,6 +17,7 @@ export function goBack(app: AppState & AppActions): boolean {
       app.setPanel('browse')
       return true
     case 'ride':
+    case 'rides':
     case 'list':
     case 'settings':
       app.setPanel('browse')

@@ -21,6 +21,7 @@ import type { Place } from '../../types'
 import { isNativeApp } from '../platform'
 import { AvailabilityPill } from '../primitives/Availability'
 import { Button, ButtonLink, IconButton } from '../primitives/Button'
+import { RidesEntry } from '../rides/RidesEntry'
 import { Icon } from '../primitives/Icon'
 import { changeCity, planRide, rideTo, startRideFrom } from '../ride/rideActions'
 import { AlertsSettings } from '../ride/AlertsHelp'
@@ -129,6 +130,7 @@ export function BrowsePanel() {
         </Button>
       )}
       <NearestButtons />
+      <RidesEntry />
       <div className="flex items-center justify-between gap-2">
         <span className="flex min-w-0 items-center gap-1">
           <FreshnessBadge hasData={!!snapshot} isError={!!error} lastUpdatedMs={snapshot?.lastUpdatedMs} />
@@ -397,6 +399,12 @@ export function SettingsPanel() {
         <AlertsSettings />
         {systemId && <SavedPlacesSettings systemId={systemId} />}
         <RecentPlacesSetting />
+        <button type="button" className={`${row} w-full text-left`} onClick={() => useAppStore.getState().setPanel('rides')}>
+          <span className="flex items-center gap-2">
+            <Icon name="history" size={20} className="shrink-0" /> {t.rides.settingsRow}
+          </span>
+          <Icon name="chevronRight" size={20} />
+        </button>
         <p className="px-4 py-3 text-sm text-slate-500">
           {isNativeApp() ? t.storageNoteNative : t.storageNote}
         </p>

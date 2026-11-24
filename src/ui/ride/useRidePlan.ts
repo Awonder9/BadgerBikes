@@ -99,7 +99,9 @@ export function useRidePlan(): RidePlan {
   const { systemId, partySize, maxRideMinutes, preferEbikes } = useAppStore(
     useShallow((s) => ({ systemId: s.systemId, partySize: s.settings.partySize, maxRideMinutes: s.settings.maxRideMinutes, preferEbikes: s.settings.preferEbikes })),
   )
-  const ride = useRideStore(useShallow((s) => ({ origin: s.origin, startId: s.startId, destination: s.destination, route: s.route, routeIndex: s.routeIndex, stopIds: s.stopIds, openedParts: s.openedParts, bikeAt: s.bikeAt })))
+  const ride = useRideStore(
+    useShallow((s) => ({ origin: s.origin, startId: s.startId, destination: s.destination, route: s.route, routeIndex: s.routeIndex, stopIds: s.stopIds, openedParts: s.openedParts, bikeAt: s.bikeAt, loop: s.loop !== null })),
+  )
   // Faster polling only while it matters (planner open or a ride under way); this hook is also used by
   // always-mounted pieces (ride banner, alerts, map), which must not keep the app polling fast.
   const panelOpen = useAppStore((s) => s.panel === 'ride')
@@ -129,7 +131,8 @@ export function useRidePlan(): RidePlan {
   const segments = useMemo(() => (startId ? rideSegments(startId, chosen, maxRideMinutes > 0 ? maxRideMinutes : null, electric, pace) : []), [startId, chosen, maxRideMinutes, electric, pace])
   const walkTo = dest && end && haversine(end.station.coord, dest.coord) > WALK_LINK_MIN_METERS ? dest.coord : null
   // Google Maps gets the docks (as points on the line), plus the route option's via points (googleMaps.ts).
-  const handoff: Handoff = BIKE_ROUTING.options[ride.routeIndex]?.handoff ?? 'docks'
+  // "Just ride" has no destination for Google to aim at: it is held to the ride's shape ('loop').
+  const handoff: Handoff = ride.loop ? 'loop' : (BIKE_ROUTING.options[ride.routeIndex]?.handoff ?? 'docks')
   const routeIndex = useMemo(() => (route ? buildPolylineIndex(route.geometry) : null), [route])
   const trailRanges = useMemo(() => (route && routeIndex ? trailRangesOf(route.maneuvers, routeIndex.cum) : []), [route, routeIndex])
   const guide = useMemo(
@@ -161,7 +164,8 @@ export function useRidePlan(): RidePlan {
   const rideS = end ? rideSeconds(end.along + end.offset, electric, pace) : null
   const totalSeconds = rideS !== null ? (walkToDock?.seconds ?? 0) + rideS + (walkFromDock?.seconds ?? 0) : null
   const startPoint = fromPlace?.coord ?? start?.coord
-  const walkAll = startPoint && dest ? walkLeg(startPoint, dest.coord) : null
+  // Walking "there" instead means nothing for a ride with no destination.
+  const walkAll = startPoint && dest && !ride.loop ? walkLeg(startPoint, dest.coord) : null
   const nextIdx = rideParts.findIndex((_, i) => !ride.openedParts.includes(i))
   return {
     origin,

@@ -31,6 +31,7 @@ import { locationProblemText } from '../platform'
 import { useRideStore, rideActive } from '../../ride/rideStore'
 import { tripResumedAtLaunch } from '../../ride/tripStore'
 import { LoadingScreen } from './LoadingScreen'
+import { RideRecorder } from '../ride/RideRecorder'
 
 function useIsDesktop(): boolean {
   const query = `((min-width: ${UI.desktopMinWidthPx}px) and (min-height: ${UI.desktopMinHeightPx}px)), ((hover: hover) and (pointer: fine) and (min-width: ${UI.desktopMinWidthPx}px))`
@@ -79,6 +80,34 @@ class RidePlannerHost extends Component<object, { failed: boolean }> {
   }
 }
 
+/** "Your rides" loads on demand too (its own chunk: history, reviews, Strava). */
+const loadRidesPanel = () => import('../rides/RidesPanel').then((m) => ({ default: m.RidesPanel }))
+let RidesPanel = lazy(loadRidesPanel)
+
+class RidesPanelHost extends Component<object, { failed: boolean }> {
+  state = { failed: false }
+  static getDerivedStateFromError() {
+    return { failed: true }
+  }
+  render() {
+    if (this.state.failed) {
+      return (
+        <PanelLoadFailed
+          onRetry={() => {
+            RidesPanel = lazy(loadRidesPanel)
+            this.setState({ failed: false })
+          }}
+        />
+      )
+    }
+    return (
+      <Suspense fallback={<PanelLoading />}>
+        <RidesPanel />
+      </Suspense>
+    )
+  }
+}
+
 function PanelLoadFailed({ onRetry }: { onRetry: () => void }) {
   const { t } = useI18n()
   return (
@@ -114,6 +143,8 @@ function PanelHost({ panel }: { panel: Panel }) {
       return <SettingsPanel />
     case 'about':
       return <AboutPanel />
+    case 'rides':
+      return <RidesPanelHost />
     default:
       return <BrowsePanel />
   }
@@ -448,6 +479,7 @@ export function AppShell() {
           <RideBanner />
         </div>
         <RideWatchers />
+        <RideRecorder />
         <AfterStartup />
         <InstallTip />
         <LoadingScreen />

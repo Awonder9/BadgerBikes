@@ -1,10 +1,11 @@
 // HTTP layer for /api/* (and the apps' /.well-known/* link files). Dependencies are injected so handlers are
 // testable in Node.
-import { APP, BIKE_ROUTING, NATIVE_APP } from '../src/config'
+import { APP, BIKE_ROUTING, LOOP, NATIVE_APP } from '../src/config'
 import {
   API_PATHS,
   NEAREST_SYSTEM,
   type LocateResponse,
+  type LoopResponse,
   type MetaResponse,
   type OkResponse,
   type PushRideRequest,
@@ -26,7 +27,9 @@ import type { AltRouter } from '../src/routing/types'
 import type { RouteLeg } from '../src/types'
 import type { fetchWeather as FetchWeather } from '../src/weather/openMeteo'
 import { appLinksResponse, type AppLinkIds } from './appLinks'
-import { geocodeQuery, latLonParams, pushCancelRequest, pushRideRequest, readJsonBody, reportDays, requireSystem, routeDetailsRequest, routeRequest, usageRequest } from './validate'
+import { stravaRevokeRequest, stravaTokenRequest, stravaUploadRequest, stravaUploadStatusRequest } from './validate'
+import { stravaRevoke, stravaToken, stravaUpload, stravaUploadStatus, type StravaApp } from './strava'
+import { geocodeQuery, latLonParams, loopRequest, pushCancelRequest, pushRideRequest, readJsonBody, reportDays, requireSystem, routeDetailsRequest, routeRequest, usageRequest } from './validate'
 
 /** One device's background ride alerts (the RideAlerts Durable Object's RPC methods). */
 export interface RideAlertsRpc {
@@ -53,7 +56,9 @@ export interface AppDeps {
   contactEmail: string | null
   version: string
   /** Per-client limits; undefined → unlimited. */
-  limiters?: { route?: RateLimit; geocode?: RateLimit; push?: RateLimit; usage?: RateLimit }
+  limiters?: { route?: RateLimit; geocode?: RateLimit; push?: RateLimit; usage?: RateLimit; strava?: RateLimit }
+  /** "Send to Strava": the deployment's Strava app (client secret); null/undefined → the feature is off. */
+  strava?: StravaApp | null
   /** Background ride alerts (Web Push); null when this deployment has no VAPID keys. */
   push?: { publicKey: string; rideAlerts: (endpoint: string) => Promise<RideAlertsRpc> } | null
   /** Anonymous usage counts; null/undefined → not counted. */
@@ -124,6 +129,7 @@ const STATUS: Partial<Record<AppErrorCode, number>> = {
   location_unroutable: 422,
   no_route: 422,
   rate_limited: 429,
+  unauthorized: 401,
   upstream_unavailable: 503,
   aborted: 499,
   timeout: 504,
@@ -166,7 +172,25 @@ export function createApp(deps: AppDeps) {
 
     if (p.startsWith('/.well-known/')) return (method === 'GET' && appLinksResponse(p, deps.appLinks)) || new Response(null, { status: 404 })
     if (p === API_PATHS.health) return json({ ok: true, service: 'badger-bikes', time: new Date(deps.now()).toISOString() })
-    if (p === API_PATHS.meta) return json({ contactEmail: deps.contactEmail, version: deps.version, pushPublicKey: deps.push?.publicKey ?? null } satisfies MetaResponse)
+    if (p === API_PATHS.meta)
+      return json({ contactEmail: deps.contactEmail, version: deps.version, pushPublicKey: deps.push?.publicKey ?? null, stravaClientId: deps.strava?.clientId ?? null } satisfies MetaResponse)
+
+    if (p.startsWith('/api/strava/') && method === 'POST') {
+      await limit(deps.limiters?.strava, request)
+      const app = deps.strava
+      if (!app) throw new AppError('not_found', 'Strava is not set up on this server')
+      const body = await readJsonBody(request)
+      if (p === API_PATHS.stravaToken) return json(await stravaToken(deps.upstream, app, stravaTokenRequest(body), signal))
+      if (p === API_PATHS.stravaUpload) return json({ uploadId: await stravaUpload(deps.upstream, stravaUploadRequest(body, deps.now()), signal) })
+      if (p === API_PATHS.stravaUploadStatus) {
+        const { accessToken, uploadId } = stravaUploadStatusRequest(body)
+        return json(await stravaUploadStatus(deps.upstream, accessToken, uploadId, signal))
+      }
+      if (p === API_PATHS.stravaRevoke) {
+        await stravaRevoke(deps.upstream, app, stravaRevokeRequest(body).token, signal)
+        return json({ ok: true } satisfies OkResponse)
+      }
+    }
 
     if ((p === API_PATHS.pushRide || p === API_PATHS.pushCancel) && method === 'POST') {
       await limit(deps.limiters?.push, request)
@@ -237,6 +261,23 @@ export function createApp(deps: AppDeps) {
       } catch (err) {
         const code = toAppError(err).code
         if (code === 'upstream_unavailable' || code === 'rate_limited') count('routes_busy') // the rider was asked to try again
+        throw err
+      }
+    }
+
+    if (p === API_PATHS.loop && method === 'POST') {
+      await limit(deps.limiters?.route, request)
+      const { systemId: _s, priority, via, useRoads: _u, ...routeReq } = loopRequest(await readJsonBody(request))
+      const router = deps.createRouter({ upstream: deps.upstream })
+      try {
+        const viaReq = via.map((v) => ({ coord: v.coord, ...(v.synthetic ? { searchCutoffMeters: LOOP.viaSearchCutoffMeters } : {}) }))
+        const [route] = await router.routeLadder({ ...routeReq, via: viaReq }, [LOOP.useRoads], { signal, priority: priority ?? 'interactive' })
+        if (!route) throw new AppError('no_route', 'No loop route.')
+        count('routes')
+        return json({ route: routeForApp(route) } satisfies LoopResponse)
+      } catch (err) {
+        const code = toAppError(err).code
+        if (code === 'upstream_unavailable' || code === 'rate_limited') count('routes_busy')
         throw err
       }
     }

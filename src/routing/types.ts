@@ -25,6 +25,12 @@ export interface RouteRequest {
   bikeKind?: BikeKind
   /** Valhalla use_roads 0–1 for bike legs (0 = avoid car roads); defaults to BIKE_ROUTING.defaultUseRoads. */
   useRoads?: number
+  /**
+   * Points the route passes through in order ("Just ride" loops, POST /api/loop), without stopping or turning around
+   * there (Valhalla `through` locations); one leg from `from` to `to`. `searchCutoffMeters` lets a point that may lie
+   * off any street (a synthesized one) snap further. Valhalla only: OSRM is not asked for such routes.
+   */
+  via?: Array<{ coord: LngLat; searchCutoffMeters?: number }>
 }
 
 export interface RequestOpts {

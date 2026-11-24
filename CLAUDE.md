@@ -22,6 +22,8 @@ turn-by-turn directions, with ride progress tracked in the app.
   `window.__bcycle.map.current` the map API (getViewport, fitBounds…; calls made before the lazily loaded
   map exists are applied when it is created)
 - `npm run update-systems` — regenerate `src/data/systems.json` from the live BCycle feeds
+- `npm run update-scenic [-- <system id>]` — regenerate `src/data/scenic/*.json` (trails + scenic places for
+  "Just ride") from OpenStreetMap via Overpass; the public server is often busy (`OVERPASS_URL`, `OVERPASS_TIMEOUT_S`)
 - `npm run vapid-keys` — print a VAPID key pair for background ride alerts (Worker secrets
   `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY`; optional — without them push is off and in-app alerts remain)
 

@@ -1,11 +1,11 @@
 // Request validation for the Worker API. Everything from the client is untrusted.
-import type { PushRideRequest, PushSubscriptionJson, RouteApiRequest, UsageFirst, UsagePlatform, UsageRequest } from '../src/api/contract'
-import { APP, GEOCODE, HTTP, PUSH, RIDE, ROUTE_DETAILS, USAGE } from '../src/config'
+import type { StravaTokenRequest, StravaUploadRequest, StravaUploadStatusRequest, LoopApiRequest, PushRideRequest, PushSubscriptionJson, RouteApiRequest, UsageFirst, UsagePlatform, UsageRequest } from '../src/api/contract'
+import { APP, GEOCODE, HTTP, LOOP, PUSH, RIDE, ROUTE_DETAILS, STRAVA, USAGE } from '../src/config'
 import { SYSTEMS } from '../src/data/systems'
 import { LANGS, type Lang } from '../src/i18n/lang'
 import { base64urlToBytes } from '../src/lib/base64url'
 import { AppError } from '../src/lib/errors'
-import { isValidLngLat } from '../src/lib/geo'
+import { haversine, isValidLngLat } from '../src/lib/geo'
 import { decodePolyline } from '../src/lib/polyline'
 import type { BcycleSystem, LngLat } from '../src/types'
 
@@ -56,6 +56,85 @@ export function routeRequest(body: unknown): RouteApiRequest {
   if (body.toIsUserPoint === true) r.toIsUserPoint = true
   if (body.bikeKind === 'electric') r.bikeKind = 'electric'
   return r
+}
+
+/**
+ * POST /api/loop body: a bike route request plus 1–LOOP.maxVia via points, all of it within LOOP.maxRadiusMeters of
+ * the start (a loop is a ride around town, never a request for a long route across the country).
+ */
+export function loopRequest(body: unknown): LoopApiRequest {
+  const r = routeRequest(body)
+  const raw = isObj(body) ? body.via : undefined
+  if (!Array.isArray(raw) || raw.length < 1 || raw.length > LOOP.maxVia) throw bad('Invalid via points')
+  const via = raw.map((v) => {
+    if (!isObj(v)) throw bad('Invalid via point')
+    return { coord: lngLat(v.coord, 'via'), synthetic: v.synthetic === true }
+  })
+  if ([r.to, ...via.map((v) => v.coord)].some((c) => haversine(r.from, c) > LOOP.maxRadiusMeters)) throw bad('Loop too large')
+  return { ...r, mode: 'bike', role: 'ride', via }
+}
+
+const TOKEN_RE = /^[A-Za-z0-9]{10,200}$/
+const token = (v: unknown, what: string): string => {
+  if (typeof v !== 'string' || !TOKEN_RE.test(v)) throw bad(`Invalid ${what}`)
+  return v
+}
+
+/** POST /api/strava/token body: an authorization code or a refresh token (opaque alphanumerics). */
+export function stravaTokenRequest(body: unknown): StravaTokenRequest {
+  if (!isObj(body)) throw bad('Invalid body')
+  return body.code !== undefined ? { code: token(body.code, 'code') } : { refreshToken: token(body.refreshToken, 'refresh token') }
+}
+
+/** Text the rider typed: no control characters or angle brackets, trimmed and bounded. */
+function riderText(v: unknown, max: number): string {
+  if (typeof v !== 'string') throw bad('Invalid text')
+  return Array.from(v)
+    .filter((ch) => {
+      const c = ch.codePointAt(0) ?? 0
+      return (c >= 0x20 || c === 0x0a) && c !== 0x7f && ch !== '<' && ch !== '>'
+    })
+    .join('')
+    .trim()
+    .slice(0, max)
+}
+
+/** POST /api/strava/upload body; times must be a plausible past ride. */
+export function stravaUploadRequest(body: unknown, nowMs: number): StravaUploadRequest {
+  if (!isObj(body)) throw bad('Invalid body')
+  const lang: Lang | undefined = LANGS.find((l) => l === body.lang)
+  if (!lang) throw bad('Invalid language')
+  const { polyline } = routeDetailsRequest({ systemId: APP.defaultSystemId, polyline: body.polyline })
+  const startedAtMs = body.startedAtMs
+  const elapsedS = body.elapsedS
+  if (typeof startedAtMs !== 'number' || !Number.isInteger(startedAtMs) || startedAtMs < nowMs - 3 * 365 * 86_400_000 || startedAtMs > nowMs + 60_000) throw bad('Invalid start')
+  if (typeof elapsedS !== 'number' || !Number.isInteger(elapsedS) || elapsedS < 60 || elapsedS > 12 * 3600) throw bad('Invalid elapsed time')
+  const name = riderText(body.name, STRAVA.maxNameLength)
+  if (!name) throw bad('Invalid name')
+  const externalId = typeof body.externalId === 'string' && /^badgerbikes-[A-Za-z0-9_.:-]{1,100}$/.test(body.externalId) ? body.externalId : null
+  if (!externalId) throw bad('Invalid external id')
+  return {
+    accessToken: token(body.accessToken, 'token'),
+    lang,
+    polyline,
+    startedAtMs,
+    elapsedS,
+    name,
+    description: riderText(body.description ?? '', STRAVA.maxDescriptionLength),
+    sportType: body.sportType === 'EBikeRide' ? 'EBikeRide' : 'Ride',
+    commute: body.commute === true,
+    externalId,
+  }
+}
+
+export function stravaUploadStatusRequest(body: unknown): StravaUploadStatusRequest {
+  if (!isObj(body) || typeof body.uploadId !== 'string' || !/^\d{1,24}$/.test(body.uploadId)) throw bad('Invalid upload id')
+  return { accessToken: token(body.accessToken, 'token'), uploadId: body.uploadId }
+}
+
+export function stravaRevokeRequest(body: unknown): { token: string } {
+  if (!isObj(body)) throw bad('Invalid body')
+  return { token: token(body.token, 'token') }
 }
 
 /** Route geometry as an encoded polyline6: printable polyline characters only, bounded size. */

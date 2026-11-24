@@ -21,6 +21,7 @@
     "e2e": "playwright test",
     "check": "npm run typecheck && npm run lint && npm run test",
     "update-systems": "node scripts/update-systems.mjs",
+    "update-scenic": "node scripts/update-scenic.mjs",
     "vapid-keys": "node scripts/generate-vapid-keys.mjs"
   },
   "dependencies": {

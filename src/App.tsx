@@ -14,6 +14,8 @@ import { useAppStore } from './store/appStore'
 import { LANG_TAGS } from './i18n/lang'
 import { currentMessages, useLang } from './i18n/useT'
 import { openLaunchParams } from './ui/launchParams'
+import { openStravaReturn } from './ui/rides/stravaReturn'
+import { stripStravaCallback } from './history/strava'
 import { AppShell } from './ui/layout/AppShell'
 import { isDarkStyle, usePrefersDark } from './ui/useMediaQuery'
 import { useUsageCounts } from './ui/usage'
@@ -51,6 +53,8 @@ if (import.meta.env.DEV) Object.assign(window, { __bcycle: { app: useAppStore, r
 
 function useLaunchParams() {
   useEffect(() => {
+    // Back from Strava's connect page: its code is used once and leaves the address bar at once.
+    if (openStravaReturn(window.location.search)) return void window.history.replaceState(null, '', stripStravaCallback(window.location.href))
     openLaunchParams(parseLaunchParams(window.location.search, SYSTEM_IDS))
     if (window.location.search) window.history.replaceState(null, '', stripLaunchParams(window.location.href))
   }, [])
